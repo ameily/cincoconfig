@@ -1,0 +1,29 @@
+{
+  "editor.tabSize": 4,
+  "editor.insertSpaces": true,
+  "editor.trimAutoWhitespace": true,
+  "editor.detectIndentation": true,
+  "editor.wordWrap": "off",
+  "editor.useTabStops": true,
+
+  "files.insertFinalNewline": true,
+  "files.encoding": "utf8",
+  "files.exclude": {
+    "**/.git": true
+  },
+  "files.eol": "\n",
+  "python.linting.pep8Path": "pycodestyle",
+
+  // Trim trailing whitespace on save
+  "trailing-spaces.trimOnSave": true,
+
+  // Enable linting of Python code
+  "python.linting.enabled": true,
+  "python.linting.pep8Enabled": true,
+  "python.linting.lintOnSave": true,
+
+  "python.linting.pylintArgs": [
+      "--rcfile=./.pylintrc"
+],
+"python.pythonPath": "venv\\Scripts\\python.exe",
+}
