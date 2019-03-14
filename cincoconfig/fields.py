@@ -9,7 +9,7 @@ import os
 import re
 from ipaddress import IPv4Address, IPv4Network
 from urllib.parse import urlparse
-from typing import Union, List
+from typing import Union, List, Callable
 from .abc import Field
 
 
@@ -67,10 +67,10 @@ class NumberField(Field):
         except:
             raise ValueError('%s is not a valid %s' % (self.name, self.type_cls.__name__))
 
-        if self.min is not None and value < min:
+        if self.min is not None and value < self.min:
             raise ValueError('%s must be >= %s' % (self.name, self.min))
 
-        if self.max is not None and value > max:
+        if self.max is not None and value > self.max:
             raise ValueError('%s must be <= %s' % (self.name, self.max))
 
         return value
@@ -194,6 +194,11 @@ class ListField(Field):
 
         # TODO
         return value
+
+
+class VirtualField(Field):
+    # TODO
+    pass
 
 
 class AnyField(Field):

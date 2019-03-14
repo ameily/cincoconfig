@@ -24,7 +24,7 @@ class Field:
 
     @property
     def name(self):
-        return self._name or self.key
+        return self._name or self._key
 
     def set_default(self, cfg):
         value = self.default if not callable(self.default) else self.default()

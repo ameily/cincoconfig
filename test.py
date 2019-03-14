@@ -14,9 +14,25 @@ cfg.database.host = HostnameField(required=True, default='localhost')
 cfg.database.user = StringField(required=False)
 cfg.database.password = StringField(required=False)
 
-config = cfg()
+config = cfg.compile()
 
 print(cfg.to_json())
 
 print()
-print(config.to_json())
+
+print(config.cinco_tree)
+
+print()
+try:
+    config.mode = 'ferp'
+except ValueError as e:
+    print('failed to set config:', str(e))
+
+
+config.server.port = 443
+print('server port:', config.server.port)
+
+try:
+    config.server.port = 100000
+except ValueError as e:
+    print('failed to set config:', str(e))
