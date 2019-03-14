@@ -2,20 +2,21 @@
 TODO: Probably remove this file eventually.
 '''
 import json
-from cincoconfig.config import Config, ConfigGroup
+from cincoconfig import *
 
 cfg = Config()
-cfg.mode = "development"
-cfg.server.port = 8080
-cfg.server.host = "localhost"
-cfg.server.ssl = False
+cfg.mode = StringField(required=True, choices=('development', 'production'), default='production')
+cfg.server.port = PortField(required=True, default=8080)
+cfg.server.host = HostnameField(required=True, default='localhost')
+cfg.server.ssl = BoolField(default=False)
 
-cfg.database.host = "localhost"
-cfg.database.user = "user"
-cfg.database.opts = ["1", "2", "3"]
+cfg.database.host = HostnameField(required=True, default='localhost')
+cfg.database.user = StringField(required=False)
+cfg.database.password = StringField(required=False)
 
-cfg.database.ferp = ConfigGroup()
-cfg.database.ferp.derp = "blah"
-cfg.database.ferp.herp.merp = "doubleblah"
+config = cfg()
 
-print(json.dumps(cfg.to_json(), indent=4, sort_keys=True))
+print(cfg.to_json())
+
+print()
+print(config.to_json())

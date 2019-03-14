@@ -6,6 +6,10 @@
   "editor.wordWrap": "off",
   "editor.useTabStops": true,
 
+  "editor.rulers": [
+    99
+  ],
+
   "files.insertFinalNewline": true,
   "files.encoding": "utf8",
   "files.exclude": {
@@ -23,7 +27,6 @@
   "python.linting.lintOnSave": true,
 
   "python.linting.pylintArgs": [
-      "--rcfile=./.pylintrc"
-],
-"python.pythonPath": "venv\\Scripts\\python.exe",
+    "--rcfile=./.pylintrc"
+  ],
 }
