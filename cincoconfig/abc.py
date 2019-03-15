@@ -13,7 +13,7 @@ class Field:
     def __init__(self, *, name: str = None, key: str = None, required: bool = False,
                  default: Any = None, validator: Callable = None):
         self._name = name or None
-        self._key = key or None
+        self.key = None
         self.required = required
         self._default = default
         self.validator = validator
@@ -24,11 +24,7 @@ class Field:
 
     @property
     def name(self):
-        return self._name or self._key
-
-    def set_default(self, cfg):
-        value = self.default if not callable(self.default) else self.default()
-        cfg.set(self.name, value)
+        return self._name or self.key
 
     def _validate(self, cfg, value):
         return value
@@ -45,6 +41,18 @@ class Field:
             value = self.validator(cfg, value)
 
         return value
+
+    def __setval__(self, cfg, value):
+        cfg._data[self.key] = self.validate(cfg, value)
+
+    def __getval__(self, cfg):
+        return cfg._data[self.key]
+
+    def __setkey__(self, cfg, name):
+        self.key = name
+
+    def __setdefault__(self, cfg):
+        cfg._data[self.key] = self.default
 
 
 class ConfigFormat:

@@ -5,6 +5,8 @@
 # this source code package.
 #
 
-# Public API
-from .config import Config, Schema
-from .fields import *
+from cincoconfig.abc import ConfigFormat
+
+
+class XmlConfigFormat(ConfigFormat):
+    pass

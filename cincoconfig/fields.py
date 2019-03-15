@@ -197,8 +197,19 @@ class ListField(Field):
 
 
 class VirtualField(Field):
-    # TODO
-    pass
+
+    def __init__(self, getter, **kwargs):
+        super().__init__(**kwargs)
+        self.getter = getter
+
+    def __setdefault__(self, cfg):
+        pass
+
+    def __getval__(self, cfg):
+        return self.getter(cfg)
+
+    def __setval__(self, cfg, value):
+        raise TypeError('%s is readonly' % self.key)
 
 
 class AnyField(Field):
