@@ -13,7 +13,7 @@ class Field:
     def __init__(self, *, name: str = None, key: str = None, required: bool = False,
                  default: Any = None, validator: Callable = None):
         self._name = name or None
-        self.key = None
+        self.key = key or None
         self.required = required
         self._default = default
         self.validator = validator
@@ -53,6 +53,22 @@ class Field:
 
     def __setdefault__(self, cfg):
         cfg._data[self.key] = self.default
+
+    def to_python(self, cfg, value):
+        '''
+        Convert the basic value to a Python value.
+        '''
+        return value
+
+    def to_basic(self, cfg, value):
+        '''
+        Convert the Python value to the basic value.
+        '''
+        return value
+
+
+class AnyField(Field):
+    pass
 
 
 class ConfigFormat:

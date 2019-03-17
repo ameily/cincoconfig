@@ -6,11 +6,11 @@
 #
 
 from typing import Union, Any
-from .abc import Field, ConfigFormat
-from . import formats
+from .abc import Field, ConfigFormat, AnyField
+from .formats import FormatRegistry
 
 
-__all__ = ('Config', "ConfigGroup")
+__all__ = ('Config', 'Schema')
 
 
 class Schema:
@@ -29,15 +29,22 @@ class Schema:
         if name[0] == '_':
             object.__setattr__(self, name, value)
         else:
-            self._fields[name] = value
-            if isinstance(value, Field):
-                value.__setkey__(self, name)
+            self._add_field(name, value)
+
+    def _add_field(self, key, field):
+        self._fields[key] = field
+        if isinstance(field, Field):
+            field.__setkey__(self, key)
 
     def __getattr__(self, name):
         field = self._fields.get(name)
         if field is None:
             field = self._fields[name] = Schema(name)
         return field
+
+    def __iter__(self):
+        for name, field in self._fields.items():
+            yield name, field
 
     def to_json(self):
         '''
@@ -62,6 +69,7 @@ class Config:
     def __init__(self, schema: Schema, parent: 'Config' = None):
         self._schema = schema
         self._data = dict()
+        self._dynamic_fields = dict() if self._schema._dynamic else None
         self._parent = parent
 
         for name, field in schema._fields.items():
@@ -76,12 +84,13 @@ class Config:
             object.__setattr__(self, name, value)
             return
 
-        field = self._schema._fields.get(name)
+        field = self._get_field(name)
         if not field:
             if not self._schema._dynamic:
                 raise AttributeError('%s field does not exist' % name)
-            self._data[name] = value
-            return
+
+            self._dynamic_fields = field = AnyField()
+            field.__setkey__(self, name)
 
         if isinstance(field, Schema):
             if not isinstance(value, dict):
@@ -93,7 +102,7 @@ class Config:
             field.__setval__(self, value)
 
     def __getattr__(self, name: str):
-        field = self._schema._fields.get(name)
+        field = self._get_field(name)
         if not field:
             if not self._schema._dynamic:
                 raise AttributeError('%s field does not exist' % name)
@@ -126,12 +135,12 @@ class Config:
 
         self.loads(content, format)
 
-    def dumps(self, format: str):
-        formatter = self._get_format(format)
-        return formatter.dumps(self._schema, self._to_tree())
+    def dumps(self, format: str, **kwargs):
+        formatter = FormatRegistry.get(format, **kwargs)
+        return formatter.dumps(self._schema, self, self._to_tree())
 
-    def loads(self, content: Union[str, bytes], format: str):
-        formatter = self._get_format(format)
+    def loads(self, content: Union[str, bytes], format: str, **kwargs):
+        formatter = FormatRegistry.get(format, **kwargs)
 
         if formatter.is_binary and isinstance(content, str):
             content = content.encode()
@@ -141,31 +150,39 @@ class Config:
         tree = formatter.loads(self._schema, content)
         self.load_tree(tree)
 
-    def _get_format(self, format: str) -> ConfigFormat:
-        fmt = format.lower()
-        if fmt == 'json':
-            cls = formats.JsonConfigFormat
-        elif fmt == 'yaml':
-            cls = formats.YamlConfigFormat
-        elif fmt == 'ini':
-            cls = formats.IniConfigFormat
-        elif fmt == 'xml':
-            cls = formats.XmlConfigFormat
-        else:
-            raise ValueError('unknown format: %s' % format)
-
-        return cls()
+    def _get_field(self, name):
+        field = self._schema._fields.get(name)
+        if not field and self._dynamic_fields:
+            field = self._dynamic_fields.get(name)
+        return field
 
     def load_tree(self, tree: dict):
-        for key, field in tree.items():
-            self.__setattr__(key, field)
+        for key, value in tree.items():
+            field = self._get_field(key)
+            if isinstance(field, Field):
+                value = field.to_python(self, value)
+
+            self.__setattr__(key, value)
+
+    def __iter__(self):
+        for key, field in self._schema:
+            value = field.__getval__(self)
+            yield key, value
+
+        if self._dynamic_fields:
+            for key, field in self._dynamic_fields:
+                yield key, field.__getval__(self)
 
     def _to_tree(self):
         d = {}
-        for key, field in self._schema._fields.items():
+        fields = dict(self._schema._fields)
+        if self._dynamic_fields:
+            fields.update(self._dynamic_fields)
+
+        for key, field in fields.items():
             if isinstance(field, Schema):
                 d[key] = self._data[key]._to_tree()
-            else:
-                d[key] = field.__getval__(self)
+            elif key in self._data:
+                d[key] = field.to_basic(self, field.__getval__(self))
 
         return d

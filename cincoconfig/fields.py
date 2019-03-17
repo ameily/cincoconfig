@@ -7,29 +7,45 @@
 
 import os
 import re
+import socket
+import logging
 from ipaddress import IPv4Address, IPv4Network
 from urllib.parse import urlparse
-from typing import Union, List, Callable
-from .abc import Field
+from typing import Union, List, Callable, Type, Any
+from .abc import Field, AnyField
 
 
 __all__ = ('StringField', 'IntField', 'FloatField', 'PortField', 'IPv4AddressField',
            'IPv4NetworkField', 'FilenameField', 'BoolField', 'UrlField', 'AnyField', 'ListField',
-           'HostnameField', 'DictField')
+           'HostnameField', 'DictField', 'AnyField')
 
 
 class StringField(Field):
 
     def __init__(self, *, min_len: int = None, max_len: int = None, regex: str = None,
-                 choices: List[str] = None, case_sensitive: bool = True, **kwargs):
+                 choices: List[str] = None, transform_case: str = None,
+                 transform_strip: Union[bool, str] = None, **kwargs):
         super().__init__(**kwargs)
         self.min_len = min_len
         self.max_len = max_len
         self.regex = re.compile(regex) if regex else None
         self.choices = choices
-        self.case_sensitive = case_sensitive
+        self.transform_case = transform_case.lower() if transform_case else None
+        self.transform_strip = transform_strip
+
+        if self.transform_case and self.transform_case not in ('lower', 'upper'):
+            raise TypeError('transform_case must be "lower" or "upper"')
 
     def _validate(self, cfg, value):
+        if self.transform_strip:
+            if isinstance(self.transform_strip, str):
+                value = value.strip(self.transform_strip)
+            else:
+                value = value.strip()
+
+        if self.transform_case:
+            value = value.lower() if self.transform_case == 'lower' else value.upper()
+
         if self.min_len is not None and len(value) < self.min_len:
             raise ValueError('%s must be at least %d characters' % (self.name, self.min_len))
 
@@ -39,17 +55,53 @@ class StringField(Field):
         if self.regex and not self.regex.match(value):
             raise ValueError('%s does not match pattern %s' % (self.name, self.regex.pattern))
 
-        if self.choices:
-            valid = False
-            if self.case_sensitive:
-                valid = value in self.choices
-            else:
-                valid = value.lower() in [item.lower() for item in self.choices]
-
-            if not valid:
-                raise ValueError('%s is not a valid choice' % self.name)
+        if self.choices and value not in self.choices:
+            raise ValueError('%s is not a valid choice' % self.name)
 
         return value
+
+
+class LogLevelField(StringField):
+
+    def __init__(self, levels: List[str] = None, **kwargs):
+        if not levels:
+            levels = ['debug', 'info', 'warning', 'error', 'critical']
+
+        self.levels = levels
+        kwargs.setdefault('transform_case', 'lower')
+        kwargs.setdefault('transform_strip', True)
+        kwargs['choices'] = levels
+        super().__init__(**kwargs)
+
+
+class ApplicationModeField(StringField):
+    HELPER_MODE_PATTERN = re.compile('^[a-zA-Z0-9_]+$')
+
+    def __init__(self, modes: List[str] = None, create_helpers: bool = True, **kwargs):
+        if not modes:
+            modes = ['development', 'production']
+
+        self.modes = modes
+        self.create_helpers = create_helpers
+
+        if create_helpers:
+            for mode in modes:
+                if not self.HELPER_MODE_PATTERN.match(mode):
+                    raise TypeError('invalid mode name: %s' % mode)
+
+        kwargs.setdefault('transform_case', 'lower')
+        kwargs.setdefault('transform_strip', True)
+        kwargs['choices'] = modes
+        super().__init__(**kwargs)
+
+    def _create_helper(self, mode):
+        return VirtualField(lambda cfg: cfg[self.key] == mode)
+
+    def __setkey__(self, schema, key):
+        self.key = key
+        if self.create_helpers:
+            for mode in self.modes:
+                schema._add_field('is_%s_mode' % mode, self._create_helper(mode))
 
 
 class NumberField(Field):
@@ -100,30 +152,55 @@ class IPv4AddressField(StringField):
 
     def _validate(self, cfg, value):
         try:
-            _ = IPv4Address(value)
+            addr = IPv4Address(value)
         except:
             raise ValueError('%s must be a valid IPv4 address' % self.name)
-        return value
+        return str(addr)
 
 
 class IPv4NetworkField(StringField):
 
     def _validate(self, cfg, value):
         try:
-            _ = IPv4Network(value)
+            net = IPv4Network(value)
         except:
             raise ValueError('%s must be a valid IPv4 Network (CIDR notation)' % self.name)
-        return value
+        return str(net)
 
 
 class HostnameField(StringField):
+    HOSTNAME_REGEX = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9.\-]+$')
+    NETBIOS_REGEX = re.compile(r"^[\w!@#$%^()\-'{}\.~]{1,15}$")
 
-    def __init__(self, *, allow_ipv4: bool = True, **kwargs):
+    def __init__(self, *, allow_ipv4: bool = True, resolve: bool = False, **kwargs):
         super().__init__(**kwargs)
         self.allow_ipv4 = allow_ipv4
+        self.resolve = resolve
 
     def _validate(self, cfg, value):
-        # TODO
+        try:
+            addr = IPv4Address(value)
+        except:
+            pass
+        else:
+            if self.allow_ipv4:
+                return str(addr)
+            raise ValueError('%s is not a valid DNS hostname')
+
+        # value is a hostname
+        if self.resolve:
+            try:
+                name = socket.gethostbyname(value)
+            except:
+                raise ValueError('%s DNS resolution failed' % self.name)
+            else:
+                return name
+
+        dns_match = self.HOSTNAME_REGEX.match(value)
+        nb_match = self.NETBIOS_REGEX.match(value)
+        if not dns_match and not nb_match:
+            raise ValueError('%s is not a valid hostname')
+
         return value
 
 
@@ -157,42 +234,127 @@ class FilenameField(StringField):
 
 
 class BoolField(Field):
+    TRUE_VALUES = ('t', 'true', '1', 'on', 'yes', 'y')
+    FALSE_VALUES = ('f', 'false', '0', 'off', 'no', 'n')
 
     def _validate(self, cfg, value):
         if isinstance(value, (int, float)):
             value = bool(value)
         elif isinstance(value, str):
-            if value.lower() in ('t', 'true', '1', 'on', 'yes', 'y'):
+            if value.lower() in self.TRUE_VALUES:
                 value = True
-            elif value.lower() in ('f', 'false', '0', 'off', 'no', 'n'):
+            elif value.lower() in self.FALSE_VALUES:
                 value = False
             else:
                 raise ValueError('%s is not a valid boolean' % self.name)
         elif not isinstance(value, bool):
             raise ValueError('%s is not a valid boolean' % self.name)
+        return value
 
 
 class UrlField(StringField):
 
     def _validate(self, cfg, value):
         try:
-            _ = urlparse(value)
+            url = urlparse(value)
+            if not url.scheme:
+                raise ValueError('no scheme url scheme')
         except:
             raise ValueError('%s is not a valid URL' % self.name)
         return value
 
 
+class ListFieldWrapper:
+
+    def __init__(self, field: Type[Field], *items):
+        self.field = field
+        self._items = []
+        for item in items:
+            self.append(item)
+
+    def __len__(self):
+        return len(self._items)
+
+    def __eq__(self, other: list):
+        return self._items == other
+
+    def __iter__(self):
+        return iter(self._items)
+
+    def append(self, item: Any):
+        value = self.field.validate(item)
+        self._items.append(value)
+
+    def __add__(self, other: list):
+        return self._items + other
+
+    def __iadd__(self, other):
+        self.extend(other)
+        return self
+
+    def __getitem__(self, index: int):
+        return self._items[index]
+
+    def __delitem__(self, index: int):
+        del self._items[index]
+
+    def __setitem__(self, index: int, value: Any):
+        self._items[index] = self.field.validate(value)
+
+    def __hash__(self):
+        return hash(self.field) + hash(self._items)
+
+    def clear(self):
+        self._items = []
+
+    def copy(self):
+        return ListFieldWrapper(self.field, *self._items)
+
+    def count(self, value: Any):
+        return self._items.count(value)
+
+    def extend(self, other: list):
+        for item in other:
+            self.append(item)
+
+    def index(self, value: Any):
+        return self._items.index(value)
+
+    def insert(self, index, value: Any):
+        value = self.field.validate(value)
+        self._items.insert(index, value)
+
+    def pop(self, index: int = None):
+        return self._items.pop(index)
+
+    def remove(self, value: Any):
+        value = self.field.validate(value)
+        self._items.remove(value)
+
+    def reverse(self):
+        self._items.reverse()
+
+    def sort(self, key=None, reverse=False):
+        self._items.sort(key, reverse)
+
+
 class ListField(Field):
 
-    def __init__(self, field_cls, **kwargs):
+    def __init__(self, field: Field = None, **kwargs):
         super().__init__(**kwargs)
-        self.field_cls = field_cls
+        self.field = field
 
     def _validate(self, cfg, value):
-        if self.required and len(value) == 0:
+        if not isinstance(value, (list, tuple)):
+            raise ValueError('%s is not a list object' % self.name)
+
+        if self.required and not value:
             raise ValueError('%s is required' % self.name)
 
-        # TODO
+        if not self.field or isinstance(self.field, AnyField):
+            return value
+
+        value = ListFieldWrapper(self.field, *value)
         return value
 
 
@@ -212,12 +374,13 @@ class VirtualField(Field):
         raise TypeError('%s is readonly' % self.key)
 
 
-class AnyField(Field):
-    # TODO
-    pass
-
-
 class DictField(Field):
-    # TODO
-    pass
 
+    def _validate(self, cfg, value):
+        if not isinstance(value, dict):
+            raise ValueError('%s is not a dict object' % self.name)
+
+        if self.required and not value:
+            raise ValueError('%s is required' % self.name)
+
+        return value
