@@ -265,8 +265,9 @@ class UrlField(StringField):
 
 class ListFieldWrapper:
 
-    def __init__(self, field: Type[Field], *items):
-        self.field = field
+    def __init__(self, cfg: 'Config', field_cls: Type[Field], *items):
+        self.cfg = cfg
+        self.field = field_cls(required=True)
         self._items = []
         for item in items:
             self.append(item)
@@ -281,7 +282,7 @@ class ListFieldWrapper:
         return iter(self._items)
 
     def append(self, item: Any):
-        value = self.field.validate(item)
+        value = self.field.validate(self.cfg, item)
         self._items.append(value)
 
     def __add__(self, other: list):
@@ -298,7 +299,7 @@ class ListFieldWrapper:
         del self._items[index]
 
     def __setitem__(self, index: int, value: Any):
-        self._items[index] = self.field.validate(value)
+        self._items[index] = self.field.validate(self.cfg, value)
 
     def __hash__(self):
         return hash(self.field) + hash(self._items)
@@ -307,7 +308,7 @@ class ListFieldWrapper:
         self._items = []
 
     def copy(self):
-        return ListFieldWrapper(self.field, *self._items)
+        return ListFieldWrapper(self.cfg, type(self.field), *self._items)
 
     def count(self, value: Any):
         return self._items.count(value)
@@ -320,21 +321,21 @@ class ListFieldWrapper:
         return self._items.index(value)
 
     def insert(self, index, value: Any):
-        value = self.field.validate(value)
+        value = self.field.validate(self.cfg, value)
         self._items.insert(index, value)
 
     def pop(self, index: int = None):
-        return self._items.pop(index)
+        return self._items.pop() if index is None else self._items.pop(index)
 
     def remove(self, value: Any):
-        value = self.field.validate(value)
+        value = self.field.validate(self.cfg, value)
         self._items.remove(value)
 
     def reverse(self):
         self._items.reverse()
 
     def sort(self, key=None, reverse=False):
-        self._items.sort(key, reverse)
+        self._items.sort(key=key, reverse=reverse)
 
 
 class ListField(Field):
