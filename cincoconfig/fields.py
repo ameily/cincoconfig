@@ -211,11 +211,11 @@ class FilenameField(StringField):
         self.startdir = startdir
 
     def _validate(self, cfg, value):
-        if not os.path.isabs(value):
+        if not os.path.isabs(value) and self.startdir:
             value = os.path.abspath(os.path.join(self.startdir, value))
 
         if os.path.sep == '\\':
-            value = value.repalce('/', '\\')
+            value = value.replace('/', '\\')
 
         value_exists = os.path.exists(value)
         if self.exists is True and not value_exists:
