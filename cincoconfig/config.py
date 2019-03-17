@@ -6,7 +6,7 @@
 #
 
 from typing import Union, Any
-from .abc import Field, ConfigFormat, AnyField
+from .abc import Field, AnyField
 from .formats import FormatRegistry
 
 
@@ -43,22 +43,22 @@ class Schema:
         return field
 
     def __iter__(self):
-        for name, field in self._fields.items():
-            yield name, field
+        for key, field in self._fields.items():
+            yield key, field
 
     def to_json(self):
         '''
         Wrote this method for testing/demo - will go away
         TODO: Remove and do this in formats/json.py
         '''
-        d = {}
+        data = {}
         for key, value in self._fields.items():
             if isinstance(value, Config):
-                d[key] = value.to_json()
+                data[key] = value.to_json()
             else:
-                d[key] = value  # Not handling special types right now...this is just a demo
+                data[key] = value  # Not handling special types right now...this is just a demo
 
-        return d
+        return data
 
     def __call__(self, **kwargs):
         return Config(self)
@@ -72,10 +72,10 @@ class Config:
         self._dynamic_fields = dict() if self._schema._dynamic else None
         self._parent = parent
 
-        for name, field in schema._fields.items():
+        for key, field in schema._fields.items():
             if isinstance(field, Schema):
                 value = Config(field, parent=self)
-                self._data[name] = value
+                self._data[key] = value
             else:
                 field.__setdefault__(self)
 
@@ -106,8 +106,7 @@ class Config:
         if not field:
             if not self._schema._dynamic:
                 raise AttributeError('%s field does not exist' % name)
-            else:
-                return None
+            return None
 
         if isinstance(field, Schema):
             return self._data[name]
@@ -123,17 +122,17 @@ class Config:
     def save(self, filename: str, format: str):
         content = self.dumps(format)
         mode = 'wb' if isinstance(content, bytes) else 'w'
-        with open(filename, mode) as fp:
-            fp.write(content)
+        with open(filename, mode) as file:
+            file.write(content)
 
     def load(self, filename: Union[str, dict], format: str = None):
         if isinstance(filename, dict):
             return self._load_tree(filename)
 
-        with open(filename, 'rb') as fp:
-            content = fp.read()
+        with open(filename, 'rb') as file:
+            content = file.read()
 
-        self.loads(content, format)
+        return self.loads(content, format)
 
     def dumps(self, format: str, **kwargs):
         formatter = FormatRegistry.get(format, **kwargs)
@@ -148,12 +147,12 @@ class Config:
             content = content.decode()
 
         tree = formatter.loads(self._schema, content)
-        self.load_tree(tree)
+        return self.load_tree(tree)
 
-    def _get_field(self, name):
-        field = self._schema._fields.get(name)
+    def _get_field(self, key):
+        field = self._schema._fields.get(key)
         if not field and self._dynamic_fields:
-            field = self._dynamic_fields.get(name)
+            field = self._dynamic_fields.get(key)
         return field
 
     def load_tree(self, tree: dict):
@@ -174,15 +173,15 @@ class Config:
                 yield key, field.__getval__(self)
 
     def _to_tree(self):
-        d = {}
+        tree = {}
         fields = dict(self._schema._fields)
         if self._dynamic_fields:
             fields.update(self._dynamic_fields)
 
         for key, field in fields.items():
             if isinstance(field, Schema):
-                d[key] = self._data[key]._to_tree()
+                tree[key] = self._data[key]._to_tree()
             elif key in self._data:
-                d[key] = field.to_basic(self, field.__getval__(self))
+                tree[key] = field.to_basic(self, field.__getval__(self))
 
-        return d
+        return tree

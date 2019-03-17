@@ -8,3 +8,4 @@
 # Public API
 from .config import Config, Schema
 from .fields import *
+from .version import __version__

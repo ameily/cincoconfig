@@ -8,10 +8,9 @@
 import os
 import re
 import socket
-import logging
 from ipaddress import IPv4Address, IPv4Network
 from urllib.parse import urlparse
-from typing import Union, List, Callable, Type, Any
+from typing import Union, List, Type, Any
 from .abc import Field, AnyField
 
 
@@ -221,12 +220,12 @@ class FilenameField(StringField):
         value_exists = os.path.exists(value)
         if self.exists is True and not value_exists:
             raise ValueError('%s file or directory does not exist' % self.name)
-        elif self.exists is False and value_exists:
+        if self.exists is False and value_exists:
             raise ValueError('%s file or directory already exists' % self.name)
-        elif self.exists == 'dir' and not os.path.isdir(value):
+        if self.exists == 'dir' and not os.path.isdir(value):
             raise ValueError('%s directory %s' %
                              (self.name, 'already exists' if value_exists else 'does not exist'))
-        elif self.exists == 'file' and not os.path.isfile(value):
+        if self.exists == 'file' and not os.path.isfile(value):
             raise ValueError('%s file %s' %
                              (self.name, 'already exists' if value_exists else 'does not exist'))
 

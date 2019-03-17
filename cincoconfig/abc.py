@@ -48,8 +48,8 @@ class Field:
     def __getval__(self, cfg):
         return cfg._data[self.key]
 
-    def __setkey__(self, cfg, name):
-        self.key = name
+    def __setkey__(self, schema, key):
+        self.key = key
 
     def __setdefault__(self, cfg):
         cfg._data[self.key] = self.default

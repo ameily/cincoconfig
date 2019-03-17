@@ -23,6 +23,7 @@ class FormatRegistry:
 
     @classmethod
     def _init(cls):
+        # pylint: disable=cyclic-import
         if not cls._initialized:
             from .ini import IniConfigFormat
             from .json import JsonConfigFormat

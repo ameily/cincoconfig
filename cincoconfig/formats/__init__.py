@@ -8,4 +8,3 @@
 from .registry import FormatRegistry
 
 __all__ = ('FormatRegistry',)
-

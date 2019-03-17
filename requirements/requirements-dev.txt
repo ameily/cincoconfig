@@ -1,3 +1,5 @@
 pylint
 pycodestyle
 pytest
+pytest-cov
+coverage

@@ -7,5 +7,6 @@
 
 from cincoconfig.abc import ConfigFormat
 
+
 class IniConfigFormat(ConfigFormat):
     pass
