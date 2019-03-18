@@ -73,6 +73,15 @@ class TestHostnameField:
         with pytest.raises(ValueError):
             field.validate(MockConfig(), '<.google.com')
 
+    @patch('socket.gethostbyname')
+    def test_resolve_failed(self, gethostbyname):
+        gethostbyname.side_effect = OSError()
+        field = HostnameField(resolve=True)
+        with pytest.raises(ValueError):
+            field.validate(MockConfig(), 'some_host')
+
+        gethostbyname.assert_called_once_with('some_host')
+
 
 class TestPortField:
 

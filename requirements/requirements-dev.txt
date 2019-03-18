@@ -3,3 +3,6 @@ pycodestyle
 pytest
 pytest-cov
 coverage
+sphinx
+sphinx-autodoc-typehints
+sphinx-rtd-theme

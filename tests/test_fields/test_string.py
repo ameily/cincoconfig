@@ -158,6 +158,11 @@ class TestApplicationModeField:
         self.ms._add_field('mode', field)
         assert 'is_production_mode' not in self.ms._fields
 
+    @pytest.mark.parametrize('value', ['he llo', 'hel-lo', '$hello', '>hello'])
+    def test_invalid_mode_name(self, value):
+        with pytest.raises(TypeError):
+            field = ApplicationModeField(modes=[value])
+
 
 class TestUrlField:
 

@@ -4,6 +4,9 @@
 # This file is subject to the terms and conditions defined in the file 'LICENSE', which is part of
 # this source code package.
 #
+'''
+Cinco Config Fields.
+'''
 
 import os
 import re
@@ -12,6 +15,7 @@ from ipaddress import IPv4Address, IPv4Network
 from urllib.parse import urlparse
 from typing import Union, List, Type, Any
 from .abc import Field, AnyField
+from .config import Config
 
 
 __all__ = ('StringField', 'IntField', 'FloatField', 'PortField', 'IPv4AddressField',
@@ -20,10 +24,24 @@ __all__ = ('StringField', 'IntField', 'FloatField', 'PortField', 'IPv4AddressFie
 
 
 class StringField(Field):
+    '''
+    A string field.
+    '''
 
     def __init__(self, *, min_len: int = None, max_len: int = None, regex: str = None,
                  choices: List[str] = None, transform_case: str = None,
                  transform_strip: Union[bool, str] = None, **kwargs):
+        '''
+        :param min_len: minimum allowed length
+        :param max_len: maximum allowed length
+        :param regex: regex pattern that the value must match
+        :param choices: list of valid choices
+        :param transform_case: transform the value's case to either ``upper`` or ``lower`` case
+        :param transform_strip: strip the value by calling :meth:`str.strip`.
+            Setting this to ``True`` will call :meth:`str.strip` without any arguments (ie.
+            striping all whitespace characters) and if this is a ``str``, then :meth:`str.strip`
+            will be called with ``transform_strip``.
+        '''
         super().__init__(**kwargs)
         self.min_len = min_len
         self.max_len = max_len
@@ -35,7 +53,11 @@ class StringField(Field):
         if self.transform_case and self.transform_case not in ('lower', 'upper'):
             raise TypeError('transform_case must be "lower" or "upper"')
 
-    def _validate(self, cfg, value):
+    def _validate(self, cfg: Config, value: str) -> str:
+        '''
+        Transform the value according to ``transform_case`` and ``transform_strip`` and then
+        validate the value against the rules.
+        '''
         if self.transform_strip:
             if isinstance(self.transform_strip, str):
                 value = value.strip(self.transform_strip)
@@ -61,8 +83,15 @@ class StringField(Field):
 
 
 class LogLevelField(StringField):
+    '''
+    A field representing the Python log level.
+    '''
 
     def __init__(self, levels: List[str] = None, **kwargs):
+        '''
+        :param levels: list of log levels. If not specified, the default Python log levels will be
+            used: ``debug``, ``info``, ``warning``, ``error``, and ``critical``.
+        '''
         if not levels:
             levels = ['debug', 'info', 'warning', 'error', 'critical']
 
@@ -74,9 +103,18 @@ class LogLevelField(StringField):
 
 
 class ApplicationModeField(StringField):
+    '''
+    A field representing the application operating mode.
+    '''
     HELPER_MODE_PATTERN = re.compile('^[a-zA-Z0-9_]+$')
 
     def __init__(self, modes: List[str] = None, create_helpers: bool = True, **kwargs):
+        '''
+        :param modes: application modes, if not specified the default modes will be used:
+            ``production`` and ``development``
+        :param create_helpers: create a boolean :class:`VirtualField` for each ``mode`` named
+            ``is_<mode>_mode``
+        '''
         if not modes:
             modes = ['development', 'production']
 
@@ -265,9 +303,10 @@ class UrlField(StringField):
 
 class ListFieldWrapper:
 
-    def __init__(self, cfg: 'Config', field_cls: Type[Field], *items):
+    def __init__(self, cfg: 'Config', field: Field, *items):
         self.cfg = cfg
-        self.field = field_cls(required=True)
+        # self.field = field_cls(required=True)
+        self.field = field
         self._items = []
         for item in items:
             self.append(item)
@@ -286,7 +325,10 @@ class ListFieldWrapper:
         self._items.append(value)
 
     def __add__(self, other: list):
-        return self._items + other
+        if isinstance(other, ListFieldWrapper):
+            other = other._items
+
+        return ListFieldWrapper(self.cfg, self.field, *(self._items + other))
 
     def __iadd__(self, other):
         self.extend(other)
@@ -301,14 +343,11 @@ class ListFieldWrapper:
     def __setitem__(self, index: int, value: Any):
         self._items[index] = self.field.validate(self.cfg, value)
 
-    def __hash__(self):
-        return hash(self.field) + hash(self._items)
-
     def clear(self):
         self._items = []
 
     def copy(self):
-        return ListFieldWrapper(self.cfg, type(self.field), *self._items)
+        return ListFieldWrapper(self.cfg, self.field, *self._items)
 
     def count(self, value: Any):
         return self._items.count(value)
@@ -354,8 +393,18 @@ class ListField(Field):
         if not self.field or isinstance(self.field, AnyField):
             return value
 
-        value = ListFieldWrapper(self.field, *value)
+        value = ListFieldWrapper(cfg, self.field, *value)
         return value
+
+    def to_basic(self, cfg, value):
+        if isinstance(value, ListFieldWrapper):
+            return value._items
+        return value
+
+    def to_python(self, cfg, value):
+        if self.field is None or type(self.field) is AnyField:
+            return value
+        return ListFieldWrapper(cfg, self.field, *value)
 
 
 class VirtualField(Field):
