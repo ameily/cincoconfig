@@ -15,7 +15,7 @@ from ipaddress import IPv4Address, IPv4Network
 from urllib.parse import urlparse
 from typing import Union, List, Type, Any
 from .abc import Field, AnyField
-from .config import Config
+from .config import Config, Schema
 
 
 __all__ = ('StringField', 'IntField', 'FloatField', 'PortField', 'IPv4AddressField',
@@ -32,6 +32,9 @@ class StringField(Field):
                  choices: List[str] = None, transform_case: str = None,
                  transform_strip: Union[bool, str] = None, **kwargs):
         '''
+        The string field can perform transformations on the value prior to validating it if either
+        *transform_case* or *transform_strip* are specified.
+
         :param min_len: minimum allowed length
         :param max_len: maximum allowed length
         :param regex: regex pattern that the value must match
@@ -55,8 +58,10 @@ class StringField(Field):
 
     def _validate(self, cfg: Config, value: str) -> str:
         '''
-        Transform the value according to ``transform_case`` and ``transform_strip`` and then
-        validate the value against the rules.
+        Validate a value.
+
+        :param cfg: current Config
+        :param value: value to validate
         '''
         if self.transform_strip:
             if isinstance(self.transform_strip, str):
@@ -110,10 +115,13 @@ class ApplicationModeField(StringField):
 
     def __init__(self, modes: List[str] = None, create_helpers: bool = True, **kwargs):
         '''
+        The *create_helpers* parameter will create a boolean :class:`VirtualField` for each
+        ``mode`` named ``is_<mode>_mode``, that returns ``True`` when the mode is active. When
+        *create_helpers=True* then each mode name must be a valid Python variable name.
+
         :param modes: application modes, if not specified the default modes will be used:
             ``production`` and ``development``
-        :param create_helpers: create a boolean :class:`VirtualField` for each ``mode`` named
-            ``is_<mode>_mode``
+        :param create_helpers: create helper a bool ``VirtualField`` for each mode
         '''
         if not modes:
             modes = ['development', 'production']
@@ -131,10 +139,17 @@ class ApplicationModeField(StringField):
         kwargs['choices'] = modes
         super().__init__(**kwargs)
 
-    def _create_helper(self, mode):
+    def _create_helper(self, mode: str) -> 'VirtualField':
+        '''
+        Create helper VirtualField.
+        '''
         return VirtualField(lambda cfg: cfg[self.key] == mode)
 
-    def __setkey__(self, schema, key):
+    def __setkey__(self, schema: Schema, key: str):
+        '''
+        Set the key and optionally add ``VirtualField`` helpers to the schema if
+        *create_helpers=True*.
+        '''
         self.key = key
         if self.create_helpers:
             for mode in self.modes:
@@ -142,15 +157,31 @@ class ApplicationModeField(StringField):
 
 
 class NumberField(Field):
+    '''
+    Base class for all number fields. This field should not be used directly, instead consider
+    using :class:`IntField` or :class:`FloatField`.
+    '''
 
-    def __init__(self, type_cls, *, min: Union[int, float] = None, max: Union[int, float] = None,
-                 **kwargs):
+    def __init__(self, type_cls: Type, *, min: Union[int, float] = None,
+                 max: Union[int, float] = None, **kwargs):
+        '''
+        :param type_cls: number type class that values will be converted to
+        :param min: minimum value
+        :param max: maxium value
+        '''
         super().__init__(**kwargs)
         self.type_cls = type_cls
         self.min = min
         self.max = max
 
-    def _validate(self, cfg, value):
+    def _validate(self, cfg: Config, value: Union[str, int, float]) -> Union[int, float]:
+        '''
+        Validate the value. This method first converts the value to ``type_class`` and then checks
+        the value against ``min`` and ``max`` if they are specified.
+
+        :param cfg: current Config
+        :param value: value to validate
+        '''
         try:
             value = self.type_cls(value)
         except:
@@ -166,18 +197,27 @@ class NumberField(Field):
 
 
 class IntField(NumberField):
+    '''
+    Integer field.
+    '''
 
     def __init__(self, **kwargs):
         super().__init__(int, **kwargs)
 
 
 class FloatField(NumberField):
+    '''
+    Float field.
+    '''
 
     def __init__(self, **kwargs):
         super().__init__(float, **kwargs)
 
 
 class PortField(IntField):
+    '''
+    Network port field.
+    '''
 
     def __init__(self, **kwargs):
         kwargs.setdefault('min', 1)
@@ -186,8 +226,17 @@ class PortField(IntField):
 
 
 class IPv4AddressField(StringField):
+    '''
+    IPv4 address field.
+    '''
 
-    def _validate(self, cfg, value):
+    def _validate(self, cfg: Config, value: str) -> str:
+        '''
+        Validate a value.
+
+        :param cfg: current Config
+        :param value: value to validate
+        '''
         try:
             addr = IPv4Address(value)
         except:
@@ -196,8 +245,17 @@ class IPv4AddressField(StringField):
 
 
 class IPv4NetworkField(StringField):
+    '''
+    IPv4 network field. This field accepts CIDR notation networks in the form of ``A.B.C.D/Z``.
+    '''
 
-    def _validate(self, cfg, value):
+    def _validate(self, cfg: Config, value: str) -> str:
+        '''
+        Validate a value.
+
+        :param cfg: current Config
+        :param value: value to validate
+        '''
         try:
             net = IPv4Network(value)
         except:
@@ -206,15 +264,29 @@ class IPv4NetworkField(StringField):
 
 
 class HostnameField(StringField):
+    '''
+    A field representing a network hostname or, optionally, a network address.
+    '''
     HOSTNAME_REGEX = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9.\-]+$')
     NETBIOS_REGEX = re.compile(r"^[\w!@#$%^()\-'{}\.~]{1,15}$")
 
     def __init__(self, *, allow_ipv4: bool = True, resolve: bool = False, **kwargs):
+        '''
+        :param allow_ipv4: allow both a hostname and an IPv4 address
+        :param resolve: resolve hostnames to their IPv4 address and raise a :class:`ValueError`
+            if the resolution fails
+        '''
         super().__init__(**kwargs)
         self.allow_ipv4 = allow_ipv4
         self.resolve = resolve
 
-    def _validate(self, cfg, value):
+    def _validate(self, cfg: Config, value: str) -> str:
+        '''
+        Validate a value.
+
+        :param cfg: current config
+        :param value: value to valdiate
+        '''
         try:
             addr = IPv4Address(value)
         except:
@@ -226,6 +298,7 @@ class HostnameField(StringField):
 
         # value is a hostname
         if self.resolve:
+            # resolve hostname to IPv4 address
             try:
                 name = socket.gethostbyname(value)
             except:
@@ -233,6 +306,7 @@ class HostnameField(StringField):
             else:
                 return name
 
+        # Validate that the value *looks* like a DNS hostname or Windows NetBios name
         dns_match = self.HOSTNAME_REGEX.match(value)
         nb_match = self.NETBIOS_REGEX.match(value)
         if not dns_match and not nb_match:
@@ -242,13 +316,39 @@ class HostnameField(StringField):
 
 
 class FilenameField(StringField):
+    '''
+    A field for representing a filename on disk.
+    '''
 
     def __init__(self, *, exists: Union[bool, str] = None, startdir: str = None, **kwargs):
+        '''
+        The *exists* parameter can be set to one of the following values:
+
+        - ``None`` - don't check file's existance
+        - ``False`` - validate that the filename does not exist
+        - ``True`` - validate that the filename does exist
+        - ``dir`` - validate that the filename is a directory that exists
+        - ``file`` - validate that the filename is a file that exists
+
+        The *startdir* parameter, if specified, will resolve filenames starting from a directory
+        and will cause all filenames to be validate to their abslute file path. If not specified,
+        filename's will be resolve relative to :meth:`os.getcwd` and the relative file path will
+        be validated.
+
+        :param exists: validate the filename's existance on disk
+        :param startdir: resolve relative paths to a start directory
+        '''
         super().__init__(**kwargs)
         self.exists = exists
         self.startdir = startdir
 
-    def _validate(self, cfg, value):
+    def _validate(self, cfg: Config, value: str) -> str:
+        '''
+        Validate a value.
+
+        :param cfg: current config
+        :param value: value to validate
+        '''
         if not os.path.isabs(value) and self.startdir:
             value = os.path.abspath(os.path.join(self.startdir, value))
 
@@ -271,10 +371,16 @@ class FilenameField(StringField):
 
 
 class BoolField(Field):
+    '''
+    A boolean field.
+    '''
+    #: Accepted values that evaluate to ``True```
     TRUE_VALUES = ('t', 'true', '1', 'on', 'yes', 'y')
+    #: Accepted values that evaluate to ``False```
     FALSE_VALUES = ('f', 'false', '0', 'off', 'no', 'n')
 
-    def _validate(self, cfg, value):
+    def _validate(self, cfg: Config, value: str) -> bool:
+
         if isinstance(value, (int, float)):
             value = bool(value)
         elif isinstance(value, str):
