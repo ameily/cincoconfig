@@ -10,6 +10,7 @@ Welcome to cincoconfig's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   configs
    fields
 
 

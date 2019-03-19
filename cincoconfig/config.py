@@ -6,7 +6,7 @@
 #
 
 from typing import Union, Any
-from .abc import Field, AnyField
+from . import abc
 from .formats import FormatRegistry
 
 
@@ -15,9 +15,7 @@ __all__ = ('Config', 'Schema')
 
 class Schema:
     '''
-    The base config object implements the set and get attribute magic
-
-    Private class
+    A config schema containing all available configuration options.
     '''
 
     def __init__(self, key: str = None, dynamic: bool = False):
@@ -25,7 +23,7 @@ class Schema:
         self._dynamic = dynamic
         self._fields = {}
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value: Union[abc.Field, 'Schema']):
         if name[0] == '_':
             object.__setattr__(self, name, value)
         else:
@@ -33,7 +31,7 @@ class Schema:
 
     def _add_field(self, key, field):
         self._fields[key] = field
-        if isinstance(field, Field):
+        if isinstance(field, abc.Field):
             field.__setkey__(self, key)
 
     def __getattr__(self, name):
@@ -89,7 +87,7 @@ class Config:
             if not self._schema._dynamic:
                 raise AttributeError('%s field does not exist' % name)
 
-            self._dynamic_fields = field = AnyField()
+            self._dynamic_fields = field = abc.AnyField()
             field.__setkey__(self, name)
 
         if isinstance(field, Schema):
@@ -158,7 +156,7 @@ class Config:
     def load_tree(self, tree: dict):
         for key, value in tree.items():
             field = self._get_field(key)
-            if isinstance(field, Field):
+            if isinstance(field, abc.Field):
                 value = field.to_python(self, value)
 
             self.__setattr__(key, value)

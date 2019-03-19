@@ -1,12 +1,20 @@
 fields
 ======
 
+.. autoclass:: cincoconfig.abc.Field
+    :members:
+
+    .. automethod:: _validate
+    .. automethod:: __setkey__
+    .. automethod:: __setdefault__
+    .. automethod:: __getval__
+    .. automethod:: __setval__
+
 .. autoclass:: cincoconfig.fields.StringField
     :members:
 
 .. autoclass:: cincoconfig.fields.LogLevelField
     :members:
-
 
 .. autoclass:: cincoconfig.fields.ApplicationModeField
     :members:
@@ -33,4 +41,19 @@ fields
     :members:
 
 .. autoclass:: cincoconfig.fields.BoolField
+    :members:
+
+.. autoclass:: cincoconfig.fields.UrlField
+    :members:
+
+.. autoclass:: cincoconfig.fields.ListField
+    :members:
+
+.. autoclass:: cincoconfig.fields.ListProxy
+    :members:
+
+.. autoclass:: cincoconfig.fields.VirtualField
+    :members:
+
+.. autoclass:: cincoconfig.fields.DictField
     :members:
