@@ -5,7 +5,7 @@
 # this source code package.
 #
 
-from typing import Union, Any
+from typing import Union, Any, Iterator, Tuple
 from . import abc
 from .formats import FormatRegistry
 
@@ -16,31 +16,76 @@ __all__ = ('Config', 'Schema')
 class Schema:
     '''
     A config schema containing all available configuration options.
+
+    A schema's fields and hierarchy are built dynamically.
+
+    .. code-block:: python
+
+        schema = Schema()
+        schema.mode = ApplicationModeField(default='production', required=True)
+        schema.http.port = PortField(default=8080)
+        # the previous line implicitly performs "schema.http = Schema(key='http')"
+        schema.http.host = IPv4Address(default='127.0.0.1')
+
+    Accessing a field that does not exist, such as ``schema.http`` in the above code, dynamically
+    creates and adds a new ``Schema``.
+
+    Once a schema is completely defined, a :class:`Config` is created by calling the schema. The
+    config is populate with the default values specified for each field and can then load the
+    configuration from a file.
     '''
 
     def __init__(self, key: str = None, dynamic: bool = False):
+        '''
+        :param key: the schema key, only used for sub-schemas, and stored in the instance as
+            *_key*
+        :param dynamic: the schema is dynamic and can contain fields not originally specified in
+            the schema and stored in the instance as *_dynamic*
+        '''
+        #: the schema key
         self._key = key
+        #: the schema is dynamic
         self._dynamic = dynamic
+        #: schema fields
         self._fields = {}
 
     def __setattr__(self, name: str, value: Union[abc.Field, 'Schema']):
+        '''
+        :param name: attribute name
+        :param value: field or schema to add to the schema
+        '''
         if name[0] == '_':
             object.__setattr__(self, name, value)
         else:
             self._add_field(name, value)
 
-    def _add_field(self, key, field):
+    def _add_field(self, key: str, field: Union[abc.Field, 'Schema']):
+        '''
+        Add a field to the schema. Calls :meth:`~cincoconfig.abc.Field.__setkey__` on the field
+        after adding it to the schema.
+
+        :param key: field key
+        :param field: new field or schema
+        '''
         self._fields[key] = field
         if isinstance(field, abc.Field):
             field.__setkey__(self, key)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Union[abc.Field, 'Schema']:
+        '''
+        Retrieve a field by key or create a new ``Schema`` if the field doesn't exist.
+
+        :param name: field or schema key
+        '''
         field = self._fields.get(name)
         if field is None:
             field = self._fields[name] = Schema(name)
         return field
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Tuple[str, abc.Field]]:
+        '''
+        Iterate over schema fields, produces as a list of tuples ``(key, field)``.
+        '''
         for key, field in self._fields.items():
             yield key, field
 
@@ -58,11 +103,17 @@ class Schema:
 
         return data
 
-    def __call__(self, **kwargs):
+    def __call__(self, **kwargs) -> 'Config':
+        '''
+        Compile the schema into an initial config with default values set.
+        '''
         return Config(self)
 
 
 class Config:
+    '''
+    A configuration.
+    '''
 
     def __init__(self, schema: Schema, parent: 'Config' = None):
         self._schema = schema
