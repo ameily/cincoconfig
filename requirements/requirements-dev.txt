@@ -6,3 +6,5 @@ coverage
 sphinx
 sphinx-autodoc-typehints
 sphinx-rtd-theme
+PyYAML
+bson

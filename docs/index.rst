@@ -12,6 +12,7 @@ Welcome to cincoconfig's documentation!
 
    configs
    fields
+   formats
 
 
 

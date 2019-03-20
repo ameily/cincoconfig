@@ -1,7 +1,7 @@
 configs
 =======
 
-.. autoclass:: cincoconfig.config.Schema
+.. autoclass:: cincoconfig.Schema
     :members:
 
     .. automethod:: _add_field
@@ -11,5 +11,5 @@ configs
     .. automethod:: __call__
 
 
-.. autoclass:: cincoconfig.config.Config
+.. autoclass:: cincoconfig.Config
     :members:

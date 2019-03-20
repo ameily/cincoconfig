@@ -13,14 +13,15 @@ import re
 import socket
 from ipaddress import IPv4Address, IPv4Network
 from urllib.parse import urlparse
-from typing import Union, List, Type, Any, Iterator, Callable
+from typing import Union, List, Any, Iterator, Callable
 from .abc import Field, AnyField
 from .config import Config, Schema
 
 
 __all__ = ('StringField', 'IntField', 'FloatField', 'PortField', 'IPv4AddressField',
            'IPv4NetworkField', 'FilenameField', 'BoolField', 'UrlField', 'ListField',
-           'HostnameField', 'DictField',)
+           'HostnameField', 'DictField', 'ListProxy', 'VirtualField', 'ApplicationModeField',
+           'LogLevelField')
 
 
 class StringField(Field):
@@ -159,10 +160,10 @@ class ApplicationModeField(StringField):
 class NumberField(Field):
     '''
     Base class for all number fields. This field should not be used directly, instead consider
-    using :class:`IntField` or :class:`FloatField`.
+    using :class:`~cincoconfig.IntField` or :class:`~cincoconfig.FloatField`.
     '''
 
-    def __init__(self, type_cls: Type, *, min: Union[int, float] = None,
+    def __init__(self, type_cls: type, *, min: Union[int, float] = None,
                  max: Union[int, float] = None, **kwargs):
         '''
         :param type_cls: number type class that values will be converted to
@@ -425,7 +426,8 @@ class UrlField(StringField):
 class ListProxy:
     '''
     A Field-validated :class:`list` proxy. This proxy supports all methods that the builtin
-    ``list`` supports with the added ability to validate items against a :class:`Field`.
+    ``list`` supports with the added ability to validate items against a :class:`Field`. This is
+    the field returned by the :class:`ListField` validation chain.
     '''
 
     def __init__(self, cfg: Config, field: Field, items: list = None):
@@ -602,7 +604,7 @@ class ListField(Field):
         :param cfg: current config
         :param value: basic type value
         '''
-        if self.field is None or type(self.field) is AnyField:
+        if self.field is None or isinstance(self.field, AnyField):
             return value
         return ListProxy(cfg, self.field, value)
 

@@ -1,7 +1,7 @@
 fields
 ======
 
-.. autoclass:: cincoconfig.abc.Field
+.. autoclass:: cincoconfig.Field
     :members:
 
     .. automethod:: _validate
@@ -10,50 +10,64 @@ fields
     .. automethod:: __getval__
     .. automethod:: __setval__
 
-.. autoclass:: cincoconfig.fields.StringField
+.. autoclass:: cincoconfig.StringField
     :members:
 
-.. autoclass:: cincoconfig.fields.LogLevelField
+.. autoclass:: cincoconfig.LogLevelField
     :members:
 
-.. autoclass:: cincoconfig.fields.ApplicationModeField
+.. autoclass:: cincoconfig.ApplicationModeField
     :members:
 
-.. autoclass:: cincoconfig.fields.NumberField
+.. autoclass:: cincoconfig.IntField
     :members:
 
-.. autoclass:: cincoconfig.fields.IntField
+.. autoclass:: cincoconfig.FloatField
     :members:
 
-.. autoclass:: cincoconfig.fields.PortField
+
+.. autoclass:: cincoconfig.PortField
     :members:
 
-.. autoclass:: cincoconfig.fields.IPv4AddressField
+.. autoclass:: cincoconfig.IPv4AddressField
     :members:
 
-.. autoclass:: cincoconfig.fields.IPv4NetworkField
+.. autoclass:: cincoconfig.IPv4NetworkField
     :members:
 
-.. autoclass:: cincoconfig.fields.HostnameField
+.. autoclass:: cincoconfig.HostnameField
     :members:
 
-.. autoclass:: cincoconfig.fields.FilenameField
+.. autoclass:: cincoconfig.FilenameField
     :members:
 
-.. autoclass:: cincoconfig.fields.BoolField
+.. autoclass:: cincoconfig.BoolField
     :members:
 
-.. autoclass:: cincoconfig.fields.UrlField
+.. autoclass:: cincoconfig.UrlField
     :members:
 
-.. autoclass:: cincoconfig.fields.ListField
+.. autoclass:: cincoconfig.ListField
     :members:
+
+
+
+.. autoclass:: cincoconfig.VirtualField
+    :members:
+
+.. autoclass:: cincoconfig.DictField
+    :members:
+
+
+Internal Types and Base fields
+------------------------------
+
+The following classes are used internally by cincoconfig and should not have to be used or
+referenced directly in applications. These are not included in the public API and must be imported
+explicitly from the ``cincoconfig.fields`` module.
 
 .. autoclass:: cincoconfig.fields.ListProxy
     :members:
 
-.. autoclass:: cincoconfig.fields.VirtualField
-    :members:
-
-.. autoclass:: cincoconfig.fields.DictField
+.. autoclass:: cincoconfig.fields.NumberField
     :members:

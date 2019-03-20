@@ -9,7 +9,7 @@ Abstract base classes.
 '''
 
 from typing import Any, Callable, Union
-from . import config
+from . import config  # pylint: disable=cyclic-import,unused-import
 
 
 class Field:
@@ -69,6 +69,8 @@ class Field:
                  default: Union[Callable, Any] = None,
                  validator: Callable[['config.Config', Any], Any] = None):
         '''
+        All builtin Fields accept the following keyword parameters.
+
         :param name: field friendly name, used for error messages and documentation
         :param key: the key of the field in the config, this is typically not specified and,
             instead the :meth:`__setkey__` will be called by the config
@@ -206,4 +208,6 @@ class AnyField(Field):
 
 
 class ConfigFormat:
-    pass
+    '''
+    The base class for all configuration file formats.
+    '''

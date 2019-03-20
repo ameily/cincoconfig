@@ -5,6 +5,7 @@
 # this source code package.
 #
 
-from .registry import FormatRegistry
+from .registry import FormatRegistry  # pylint: disable=cyclic-import
+
 
 __all__ = ('FormatRegistry',)

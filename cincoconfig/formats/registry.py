@@ -5,34 +5,46 @@
 # this source code package.
 #
 
+from typing import Type
+from cincoconfig import abc
+
 
 class FormatRegistry:
-    _formats = dict()
-    _initialized = False
+    __formats = dict()
+    __initialized = False
 
     @classmethod
-    def get(cls, name: str, **kwargs):
-        if not cls._initialized:
-            cls._init()
-        fmt = cls._formats.get(name.lower())
-        return fmt(**kwargs) if fmt else None
+    def get(cls, name: str, **kwargs) -> abc.ConfigFormat:
+        if not cls.__initialized:
+            cls.__initialize()
+        fmt = cls.__formats.get(name.lower())
+        if not fmt:
+            raise KeyError('unrecognized format: %s' % name)
+        return fmt(**kwargs)
 
     @classmethod
-    def registry(cls, name: str, format_cls):
-        cls._formats[name] = format_cls
+    def register(cls, name: str, format_cls: Type[abc.ConfigFormat]):
+        if not cls.__initialized:
+            cls.__initialize()
+        cls.__formats[name] = format_cls
 
     @classmethod
-    def _init(cls):
+    def __initialize(cls):
         # pylint: disable=cyclic-import
-        if not cls._initialized:
+        if not cls.__initialized:
             from .ini import IniConfigFormat
             from .json import JsonConfigFormat
-            from .yaml import YamlConfigFormat
             from .xml import XmlConfigFormat
-            cls._formats.update({
+            from . import yaml
+            from . import bson
+            cls.__formats.update({
                 'json': JsonConfigFormat,
                 'xml': XmlConfigFormat,
-                'yaml': YamlConfigFormat,
                 'ini': IniConfigFormat
             })
-            cls._initialized = True
+
+            if yaml.IS_AVAILABLE:
+                cls.__formats['yaml'] = yaml.YamlConfigFormat
+            if bson.IS_AVAILABLE:
+                cls.__formats['bson'] = bson.BsonConfigFormat
+            cls.__initialized = True
