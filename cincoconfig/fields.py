@@ -11,6 +11,8 @@ Cinco Config Fields.
 import os
 import re
 import socket
+import hashlib
+import base64
 from ipaddress import IPv4Address, IPv4Network
 from urllib.parse import urlparse
 from typing import Union, List, Any, Iterator, Callable
@@ -21,7 +23,7 @@ from .config import Config, Schema
 __all__ = ('StringField', 'IntField', 'FloatField', 'PortField', 'IPv4AddressField',
            'IPv4NetworkField', 'FilenameField', 'BoolField', 'UrlField', 'ListField',
            'HostnameField', 'DictField', 'ListProxy', 'VirtualField', 'ApplicationModeField',
-           'LogLevelField')
+           'LogLevelField', 'SecureStringField')
 
 
 class StringField(Field):
@@ -86,6 +88,252 @@ class StringField(Field):
             raise ValueError('%s is not a valid choice' % self.name)
 
         return value
+
+
+class SecureStringField(StringField):
+    '''
+    A string field that will be encrypted/hashed when written to disk
+    '''
+
+    HASH_ACTION = [
+        'hash_md5', 'hash_sha1', 'hash_sha224',
+        'hash_sha256', 'hash_sha384', 'hash_sha512'
+    ]
+    ENC_ACTION = ['enc_xor', 'enc_aes256']
+
+    def __init__(self, action: str = None, **kwargs):
+        '''
+        The *action* parameter is used to specify how the field should be secured. Valid
+        values for *action* are:
+
+        * Encryption:
+            1. ``enc_xor``
+            2. ``enc_aes256`` (requires that *pycrypto* is installed)
+        * Hashing:
+            1. ``hash_md5``
+            2. ``hash_sha1``
+            3. ``hash_sha224``
+            4. ``hash_sha256``
+            5. ``hash_sha384``
+            6. ``hash_sha512``
+
+        Using a hashing algorithm will result in data loss since there will be no way
+        to get the original value back. Use cases for a hash algorithm on a config field
+        could be for a field that is used to validate user provided credentials.
+
+        :param action: specifies how to secure the field (default will be ``hash_sha256``)
+        '''
+        super().__init__(**kwargs)
+        self.action = action or 'hash_sha256'
+        self.hashed = False  # Whether or not we've already hashed a value
+
+        if self.action not in self.HASH_ACTION + self.ENC_ACTION:
+            raise TypeError('action must be one of the valid hash or encryption algorithms')
+
+        method = 'hash' if self.action in self.HASH_ACTION else 'enc'
+
+        if method == 'enc' and self.action != 'enc_xor':
+            # Need to make sure pycrypto is installed
+            try:
+                from Crypto.Cipher import AES  # pylint: disable=unused-import
+            except ImportError:
+                raise TypeError('action %s requires the pycrypto module')
+        elif method == 'enc':
+            # TODO: Generate a key file
+            self._generate_key_file()
+
+    def __eq__(self, other: Any) -> bool:
+        '''
+        Handle equals check in hash mode
+        '''
+        # TODO: This won't work until we override __eq__ or write our own __equals__ callback
+        # in abc.Field - This would allow a user to easily implement user-provided password
+        # checking.
+        if isinstance(other, str) and self.action in self.HASH_ACTION:
+            other = self._hash(other)
+        super().__eq__(other)
+
+    def _generate_key_file(self, must_exist=False):
+        '''
+        TODO: Generate or load an application specific key file
+        '''
+        return b'B' * 32
+
+    def __setdefault__(self, cfg: Config):
+        '''
+        Set the default value for a secure field
+
+        :param cfg: current config
+        '''
+        if self.default is None:
+            super().__setdefault__(cfg)
+            return
+
+        if self.action in self.HASH_ACTION:
+            cfg._data[self.key] = self._hash(self.default)
+        elif self.action in self.ENC_ACTION:
+            cfg._data[self.key] = self._encrypt(self.default)
+
+    def __getval__(self, cfg: Config) -> Any:
+        '''
+        Retrieve the value and decrypt it if it's not a hashed value
+
+        :param cfg: current config
+        :returns: decrypted value if possible
+        '''
+        if self.action in self.ENC_ACTION:
+            return self._decrypt(cfg._data[self.key])
+
+        return cfg._data[self.key]
+
+    def _encrypt(self, value: str) -> str:
+        '''
+        Encrypt the value
+
+        :param value: value to encrypt
+        :returns: encrypted value
+        '''
+        if self.action == "enc_aes256":
+            from Crypto.Cipher import AES
+
+            ivec = os.urandom(AES.block_size)
+
+            # TODO: Use key from generated key file
+            obj = AES.new(self._generate_key_file(), AES.MODE_CFB, ivec)
+            ciphertext = obj.encrypt(value)
+            return base64.b64encode(ivec + ciphertext).decode()
+        if self.action == "enc_xor":
+            return value  # TODO: implement XOR to support no-dependency encryption
+
+        raise TypeError('invalid encryption action %s' % self.action)
+
+    def _decrypt(self, value: str) -> str:
+        '''
+        Decrypt the value
+
+        :param value: value to decrypt
+        :returns: decrypted value
+        '''
+        if self.action == "enc_aes256":
+            from Crypto.Cipher import AES
+
+            ciphertext = base64.b64decode(value.encode())
+            ivec = ciphertext[:AES.block_size]
+            ciphertext = ciphertext[AES.block_size:]
+
+            # TODO: Use key from generated key file
+            obj = AES.new(self._generate_key_file(must_exist=True), AES.MODE_CFB, ivec)
+            return obj.decrypt(ciphertext).decode()
+        if self.action == "enc_xor":
+            return value  # TODO: implement XOR to support no-dependency encryption
+
+        raise TypeError('invalid encryption action %s' % self.action)
+
+    def _hash(self, value: str) -> str:  # pylint: disable=too-many-return-statements
+        '''
+        Hash the value
+
+        :param value: value to hash
+        :returns: hashed value
+        '''
+        if self.hashed:
+            return value
+
+        self.hashed = True
+
+        # TODO: Salt the hashes
+
+        if self.action == "hash_md5":
+            return hashlib.md5(value.encode()).hexdigest()
+        if self.action == "hash_sha1":
+            return hashlib.sha1(value.encode()).hexdigest()
+        if self.action == "hash_sha224":
+            return hashlib.sha224(value.encode()).hexdigest()
+        if self.action == "hash_sha256":
+            return hashlib.sha256(value.encode()).hexdigest()
+        if self.action == "hash_sha384":
+            return hashlib.sha384(value.encode()).hexdigest()
+        if self.action == "hash_sha512":
+            return hashlib.sha512(value.encode()).hexdigest()
+
+        self.hashed = False
+        raise TypeError('invalid hash action %s' % self.action)
+
+    def _validate(self, cfg: Config, value: str) -> str:
+        '''
+        Validate a value.
+
+        :param cfg: current Config
+        :param value: value to validate
+        '''
+        value = super()._validate(cfg, value)
+
+        if value is None:
+            self.hashed = False
+            return value
+
+        if self.action in self.HASH_ACTION:
+            if value != cfg._data[self.key]:
+                self.hashed = False
+            return self._hash(value)
+        if self.action in self.ENC_ACTION:
+            return self._encrypt(value)
+
+        raise TypeError("unknown action %s" % self.action)
+
+    def to_basic(self, cfg: Config, value: str) -> dict:
+        '''
+        Convert to a dict and indicate the type so we know
+        on load whether we've already dealt with the field
+
+        :param cfg: current config
+        :param value: value to encrypt/hash
+        :returns: encrypted/hashed value
+        '''
+        if value is None:
+            return value
+
+        if self.action in self.ENC_ACTION:
+            value = self._encrypt(value)
+        if self.action in self.HASH_ACTION and not self.hashed:
+            value = self._hash(value)
+
+        return {
+            "type": "secure_value",
+            "value": value
+        }
+
+    def to_python(self, cfg: Config, value: Union[dict, str]) -> str:
+        '''
+        Decrypt the value if loading something we've already handled.
+        Hash the value if it hasn't been hashed yet.
+
+        :param cfg: current config
+        :param value: value to decrypt/load
+        :returns: decrypted value or unmodified hash
+        '''
+        if value is None:
+            return value
+
+        if isinstance(value, dict) and value.get("type", "") == "secure_value":
+            if self.action in self.HASH_ACTION:
+                self.hashed = True
+                cfg._data[self.key] = value.get("value")  # So we don't hash again in _validate()
+                return value.get("value")  # Can't decrypt a hash
+            if self.action in self.ENC_ACTION:
+                return self._decrypt(value.get("value"))
+
+            raise TypeError("unknown action %s" % self.action)
+
+        if isinstance(value, str):
+            if self.action in self.HASH_ACTION:
+                return self._hash(value)  # Config modified manually, hash the value
+            if self.action in self.ENC_ACTION:
+                return value  # Don't encrypt here, it'll get encrypted in _validate()
+
+            raise TypeError("unknown action %s" % self.action)
+
+        raise ValueError("unsupported type %s" % type(value))
 
 
 class LogLevelField(StringField):

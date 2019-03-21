@@ -68,6 +68,7 @@ class Schema:
         :param key: field key
         :param field: new field or schema
         '''
+
         self._fields[key] = field
         if isinstance(field, abc.Field):
             field.__setkey__(self, key)
@@ -89,20 +90,6 @@ class Schema:
         '''
         for key, field in self._fields.items():
             yield key, field
-
-    def to_json(self):
-        '''
-        Wrote this method for testing/demo - will go away
-        TODO: Remove and do this in formats/json.py
-        '''
-        data = {}
-        for key, value in self._fields.items():
-            if isinstance(value, Config):
-                data[key] = value.to_json()
-            else:
-                data[key] = value  # Not handling special types right now...this is just a demo
-
-        return data
 
     def __call__(self, **kwargs) -> 'Config':
         '''
@@ -299,7 +286,7 @@ class Config:
         elif not formatter.is_binary and isinstance(content, bytes):
             content = content.decode()
 
-        tree = formatter.loads(self._schema, content)
+        tree = formatter.loads(self._schema, self, content)
         self.load_tree(tree)
 
     def _get_field(self, key: str) -> Union[abc.Field, Schema]:
@@ -309,6 +296,7 @@ class Config:
         :param key: field key
         '''
         field = self._schema._fields.get(key)
+
         if not field and self._dynamic_fields:
             field = self._dynamic_fields.get(key)
         return field

@@ -15,4 +15,4 @@ from .formats import FormatRegistry
 __all__ = ('Config', 'Schema', 'FormatRegistry', 'StringField', 'IntField', 'FloatField',
            'PortField', 'IPv4AddressField', 'IPv4NetworkField', 'FilenameField', 'BoolField',
            'UrlField', 'ListField', 'HostnameField', 'DictField', 'VirtualField',
-           'ApplicationModeField', 'LogLevelField', 'Field', 'AnyField')
+           'ApplicationModeField', 'LogLevelField', 'Field', 'AnyField', 'SecureStringField')

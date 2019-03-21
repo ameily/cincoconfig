@@ -129,7 +129,7 @@ class Field:
     def __setval__(self, cfg: 'config.Config', value: Any):
         '''
         Set the validated value in the config. The default implementation passes the value through
-        the validation chain and then set's the validated value int he config.
+        the validation chain and then set's the validated value int the config.
 
         :param cfg: current config
         :param value: value to validated
@@ -175,14 +175,14 @@ class Field:
             assert field.to_python(field.to_basic(value)) == value
 
         The default implementation just returns ``value``. This method is called when the config is
-        saved to a file and will only be called with the value associated with this field.
+        loaded from a file and will only be called with the value associated with this field.
 
         In general, basic types are any types that can be represented in JSON: string, number,
         list, dict, boolean.
 
         :param cfg: current config
-        :param value: value to convert to a basic type
-        :returns: the converted basic type
+        :param value: value to convert to a Python type
+        :returns: the converted Python type
         '''
         return value
 
@@ -194,8 +194,8 @@ class Field:
         saved to a file and will only be called with the value associated with this field.
 
         :param cfg: current config
-        :param value: value to convert to a Python type
-        :returns: the converted Python type
+        :param value: value to convert to a basic type
+        :returns: the converted basic type
         '''
         return value
 
