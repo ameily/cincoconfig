@@ -90,7 +90,7 @@ class StringField(Field):
         return value
 
 
-class SecureStringField(StringField):
+class SecureStringField(Field):
     '''
     A string field that will be encrypted/hashed when written to disk
     '''
@@ -181,6 +181,9 @@ class SecureStringField(StringField):
         :param cfg: current config
         :returns: decrypted value if possible
         '''
+        if cfg._data[self.key] is None:
+            return None
+
         if self.action in self.ENC_ACTION:
             return self._decrypt(cfg._data[self.key])
 
@@ -266,8 +269,6 @@ class SecureStringField(StringField):
         :param cfg: current Config
         :param value: value to validate
         '''
-        value = super()._validate(cfg, value)
-
         if value is None:
             self.hashed = False
             return value
@@ -295,7 +296,7 @@ class SecureStringField(StringField):
 
         if self.action in self.ENC_ACTION:
             value = self._encrypt(value)
-        if self.action in self.HASH_ACTION and not self.hashed:
+        if self.action in self.HASH_ACTION:
             value = self._hash(value)
 
         return {
@@ -327,7 +328,8 @@ class SecureStringField(StringField):
 
         if isinstance(value, str):
             if self.action in self.HASH_ACTION:
-                return self._hash(value)  # Config modified manually, hash the value
+                cfg._data[self.key] = self._hash(value)  # So we don't hash again in _validate()
+                return cfg._data[self.key]
             if self.action in self.ENC_ACTION:
                 return value  # Don't encrypt here, it'll get encrypted in _validate()
 

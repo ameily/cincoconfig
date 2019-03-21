@@ -8,8 +8,8 @@ import hashlib
 from cincoconfig import *
 
 cfg = Schema()
-cfg.hash = SecureStringField(action="hash_md5", default="hackme4fun")
-cfg.password = SecureStringField(action="enc_aes256", default="hackme4fun")
+cfg.hash = SecureStringField(action="hash_md5", default="herpderp")
+cfg.password = SecureStringField(action="enc_aes256", default="herpderp")
 
 config = cfg()
 
@@ -22,6 +22,7 @@ print("password (should be cleartext):", config.password)
 
 print("Save")
 config.save("test.cfg.json", "json")
+sys.exit()
 
 print("Load")
 config.load("test.cfg.json", "json")
