@@ -26,5 +26,5 @@ class BsonConfigFormat(ConfigFormat):
     def dumps(self, schema: Schema, config: Config, tree: dict) -> bytes:
         return bson.dumps(tree)
 
-    def oads(self, schema: Schema, config: Config, content: bytes) -> dict:
+    def loads(self, schema: Schema, config: Config, content: bytes) -> dict:
         return bson.loads(content)
