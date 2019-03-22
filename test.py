@@ -22,7 +22,7 @@ print("password (should be cleartext):", config.password)
 
 print("Save")
 config.save("test.cfg.json", "json")
-sys.exit()
+#sys.exit()
 
 print("Load")
 config.load("test.cfg.json", "json")
