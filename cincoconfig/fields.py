@@ -146,12 +146,9 @@ class SecureStringField(Field):
         '''
         Handle equals check in hash mode
         '''
-        # TODO: This won't work until we override __eq__ or write our own __equals__ callback
-        # in abc.Field - This would allow a user to easily implement user-provided password
-        # checking.
         if isinstance(other, str) and self.action in self.HASH_ACTION:
             other = self._hash(other)
-        super().__eq__(other)
+        return getattr(self, self.key) == other
 
     def _generate_key_file(self, must_exist=False):
         '''
