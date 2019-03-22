@@ -325,6 +325,8 @@ class SecureStringField(Field):
 
         if isinstance(value, str):
             if self.action in self.HASH_ACTION:
+                # Definetly coming in from a user-modified config. Make sure we hash it
+                self.hashed = False
                 cfg._data[self.key] = self._hash(value)  # So we don't hash again in _validate()
                 return cfg._data[self.key]
             if self.action in self.ENC_ACTION:

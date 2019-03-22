@@ -24,7 +24,7 @@ if config.hash == "password":
 
 print("Save")
 config.save("test.cfg.json", "json")
-sys.exit()
+#sys.exit()
 
 print("Load")
 config.load("test.cfg.json", "json")
