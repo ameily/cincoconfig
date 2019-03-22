@@ -90,7 +90,7 @@ class StringField(Field):
         return value
 
 
-class SecureStringField(Field):
+class SecureField(Field):
     '''
     A string field that will be encrypted/hashed when written to disk
     '''

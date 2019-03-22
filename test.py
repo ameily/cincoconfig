@@ -8,8 +8,8 @@ import hashlib
 from cincoconfig import *
 
 cfg = Schema()
-cfg.hash = SecureStringField(action="hash_md5", default="herpderp")
-cfg.password = SecureStringField(action="enc_aes256", default="herpderp")
+cfg.hash = SecureField(action="hash_md5", default="herpderp")
+cfg.password = SecureField(action="enc_aes256", default="herpderp")
 
 config = cfg()
 
