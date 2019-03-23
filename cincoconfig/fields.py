@@ -220,31 +220,24 @@ class SecureField(Field):
             to use an action that requires a python library that is not installed
         '''
         super().__init__(**kwargs)
-        self.action = action or 'hash_sha256'
+        self._action = action or 'hash_sha256'
         self.hashed = False  # Whether or not we've already hashed a value
+        self._method = 'hash' if self._action in self.HASH_ACTION else 'enc'
 
-        if self.action not in self.HASH_ACTION + self.ENC_ACTION:
-            raise TypeError('action %s is not a valid hash or encryption action' % self.action)
+        # Validate the action
+        if self._action not in self.HASH_ACTION + self.ENC_ACTION:
+            raise TypeError('action %s is not a valid hash or encryption action' % self._action)
 
-        method = 'hash' if self.action in self.HASH_ACTION else 'enc'
-
-        if method == 'enc' and self.action != 'enc_xor':
+        if self._method == 'enc' and self._action != 'enc_xor':
             # Need to make sure pycrypto is installed
             try:
                 from Crypto.Cipher import AES  # pylint: disable=unused-import
             except ImportError:
-                raise TypeError('action %s requires the pycrypto module' % self.action)
-        elif method == 'enc':
+                raise TypeError('action %s requires the pycrypto module' % self._action)
+
+        if self._method == 'enc':
             # TODO: Generate/read/manage a key file
             self._generate_key_file()
-
-    def __eq__(self, other: Any) -> bool:
-        '''
-        Handle equals check in hash mode
-        '''
-        if isinstance(other, str) and self.action in self.HASH_ACTION:
-            other = self._hash(other)
-        return getattr(self, self.key) == other
 
     def _generate_key_file(self, must_exist=False):
         '''
@@ -262,9 +255,9 @@ class SecureField(Field):
             super().__setdefault__(cfg)
             return
 
-        if self.action in self.HASH_ACTION:
+        if self._action in self.HASH_ACTION:
             cfg._data[self.key] = self._hash(self.default)
-        elif self.action in self.ENC_ACTION:
+        elif self._action in self.ENC_ACTION:
             cfg._data[self.key] = self._encrypt(self.default)
 
     def __getval__(self, cfg: Config) -> Any:
@@ -277,7 +270,7 @@ class SecureField(Field):
         if cfg._data[self.key] is None:
             return None
 
-        if self.action in self.ENC_ACTION:
+        if self._action in self.ENC_ACTION:
             return self._decrypt(cfg._data[self.key])
 
         return cfg._data[self.key]
@@ -290,7 +283,7 @@ class SecureField(Field):
         :returns: encrypted value
         :raises TypeError: if the action is not valid
         '''
-        if self.action == "enc_aes256":
+        if self._action == "enc_aes256":
             from Crypto.Cipher import AES
 
             ivec = os.urandom(AES.block_size)
@@ -299,13 +292,13 @@ class SecureField(Field):
             obj = AES.new(self._generate_key_file(), AES.MODE_CFB, ivec)
             ciphertext = obj.encrypt(value)
             return base64.b64encode(ivec + ciphertext).decode()
-        if self.action == "enc_xor":
+        if self._action == "enc_xor":
             return value  # TODO: implement XOR to support no-dependency encryption
 
         # TODO: Do I need to raise an exception? I check in __init__() that the
-        # action is valid. Maybe self.action should be self._action to imply
+        # action is valid. Maybe self._action should be self._action to imply
         # private membership?
-        raise TypeError('invalid encryption action %s' % self.action)
+        raise TypeError('invalid encryption action %s' % self._action)
 
     def _decrypt(self, value: str) -> str:
         '''
@@ -314,7 +307,7 @@ class SecureField(Field):
         :param value: value to decrypt
         :returns: decrypted value
         '''
-        if self.action == "enc_aes256":
+        if self._action == "enc_aes256":
             from Crypto.Cipher import AES
 
             ciphertext = base64.b64decode(value.encode())
@@ -324,46 +317,70 @@ class SecureField(Field):
             # TODO: Use key from generated key file
             obj = AES.new(self._generate_key_file(must_exist=True), AES.MODE_CFB, ivec)
             return obj.decrypt(ciphertext).decode()
-        if self.action == "enc_xor":
+        if self._action == "enc_xor":
             return value  # TODO: implement XOR to support no-dependency encryption
 
         # TODO: Do I need to raise an exception? I check in __init__() that the
-        # action is valid. Maybe self.action should be self._action to imply
+        # action is valid. Maybe self._action should be self._action to imply
         # private membership?
-        raise TypeError('invalid encryption action %s' % self.action)
+        raise TypeError('invalid encryption action %s' % self._action)
+
+    @staticmethod
+    def hash(value: str, action: str) -> str:
+        '''
+        Helper public method provided for easy hashing. This can be used
+        to check if a provided clear-text password matches the hash for that
+        password:
+
+        .. code-block:: python
+
+            >>> from cincoconfig import *
+            >>> cfg = Schema()
+            >>> cfg.password_hash = SecureField(action="hash_sha256")
+            >>> config = cfg()
+            >>> config.password_hash = "mySecretPassword"
+            >>> config.password_hash
+            '2250e74c6f823de9d70c2222802cd059dc970f56ed8d41d5d22d1a6d4a2ab66f'
+            >>> config.password_hash == SecureField.hash("mySecretPassword", "hash_sha256")
+            True
+            >>>
+
+        :param value: the value to be hashed
+        :param action: the hash action
+        :raise TypeError: if the action provided is invalid
+        '''
+
+        # TODO: Salt the hashes
+
+        if action == "hash_md5":
+            return hashlib.md5(value.encode()).hexdigest()
+        if action == "hash_sha1":
+            return hashlib.sha1(value.encode()).hexdigest()
+        if action == "hash_sha224":
+            return hashlib.sha224(value.encode()).hexdigest()
+        if action == "hash_sha256":
+            return hashlib.sha256(value.encode()).hexdigest()
+        if action == "hash_sha384":
+            return hashlib.sha384(value.encode()).hexdigest()
+        if action == "hash_sha512":
+            return hashlib.sha512(value.encode()).hexdigest()
+
+        raise TypeError("action %s is not a valid hash action" % action)
 
     def _hash(self, value: str) -> str:  # pylint: disable=too-many-return-statements
         '''
-        Hash the value
+        Private method used to hash a value only if it hasn't already been hashed.
 
         :param value: value to hash
         :returns: hashed value
         '''
+
         if self.hashed:
             return value
 
         self.hashed = True
 
-        # TODO: Salt the hashes
-
-        if self.action == "hash_md5":
-            return hashlib.md5(value.encode()).hexdigest()
-        if self.action == "hash_sha1":
-            return hashlib.sha1(value.encode()).hexdigest()
-        if self.action == "hash_sha224":
-            return hashlib.sha224(value.encode()).hexdigest()
-        if self.action == "hash_sha256":
-            return hashlib.sha256(value.encode()).hexdigest()
-        if self.action == "hash_sha384":
-            return hashlib.sha384(value.encode()).hexdigest()
-        if self.action == "hash_sha512":
-            return hashlib.sha512(value.encode()).hexdigest()
-
-        # TODO: Do I need to raise an exception? I check in __init__() that the
-        # action is valid. Maybe self.action should be self._action to imply
-        # private membership?
-        self.hashed = False
-        raise TypeError('invalid hash action %s' % self.action)
+        return self.hash(value, self._action)
 
     def _validate(self, cfg: Config, value: str) -> str:
         '''
@@ -376,20 +393,20 @@ class SecureField(Field):
             self.hashed = False
             return value
 
-        if self.action in self.HASH_ACTION:
+        if self._action in self.HASH_ACTION:
             if value != cfg._data[self.key]:
                 # Only hash if the value has changed
                 # to avoid hashing a hash
                 self.hashed = False
 
             return self._hash(value)
-        if self.action in self.ENC_ACTION:
+        if self._action in self.ENC_ACTION:
             return self._encrypt(value)
 
         # TODO: Do I need to raise an exception? I check in __init__() that the
-        # action is valid. Maybe self.action should be self._action to imply
+        # action is valid. Maybe self._action should be self._action to imply
         # private membership?
-        raise TypeError("unknown action %s" % self.action)
+        raise TypeError("unknown action %s" % self._action)
 
     def to_basic(self, cfg: Config, value: str) -> dict:
         '''
@@ -403,9 +420,9 @@ class SecureField(Field):
         if value is None:
             return value
 
-        if self.action in self.ENC_ACTION:
+        if self._action in self.ENC_ACTION:
             value = self._encrypt(value)
-        if self.action in self.HASH_ACTION:
+        if self._action in self.HASH_ACTION:
             value = self._hash(value)
 
         return {
@@ -427,7 +444,7 @@ class SecureField(Field):
             return value
 
         if isinstance(value, dict) and value.get("type", "") == "secure_value":
-            if self.action in self.HASH_ACTION:
+            if self._action in self.HASH_ACTION:
                 # It's a dict with type 'secure_value', we assume it's already hashed
                 self.hashed = True
 
@@ -435,14 +452,14 @@ class SecureField(Field):
                 cfg._data[self.key] = value.get("value")
 
                 return value.get("value")
-            if self.action in self.ENC_ACTION:
+            if self._action in self.ENC_ACTION:
                 # It's a dict with type 'secure_value', we assume it's already encrypted
                 return self._decrypt(value.get("value"))
 
-            raise TypeError("unknown action %s" % self.action)
+            raise TypeError("unknown action %s" % self._action)
 
         if isinstance(value, str):
-            if self.action in self.HASH_ACTION:
+            if self._action in self.HASH_ACTION:
                 # String value, assume it's not hashed. User-modified config
                 self.hashed = False
 
@@ -450,16 +467,16 @@ class SecureField(Field):
                 cfg._data[self.key] = self._hash(value)
 
                 return cfg._data[self.key]
-            if self.action in self.ENC_ACTION:
+            if self._action in self.ENC_ACTION:
                 # String value, assume it's not encrypted but
                 # don't encrypt here, it'll get encrypted in
                 # _validate() when the value is set
                 return value
 
             # TODO: Do I need to raise an exception? I check in __init__() that the
-            # action is valid. Maybe self.action should be self._action to imply
+            # action is valid. Maybe self._action should be self._action to imply
             # private membership?
-            raise TypeError("unknown action %s" % self.action)
+            raise TypeError("unknown action %s" % self._action)
 
         raise ValueError("unsupported type %s" % type(value))
 

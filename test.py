@@ -19,12 +19,12 @@ if os.path.isfile("test.cfg.json"):
 
 print("hash:", config.hash)
 print("password (should be cleartext):", config.password)
-if config.hash == "password":
+
+if config.hash == SecureField.hash("herpderp", "hash_md5"):
     print("WE DID IT")
 
 print("Save")
 config.save("test.cfg.json", "json")
-#sys.exit()
 
 print("Load")
 config.load("test.cfg.json", "json")
