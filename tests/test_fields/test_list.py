@@ -26,8 +26,10 @@ class TestListProxy:
         assert len(wrap) == 3
 
     def test_eq(self):
+        other = ListProxy(MockConfig(), IntField(), [1, '2', '3'])
         wrap = ListProxy(MockConfig(), IntField(), [1, 2, '3'])
         assert wrap == [1, 2, 3]
+        assert wrap == other
 
     def test_append(self):
         wrap = ListProxy(MockConfig(), IntField(), [1, 2, '3'])
