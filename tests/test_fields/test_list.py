@@ -25,11 +25,18 @@ class TestListProxy:
         wrap = ListProxy(MockConfig(), IntField(), [1, 2, '3'])
         assert len(wrap) == 3
 
-    def test_eq(self):
-        other = ListProxy(MockConfig(), IntField(), [1, '2', '3'])
+    def test_eq_list(self):
         wrap = ListProxy(MockConfig(), IntField(), [1, 2, '3'])
         assert wrap == [1, 2, 3]
-        assert wrap == other
+
+    def test_eq_proxy(self):
+        wrap = ListProxy(MockConfig(), IntField(), [1, 2, '3'])
+        wrap2 = ListProxy(MockConfig(), IntField(), [1, 2, '3'])
+        assert wrap == wrap2
+
+    def test_eq_not_list(self):
+        wrap = ListProxy(MockConfig(), IntField(), [1, 2, '3'])
+        assert wrap != 'hello'
 
     def test_append(self):
         wrap = ListProxy(MockConfig(), IntField(), [1, 2, '3'])

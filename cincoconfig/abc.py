@@ -8,8 +8,9 @@
 Abstract base classes.
 '''
 
-from typing import Any, Callable, Union
-from . import config  # pylint: disable=cyclic-import,unused-import
+from typing import Any, Callable, Union, Optional, Dict
+
+SchemaField = Union['BaseSchema', 'Field']
 
 
 class Field:
@@ -67,7 +68,7 @@ class Field:
 
     def __init__(self, *, name: str = None, key: str = None, required: bool = False,
                  default: Union[Callable, Any] = None,
-                 validator: Callable[['config.Config', Any], Any] = None):
+                 validator: Callable[['BaseConfig', Any], Any] = None):
         '''
         All builtin Fields accept the following keyword parameters.
 
@@ -81,7 +82,7 @@ class Field:
         :param validator: an additional validator function that is invoked during validation
         '''
         self._name = name or None
-        self.key = key or None
+        self.key = key or ''
         self.required = required
         self._default = default
         self.validator = validator
@@ -100,13 +101,13 @@ class Field:
         '''
         return self._name or self.key
 
-    def _validate(self, cfg: 'config.Config', value: Any) -> Any:
+    def _validate(self, cfg: 'BaseConfig', value: Any) -> Any:
         '''
         Subclass validation hook. The default implementation just returns ``value`` unchanged.
         '''
         return value
 
-    def validate(self, cfg: 'config.Config', value: Any) -> Any:
+    def validate(self, cfg: 'BaseConfig', value: Any) -> Any:
         '''
         Start the validation chain and verify that the value is specified if *required=True*.
 
@@ -126,7 +127,7 @@ class Field:
 
         return value
 
-    def __setval__(self, cfg: 'config.Config', value: Any):
+    def __setval__(self, cfg: 'BaseConfig', value: Any):
         '''
         Set the validated value in the config. The default implementation passes the value through
         the validation chain and then set's the validated value int the config.
@@ -136,7 +137,7 @@ class Field:
         '''
         cfg._data[self.key] = self.validate(cfg, value)
 
-    def __getval__(self, cfg: 'config.Config') -> Any:
+    def __getval__(self, cfg: 'BaseConfig') -> Any:
         '''
         Retrieve the value from the config. The default implementation retrieves the value from the
         config by the field *key*.
@@ -146,7 +147,7 @@ class Field:
         '''
         return cfg._data[self.key]
 
-    def __setkey__(self, schema: 'config.Schema', key: str):
+    def __setkey__(self, schema: 'BaseSchema', key: str):
         '''
         Set the field's *key*, which is called when the field is added to a schema. The default
         implementation just sets ``self.key = key``
@@ -156,7 +157,7 @@ class Field:
         '''
         self.key = key
 
-    def __setdefault__(self, cfg: 'config.Config'):
+    def __setdefault__(self, cfg: 'BaseConfig'):
         '''
         Set the default value of the field in the config. This is called when the config is first
         created.
@@ -165,7 +166,7 @@ class Field:
         '''
         cfg._data[self.key] = self.default
 
-    def to_python(self, cfg: 'config.Config', value: Any) -> Any:
+    def to_python(self, cfg: 'BaseConfig', value: Any) -> Any:
         '''
         Convert the basic value to a Python value. Basic values are serializable (ie. not complex
         types). The following must hold true for config file saving and loading to work:
@@ -186,7 +187,7 @@ class Field:
         '''
         return value
 
-    def to_basic(self, cfg: 'config.Config', value: Any) -> Any:
+    def to_basic(self, cfg: 'BaseConfig', value: Any) -> Any:
         '''
         Convert the Python value to the basic value.
 
@@ -207,7 +208,115 @@ class AnyField(Field):
     '''
 
 
+class BaseSchema:
+    '''
+    Base schema that holds the list of fields in the *_fields* attributes.
+
+    :ivar str _key: schema key
+    :ivar bool _dynamic: the schema is dynamic
+    :ivar dict _fields: registered fields
+    '''
+
+    def __init__(self, key: str = None, dynamic: bool = False):
+        '''
+        :param key: the schema key, only used for sub-schemas, and stored in the instance as
+            *_key*
+        :param dynamic: the schema is dynamic and can contain fields not originally specified in
+            the schema and stored in the instance as *_dynamic*
+        '''
+        self._key = key
+        self._dynamic = dynamic
+        self._fields = dict()  # type: Dict[str, SchemaField]
+
+    def __setkey__(self, parent: 'BaseSchema', key: str) -> None:
+        '''
+        Field protocol, set the schema *_key* attribute.
+        '''
+        self._key = key
+
+    def _add_field(self, key: str, field: SchemaField) -> SchemaField:
+        '''
+        Add a field to the schema. This method will call ``field.__setkey__(self, key)``.
+
+        :returns: the added field (``field``)
+        '''
+        self._fields[key] = field
+        if isinstance(field, (Field, BaseSchema)):
+            field.__setkey__(self, key)
+        return field
+
+    def _get_field(self, key: str) -> Optional[SchemaField]:
+        '''
+        :returns: the field identified by *key*, if it exists in the schema
+        '''
+        return self._fields.get(key)
+
+
+class BaseConfig(BaseSchema):
+    '''
+    Base configuration that holds configuration values in the *_data* attribute.
+
+    :ivar dict _data: currently set configuration values
+    :ivar dict _fields: dynamically added fields (not in *_schema*)
+    :ivar BaseSchema _schema: backing schema
+    :ivar BaseConfig _parent: parent configuration
+    '''
+
+    def __init__(self, schema: BaseSchema, parent: 'BaseConfig' = None):
+        '''
+        :param schema: backing schema
+        :param parent: parent configuration, when this object is a sub configuration
+        '''
+        super().__init__()
+        self._schema = schema
+        self._parent = parent
+        self._data = dict()  # type: Dict[str, Any]
+
+    def _add_field(self, key: str, field: SchemaField) -> SchemaField:
+        '''
+        Attempt to add a new field to the configuration. This method only works when the backing
+        schema is dynamic, otherwise a :class:`TypeError` will be raised.
+
+        :param key: field key
+        :param field: field to add
+        :returns: the added field
+        :raises TypeError: the configuration is not dynamic and new fields cannot be added
+        '''
+        if not self._schema._dynamic:
+            raise TypeError('configuration is not dynamic and new fields cannot be added')
+        return super()._add_field(key, field)
+
+    def _get_field(self, key: str) -> Optional[SchemaField]:
+        '''
+        :returns: the field identified by *key*
+        '''
+        return self._schema._get_field(key) or super()._get_field(key)
+
+
 class ConfigFormat:
     '''
     The base class for all configuration file formats.
     '''
+
+    def dumps(self, config: BaseConfig, tree: dict) -> bytes:
+        '''
+        Convert the configuration value tree to a bytes object. This method is called to serialize
+        the configuration to a buffer and eventually write to a file.
+
+        :param config: current configuration
+        :param tree: basic value tree, as returned by the Config
+            :meth:`~cincoconfig.config.Config.to_tree` method.
+        :returns: the serialized configuration
+        '''
+        raise NotImplementedError()
+
+    def loads(self, config: BaseConfig, content: bytes) -> dict:
+        '''
+        Parse the serialized configuration to a basic value tree that can be parsed by the
+        Config :meth:`~cincoconfig.config.Config.load_tree` method.
+
+        :param config: current config
+        :param content: serialized content
+        :returns: the parsed basic value tree
+        '''
+        raise NotImplementedError()

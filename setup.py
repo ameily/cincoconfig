@@ -22,7 +22,7 @@ setup(
     author_email='meily.adam@gmail.com',
     url='https://github.com/ameily/cincoconfig',
     download_url=None,  # TODO
-    packages=['cincoconfig', 'cincoconfig.formats', 'cincoconfig.fields'],
+    packages=['cincoconfig', 'cincoconfig.formats'],
     install_requires=requirements,
     extras_require={
         'dev': dev_requirements

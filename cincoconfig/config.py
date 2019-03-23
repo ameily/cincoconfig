@@ -6,14 +6,15 @@
 #
 
 from typing import Union, Any, Iterator, Tuple
-from . import abc
-from . import formats
+from itertools import chain
+from .abc import Field, BaseConfig, BaseSchema, SchemaField, AnyField
+from .formats import FormatRegistry
 
 
 __all__ = ('Config', 'Schema')
 
 
-class Schema:
+class Schema(BaseSchema):
     '''
     A config schema containing all available configuration options.
 
@@ -35,21 +36,7 @@ class Schema:
     configuration from a file.
     '''
 
-    def __init__(self, key: str = None, dynamic: bool = False):
-        '''
-        :param key: the schema key, only used for sub-schemas, and stored in the instance as
-            *_key*
-        :param dynamic: the schema is dynamic and can contain fields not originally specified in
-            the schema and stored in the instance as *_dynamic*
-        '''
-        #: the schema key
-        self._key = key
-        #: the schema is dynamic
-        self._dynamic = dynamic
-        #: schema fields
-        self._fields = {}
-
-    def __setattr__(self, name: str, value: Union[abc.Field, 'Schema']):
+    def __setattr__(self, name: str, value: SchemaField):
         '''
         :param name: attribute name
         :param value: field or schema to add to the schema
@@ -59,20 +46,7 @@ class Schema:
         else:
             self._add_field(name, value)
 
-    def _add_field(self, key: str, field: Union[abc.Field, 'Schema']):
-        '''
-        Add a field to the schema. Calls :meth:`~cincoconfig.abc.Field.__setkey__` on the field
-        after adding it to the schema.
-
-        :param key: field key
-        :param field: new field or schema
-        '''
-
-        self._fields[key] = field
-        if isinstance(field, abc.Field):
-            field.__setkey__(self, key)
-
-    def __getattr__(self, name: str) -> Union[abc.Field, 'Schema']:
+    def __getattr__(self, name: str) -> SchemaField:
         '''
         Retrieve a field by key or create a new ``Schema`` if the field doesn't exist.
 
@@ -83,21 +57,21 @@ class Schema:
             field = self._fields[name] = Schema(name)
         return field
 
-    def __iter__(self) -> Iterator[Tuple[str, abc.Field]]:
+    def __iter__(self) -> Iterator[Tuple[str, SchemaField]]:
         '''
         Iterate over schema fields, produces as a list of tuples ``(key, field)``.
         '''
         for key, field in self._fields.items():
             yield key, field
 
-    def __call__(self, **kwargs) -> 'Config':
+    def __call__(self) -> 'Config':
         '''
         Compile the schema into an initial config with default values set.
         '''
         return Config(self)
 
 
-class Config:
+class Config(BaseConfig):
     '''
     A configuration.
 
@@ -128,7 +102,7 @@ class Config:
             'host': '127.0.0.1'
         })
 
-        # The above is essentially equivalent to:
+        # Loading an initial tree above is essentially equivalent to:
         #
         # schema = Schema()
         # schema.port = PortField(default=8080)
@@ -136,43 +110,20 @@ class Config:
         # config = schema()
     '''
 
-    def __init__(self, schema: Schema, parent: 'Config' = None):
+    def __init__(self, schema: BaseSchema, parent: 'Config' = None):
         '''
         :param schema: backing schema, stored as *_schema*
         :param parent: parent config instance, only set when this config is a field of another
             config, stored as *_parent*
         '''
-        self._schema = schema
-        self._parent = parent
-        self._data = dict()
-        self._dynamic_fields = dict() if self._schema._dynamic else None
+        super().__init__(schema, parent)
 
         for key, field in schema._fields.items():
-            if isinstance(field, Schema):
+            if isinstance(field, BaseSchema):
                 value = Config(field, parent=self)
                 self._data[key] = value
             else:
                 field.__setdefault__(self)
-
-    def _add_field(self, key: str, field: abc.Field = None) -> abc.Field:
-        '''
-        Add a field to the configuration. This method only works when the underlying schema is
-        dynamic, otherwise an :class:`AttributeError` will be raised.
-
-        :param key: field key
-        :param field: field to add, if not specified the :class:`~cincoconfig.abc.AnyField` will be
-            created
-        :returns: the created field
-        '''
-        if not self._schema._dynamic:
-            raise AttributeError('%s field does not exist' % key)
-
-        field = field or abc.AnyField()
-        self._fields[key] = field
-        if isinstance(field, abc.Field):
-            field.__setkey__(self, key)
-
-        return field
 
     def __setattr__(self, name: str, value: Any):
         '''
@@ -189,15 +140,15 @@ class Config:
 
         field = self._get_field(name)
         if not field:
-            # if the schema is dynamic then we allow adding fields to the _dynamic_fields dict
+            # if the schema is dynamic then we allow adding fields to the _fields dict
             # _add_field will raise an exception if the schema is not dynamic
-            field = self._add_field(name)
+            field = self._add_field(name, AnyField())
 
-        if isinstance(field, Schema):
+        if isinstance(field, BaseSchema):
             if not isinstance(value, dict):
-                raise TypeError('ParsedConfig value must be a dict object')
+                raise TypeError('Config value must be a dict object')
 
-            cfg = self._data[name] = Config(field._schema, parent=self)
+            cfg = self._data[name] = Config(field, parent=self)
             cfg.load_tree(value)
         else:
             field.__setval__(self, value)
@@ -216,7 +167,7 @@ class Config:
             # if we are dynamic then return None and don't raise an exception
             return None
 
-        if isinstance(field, Schema):
+        if isinstance(field, BaseSchema):
             return self._data[name]
 
         return field.__getval__(self)
@@ -241,8 +192,7 @@ class Config:
         :param format: output format
         '''
         content = self.dumps(format)
-        mode = 'wb' if isinstance(content, bytes) else 'w'
-        with open(filename, mode) as file:
+        with open(filename, 'wb') as file:
             file.write(content)
 
     def load(self, filename: str, format: str):
@@ -258,7 +208,7 @@ class Config:
 
         return self.loads(content, format)
 
-    def dumps(self, format: str, **kwargs) -> Union[str, bytes]:
+    def dumps(self, format: str, **kwargs) -> bytes:
         '''
         Serialize the configuration to a string with the specified format.
 
@@ -267,8 +217,8 @@ class Config:
         :returns: serialized configuration file content
         '''
         # formatter = FormatRegistry.get(format, **kwargs)
-        formatter = formats.FormatRegistry.get(format, **kwargs)
-        return formatter.dumps(self._schema, self, self.to_tree())
+        formatter = FormatRegistry.get(format, **kwargs)
+        return formatter.dumps(self, self.to_tree())
 
     def loads(self, content: Union[str, bytes], format: str, **kwargs):
         '''
@@ -278,27 +228,13 @@ class Config:
         :param format: content format
         :param kwargs: additional keyword arguments to pass to the formatter's ``__init__()``
         '''
-        formatter = formats.FormatRegistry.get(format, **kwargs)
-
-        if formatter.is_binary and isinstance(content, str):
+        if isinstance(content, str):
             content = content.encode()
-        elif not formatter.is_binary and isinstance(content, bytes):
-            content = content.decode()
 
-        tree = formatter.loads(self._schema, self, content)
+        formatter = FormatRegistry.get(format, **kwargs)
+
+        tree = formatter.loads(self, content)
         self.load_tree(tree)
-
-    def _get_field(self, key: str) -> Union[abc.Field, Schema]:
-        '''
-        Get field by key.
-
-        :param key: field key
-        '''
-        field = self._schema._fields.get(key)
-
-        if not field and self._dynamic_fields:
-            field = self._dynamic_fields.get(key)
-        return field
 
     def load_tree(self, tree: dict):
         '''
@@ -308,7 +244,7 @@ class Config:
         '''
         for key, value in tree.items():
             field = self._get_field(key)
-            if isinstance(field, abc.Field):
+            if isinstance(field, Field):
                 value = field.to_python(self, value)
 
             self.__setattr__(key, value)
@@ -317,13 +253,12 @@ class Config:
         '''
         Iterate over the configuration values as ``(key, value)`` tuples.
         '''
-        for key, field in self._schema:
-            value = field.__getval__(self)
+        for key, field in chain(self._schema._fields.items(), self._fields.items()):
+            if isinstance(field, Field):
+                value = field.__getval__(self)
+            else:
+                value = self._data[key]
             yield key, value
-
-        if self._dynamic_fields:
-            for key, field in self._dynamic_fields:
-                yield key, field.__getval__(self)
 
     def to_tree(self) -> dict:
         '''
@@ -333,11 +268,10 @@ class Config:
         '''
         tree = {}
         fields = dict(self._schema._fields)
-        if self._dynamic_fields:
-            fields.update(self._dynamic_fields)
+        fields.update(self._fields)
 
         for key, field in fields.items():
-            if isinstance(field, Schema):
+            if isinstance(field, BaseSchema):
                 tree[key] = self._data[key].to_tree()
             elif key in self._data:
                 tree[key] = field.to_basic(self, field.__getval__(self))

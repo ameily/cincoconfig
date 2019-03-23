@@ -7,24 +7,50 @@
 
 try:
     import bson
-except ImportError:  # pylint: disable=duplicate-code
+except ImportError:  # pragma: no cover
     IS_AVAILABLE = False
 else:
     IS_AVAILABLE = True
 
-from cincoconfig.abc import ConfigFormat
-from cincoconfig.config import Config, Schema
+from cincoconfig.abc import ConfigFormat, BaseConfig
 
 
 class BsonConfigFormat(ConfigFormat):
-    is_binary = True
+    '''
+    BSON configuration file format. This format is only available when the ``bson`` package is
+    installed.
+
+    This class should not be directly referenced. Instead, use the config
+    :meth:`~cincoconfig.Config.load` and :meth:`~cincoconfig.Config.save` methods, passing
+    *format='bson'*.
+
+    .. code-block:: python
+
+        config.save('filename.bson', format='bson')
+        # or
+        config.load('filename.bson', format='bson')
+    '''
 
     def __init__(self):
         if not IS_AVAILABLE:
             raise TypeError('BSON format is not available; please install "bson"')
 
-    def dumps(self, schema: Schema, config: Config, tree: dict) -> bytes:
+    def dumps(self, config: BaseConfig, tree: dict) -> bytes:
+        '''
+        Serialize the basic value ``tree`` to BSON :class:`bytes` document.
+
+        :param config: current config
+        :param tree: basic value tree
+        '''
         return bson.dumps(tree)
 
-    def loads(self, schema: Schema, config: Config, content: bytes) -> dict:
+    def loads(self, config: BaseConfig, content: bytes) -> dict:
+        '''
+        Deserialize the ``content`` (a :class:`bytes` instance containing a BSON document) to a
+        Python basic value tree.
+
+        :param config: current config
+        :param content: content to serialize
+        :returns: the deserialized basic value tree
+        '''
         return bson.loads(content)

@@ -5,8 +5,8 @@
 # this source code package.
 #
 
-import pytest
 import hashlib
+import pytest
 from Crypto.Cipher import AES
 from cincoconfig.fields import SecureField
 
