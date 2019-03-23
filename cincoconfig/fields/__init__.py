@@ -5,10 +5,14 @@
 # this source code package.
 #
 
-from .fields import *
+from cincoconfig.abc import Field
+from .number import *
+from .secure import *
+from .string import *
+from .primitives import *
 
 
 __all__ = ('StringField', 'IntField', 'FloatField', 'PortField', 'IPv4AddressField',
            'IPv4NetworkField', 'FilenameField', 'BoolField', 'UrlField', 'ListField',
            'HostnameField', 'DictField', 'ListProxy', 'VirtualField', 'ApplicationModeField',
-           'LogLevelField', 'SecureField')
+           'LogLevelField', 'SecureField', 'NumberField')
