@@ -10,8 +10,15 @@ from cincoconfig import *
 cfg = Schema()
 cfg.hash = SecureField(action="hash_md5", default="herpderp")
 cfg.password = SecureField(action="enc_aes256", default="herpderp")
+cfg.server.host = StringField()
+cfg.server.db.host = StringField(default="ferp")
+cfg.server.db.ferp.blah.fah.bam = IntField(default=10)
 
 config = cfg()
+
+print("BAM: ", config.server.db.ferp.blah.fah.bam)
+print("HOST: ", config.server.host)
+print("DBHOST: ", config.server.db.host)
 
 if os.path.isfile("test.cfg.json"):
     print("Load")

@@ -22,7 +22,7 @@ from .abc import Field, AnyField, BaseConfig, BaseSchema
 __all__ = ('StringField', 'IntField', 'FloatField', 'PortField', 'IPv4AddressField',
            'IPv4NetworkField', 'FilenameField', 'BoolField', 'UrlField', 'ListField',
            'HostnameField', 'DictField', 'ListProxy', 'VirtualField', 'ApplicationModeField',
-           'LogLevelField', 'SecureField')
+           'LogLevelField', 'SecureField', 'NumberField')
 
 
 class StringField(Field):
