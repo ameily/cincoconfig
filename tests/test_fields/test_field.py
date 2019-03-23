@@ -15,6 +15,7 @@ class MockConfig:
         self._data = data or {}
 
 
+
 class TestBaseField:
 
     def setup_method(self, method=None):

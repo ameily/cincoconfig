@@ -14,8 +14,7 @@ import socket
 from ipaddress import IPv4Address, IPv4Network
 from urllib.parse import urlparse
 from typing import Union, List, Any, Iterator, Callable
-from .abc import Field, AnyField
-from .config import Config, Schema
+from .abc import Field, AnyField, BaseConfig, BaseSchema
 
 
 __all__ = ('StringField', 'IntField', 'FloatField', 'PortField', 'IPv4AddressField',
@@ -57,7 +56,7 @@ class StringField(Field):
         if self.transform_case and self.transform_case not in ('lower', 'upper'):
             raise TypeError('transform_case must be "lower" or "upper"')
 
-    def _validate(self, cfg: Config, value: str) -> str:
+    def _validate(self, cfg: BaseConfig, value: str) -> str:
         '''
         Validate a value.
 
@@ -144,9 +143,9 @@ class ApplicationModeField(StringField):
         '''
         Create helper VirtualField.
         '''
-        return VirtualField(lambda cfg: cfg[self.key] == mode)
+        return VirtualField(lambda cfg: self.__getval__(cfg) == mode)
 
-    def __setkey__(self, schema: Schema, key: str):
+    def __setkey__(self, schema: BaseSchema, key: str) -> None:
         '''
         Set the key and optionally add ``VirtualField`` helpers to the schema if
         *create_helpers=True*.
@@ -175,7 +174,7 @@ class NumberField(Field):
         self.min = min
         self.max = max
 
-    def _validate(self, cfg: Config, value: Union[str, int, float]) -> Union[int, float]:
+    def _validate(self, cfg: BaseConfig, value: Union[str, int, float]) -> Union[int, float]:
         '''
         Validate the value. This method first converts the value to ``type_class`` and then checks
         the value against ``min`` and ``max`` if they are specified.
@@ -184,17 +183,17 @@ class NumberField(Field):
         :param value: value to validate
         '''
         try:
-            value = self.type_cls(value)
+            num = self.type_cls(value)  # type: Union[int, float]
         except:
             raise ValueError('%s is not a valid %s' % (self.name, self.type_cls.__name__))
 
-        if self.min is not None and value < self.min:
+        if self.min is not None and num < self.min:
             raise ValueError('%s must be >= %s' % (self.name, self.min))
 
-        if self.max is not None and value > self.max:
+        if self.max is not None and num > self.max:
             raise ValueError('%s must be <= %s' % (self.name, self.max))
 
-        return value
+        return num
 
 
 class IntField(NumberField):
@@ -231,7 +230,7 @@ class IPv4AddressField(StringField):
     IPv4 address field.
     '''
 
-    def _validate(self, cfg: Config, value: str) -> str:
+    def _validate(self, cfg: BaseConfig, value: str) -> str:
         '''
         Validate a value.
 
@@ -250,7 +249,7 @@ class IPv4NetworkField(StringField):
     IPv4 network field. This field accepts CIDR notation networks in the form of ``A.B.C.D/Z``.
     '''
 
-    def _validate(self, cfg: Config, value: str) -> str:
+    def _validate(self, cfg: BaseConfig, value: str) -> str:
         '''
         Validate a value.
 
@@ -281,7 +280,7 @@ class HostnameField(StringField):
         self.allow_ipv4 = allow_ipv4
         self.resolve = resolve
 
-    def _validate(self, cfg: Config, value: str) -> str:
+    def _validate(self, cfg: BaseConfig, value: str) -> str:
         '''
         Validate a value.
 
@@ -343,7 +342,7 @@ class FilenameField(StringField):
         self.exists = exists
         self.startdir = startdir
 
-    def _validate(self, cfg: Config, value: str) -> str:
+    def _validate(self, cfg: BaseConfig, value: str) -> str:
         '''
         Validate a value.
 
@@ -380,7 +379,7 @@ class BoolField(Field):
     #: Accepted values that evaluate to ``False``
     FALSE_VALUES = ('f', 'false', '0', 'off', 'no', 'n')
 
-    def _validate(self, cfg: Config, value: str) -> bool:
+    def _validate(self, cfg: BaseConfig, value: str) -> bool:
         '''
         Validate a value.
 
@@ -388,18 +387,20 @@ class BoolField(Field):
         :param value: value to validate
         '''
 
-        if isinstance(value, (int, float)):
-            value = bool(value)
+        if isinstance(value, bool):
+            bval = value
+        elif isinstance(value, (int, float)):
+            bval = bool(value)
         elif isinstance(value, str):
             if value.lower() in self.TRUE_VALUES:
-                value = True
+                bval = True
             elif value.lower() in self.FALSE_VALUES:
-                value = False
+                bval = False
             else:
                 raise ValueError('%s is not a valid boolean' % self.name)
-        elif not isinstance(value, bool):
+        else:
             raise ValueError('%s is not a valid boolean' % self.name)
-        return value
+        return bval
 
 
 class UrlField(StringField):
@@ -407,7 +408,7 @@ class UrlField(StringField):
     A URL field. Values are validated that they are both a valid URL and contain a valid scheme.
     '''
 
-    def _validate(self, cfg: Config, value: str) -> str:
+    def _validate(self, cfg: BaseConfig, value: str) -> str:
         '''
         Validate the value.
 
@@ -430,7 +431,7 @@ class ListProxy:
     the field returned by the :class:`ListField` validation chain.
     '''
 
-    def __init__(self, cfg: Config, field: Field, items: list = None):
+    def __init__(self, cfg: BaseConfig, field: Field, items: list = None):
         '''
         :param cfg: current config
         :param field: field to validate against
@@ -438,7 +439,7 @@ class ListProxy:
         '''
         self.cfg = cfg
         self.field = field
-        self._items = []
+        self._items = []  # type: List[Any]
 
         if items:
             for item in items:
@@ -447,15 +448,17 @@ class ListProxy:
     def __len__(self) -> int:
         return len(self._items)
 
-    def __eq__(self, other: Union[list, 'ListProxy']) -> bool:
+    def __eq__(self, other: object) -> bool:
         '''
         :returns: this list content is equal to other list content
         '''
         if isinstance(other, ListProxy):
             other = other._items
-        return self._items == other
+        if isinstance(other, list):
+            return self._items == other
+        return False
 
-    def __iter__(self) -> Iterator:
+    def __iter__(self) -> Iterator[Any]:
         '''
         :returns: iterator over items
         '''
@@ -491,16 +494,16 @@ class ListProxy:
         self.extend(other)
         return self
 
-    def __getitem__(self, index: int):
+    def __getitem__(self, index: int) -> Any:
         return self._items[index]
 
-    def __delitem__(self, index: int):
+    def __delitem__(self, index: int) -> None:
         del self._items[index]
 
-    def __setitem__(self, index: int, value: Any):
+    def __setitem__(self, index: int, value: Any) -> None:
         self._items[index] = self.field.validate(self.cfg, value)
 
-    def clear(self):
+    def clear(self) -> None:
         '''
         Clear the list.
         '''
@@ -518,7 +521,7 @@ class ListProxy:
         '''
         return self._items.count(value)
 
-    def extend(self, other: Union[list, 'ListProxy']):
+    def extend(self, other: Union[list, 'ListProxy']) -> None:
         '''
         Extend list by appending elements from the iterable.
         '''
@@ -531,21 +534,21 @@ class ListProxy:
         '''
         return self._items.index(value)
 
-    def insert(self, index, value: Any):
+    def insert(self, index, value: Any) -> None:
         value = self.field.validate(self.cfg, value)
         self._items.insert(index, value)
 
-    def pop(self, index: int = None):
+    def pop(self, index: int = None) -> Any:
         return self._items.pop() if index is None else self._items.pop(index)
 
-    def remove(self, value: Any):
+    def remove(self, value: Any) -> None:
         value = self.field.validate(self.cfg, value)
         self._items.remove(value)
 
-    def reverse(self):
+    def reverse(self) -> None:
         self._items.reverse()
 
-    def sort(self, key=None, reverse=False):
+    def sort(self, key=None, reverse=False) -> None:
         self._items.sort(key=key, reverse=reverse)
 
 
@@ -566,7 +569,7 @@ class ListField(Field):
         super().__init__(**kwargs)
         self.field = field
 
-    def _validate(self, cfg: Config, value: list) -> Union[list, ListProxy]:
+    def _validate(self, cfg: BaseConfig, value: list) -> Union[list, ListProxy]:
         '''
         Validate the value.
 
@@ -583,10 +586,10 @@ class ListField(Field):
         if not self.field or isinstance(self.field, AnyField):
             return value
 
-        value = ListProxy(cfg, self.field, value)
-        return value
+        proxy = ListProxy(cfg, self.field, value)
+        return proxy
 
-    def to_basic(self, cfg: Config, value: Union[list, ListProxy]) -> list:
+    def to_basic(self, cfg: BaseConfig, value: Union[list, ListProxy]) -> list:
         '''
         Convert to basic type.
 
@@ -597,7 +600,7 @@ class ListField(Field):
             return value._items
         return value
 
-    def to_python(self, cfg: Config, value: list) -> Union[list, ListProxy]:
+    def to_python(self, cfg: BaseConfig, value: list) -> Union[list, ListProxy]:
         '''
         Convert to Pythonic type.
 
@@ -614,7 +617,7 @@ class VirtualField(Field):
     A calculated, readonly field that is not read from or written to a configuration file.
     '''
 
-    def __init__(self, getter: Callable[[Config], Any], **kwargs):
+    def __init__(self, getter: Callable[[BaseConfig], Any], **kwargs):
         '''
         :param getter: a callable that is called whenever the value is retrieved, the callable
             will receive a single argument: the current :class:`Config`.
@@ -622,13 +625,13 @@ class VirtualField(Field):
         super().__init__(**kwargs)
         self.getter = getter
 
-    def __setdefault__(self, cfg: Config):
+    def __setdefault__(self, cfg: BaseConfig) -> None:
         pass
 
-    def __getval__(self, cfg: Config):
+    def __getval__(self, cfg: BaseConfig) -> Any:
         return self.getter(cfg)
 
-    def __setval__(self, cfg: Config, value: Any):
+    def __setval__(self, cfg: BaseConfig, value: Any) -> None:
         raise TypeError('%s is readonly' % self.key)
 
 
@@ -641,7 +644,7 @@ class DictField(Field):
     not ``None`` and is not empty.
     '''
 
-    def _validate(self, cfg: Config, value: dict) -> dict:
+    def _validate(self, cfg: BaseConfig, value: dict) -> dict:
         '''
         Validate a value.
 

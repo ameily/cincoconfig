@@ -5,47 +5,42 @@
 # this source code package.
 #
 
-import json
+import pickle
 from cincoconfig.abc import ConfigFormat, BaseConfig
 
 
-class JsonConfigFormat(ConfigFormat):
+class PickleConfigFormat(ConfigFormat):
     '''
-    JSON configuration file format.
+    Python pickle configuration file format. This format uses the :mod:`pickle` module to serialize
+    and deserialize the configuration basic value tree.
 
     This class should not be directly referenced. Instead, use the config
     :meth:`~cincoconfig.Config.load` and :meth:`~cincoconfig.Config.save` methods, passing
-    *format='json'*.
+    *format='pickle'*.
 
     .. code-block:: python
 
-        config.save('filename.json', format='json')
+        config.save('filename.cfg', format='pickle')
         # or
-        config.load('filename.json', format='json')
+        config.load('filename.cfg', format='pickle')
     '''
-
-    def __init__(self, pretty: bool = True):
-        '''
-        :param pretty: pretty-print the JSON document in the call to :meth:`json.dumps`
-        '''
-        self.pretty = pretty
 
     def dumps(self, config: BaseConfig, tree: dict) -> bytes:
         '''
-        Deserialize the ``content`` (a :class:`bytes` instance containing a JSON document) to a
+        Deserialize the ``content`` (a :class:`bytes` instance containing a Pickled object) to a
         Python basic value tree.
 
         :param config: current config
         :param content: content to serialize
         :returns: the deserialized basic value tree
         '''
-        return json.dumps(tree, indent=2 if self.pretty else None).encode()
+        return pickle.dumps(tree)
 
     def loads(self, config: BaseConfig, content: bytes) -> dict:
         '''
-        Serialize the basic value ``tree`` to JSON :class:`bytes` document.
+        Serialize the basic value ``tree`` to PIckle :class:`bytes` document.
 
         :param config: current config
         :param tree: basic value tree
         '''
-        return json.loads(content.decode())
+        return pickle.loads(content)

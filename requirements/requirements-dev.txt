@@ -1,10 +1,9 @@
-pylint
+coverage
+mypy
 pycodestyle
+pylint
 pytest
 pytest-cov
-coverage
 sphinx
 sphinx-autodoc-typehints
 sphinx-rtd-theme
-PyYAML
-bson

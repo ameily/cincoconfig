@@ -5,46 +5,79 @@
 # this source code package.
 #
 
-from typing import Type
-from cincoconfig import abc
+from typing import Type, Dict
+from ..abc import ConfigFormat
+from .json import JsonConfigFormat
+from .pickle import PickleConfigFormat
+from .yaml import YamlConfigFormat, IS_AVAILABLE as YAML_IS_AVAILABLE
+from .bson import BsonConfigFormat, IS_AVAILABLE as BSON_IS_AVAILABLE
 
 
-class FormatRegistry:
-    __formats = dict()
-    __initialized = False
+class _FormatRegistrySingleton:
+    '''
+    The format registry singleton that holds all available config formats. The singleton instance
+    is avialable via
 
-    @classmethod
-    def get(cls, name: str, **kwargs) -> abc.ConfigFormat:
-        if not cls.__initialized:
-            cls.__initialize()
-        fmt = cls.__formats.get(name.lower())
+    .. code-block:: python
+
+        from cincoconfig import FormatRegistry
+
+    The FormatRegistry automatically registers the builtin formats:
+
+    - ``bson`` - :class:`~cincoconfig.formats.BsonConfigFormat`
+    - ``json`` - :class:`~cincoconfig.formats.JsonConfigFormat`
+    - ``pickle`` - :class:`~cincoconfig.formats.PickleConfigFormat`
+    - ``yaml`` - :class:`~cincoconfig.formats.YamlConfigFormat`
+    '''
+
+    def __init__(self):
+        self._formats = dict()  # type: Dict[str, Type[ConfigFormat]]
+        self._initialized = False
+
+    def get(self, name: str, **kwargs) -> ConfigFormat:
+        '''
+        Get and instantiate the configuration format identified by *name*, passing *kwargs* to the
+        format's constructor.
+
+        :param name: config format name, used when the format was registered.
+        :raises KeyError: the config format is not registered
+        :returns: the instantiated config format
+        '''
+        if not self._initialized:
+            self._initialize()
+
+        fmt = self._formats.get(name.lower())
         if not fmt:
             raise KeyError('unrecognized format: %s' % name)
-        return fmt(**kwargs)
+        return fmt(**kwargs)  # type: ignore
 
-    @classmethod
-    def register(cls, name: str, format_cls: Type[abc.ConfigFormat]):
-        if not cls.__initialized:
-            cls.__initialize()
-        cls.__formats[name] = format_cls
+    def register(self, name: str, format_cls: Type[ConfigFormat]) -> None:
+        '''
+        Register a new config format.
 
-    @classmethod
-    def __initialize(cls):
-        # pylint: disable=cyclic-import
-        if not cls.__initialized:
-            from .ini import IniConfigFormat
-            from .json import JsonConfigFormat
-            from .xml import XmlConfigFormat
-            from . import yaml
-            from . import bson
-            cls.__formats.update({
+        :param name: config format name
+        :param format_cls: the class that handles the format
+        '''
+        if not self._initialized:
+            self._initialize()
+        self._formats[name] = format_cls
+
+    def _initialize(self) -> None:
+        '''
+        Initialize the builtin formats.
+        '''
+        if not self._initialized:
+
+            self._formats.update({
                 'json': JsonConfigFormat,
-                'xml': XmlConfigFormat,
-                'ini': IniConfigFormat
+                'pickle': PickleConfigFormat
             })
 
-            if yaml.IS_AVAILABLE:
-                cls.__formats['yaml'] = yaml.YamlConfigFormat
-            if bson.IS_AVAILABLE:
-                cls.__formats['bson'] = bson.BsonConfigFormat
-            cls.__initialized = True
+            if YAML_IS_AVAILABLE:
+                self._formats['yaml'] = YamlConfigFormat
+            if BSON_IS_AVAILABLE:
+                self._formats['bson'] = BsonConfigFormat
+            self._initialized = True
+
+
+FormatRegistry = _FormatRegistrySingleton()  # pylint: disable=C0103

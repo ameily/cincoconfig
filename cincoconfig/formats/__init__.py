@@ -5,7 +5,11 @@
 # this source code package.
 #
 
-from .registry import FormatRegistry  # pylint: disable=cyclic-import
+from .registry import FormatRegistry
+from .json import JsonConfigFormat
+from .pickle import PickleConfigFormat
+from .yaml import YamlConfigFormat
+from .bson import BsonConfigFormat
 
 
 __all__ = ('FormatRegistry',)
