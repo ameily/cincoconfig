@@ -16,8 +16,8 @@ import base64
 from ipaddress import IPv4Address, IPv4Network
 from urllib.parse import urlparse
 from typing import Union, List, Any, Iterator, Callable
-from .abc import Field, AnyField
-from .config import Config, Schema
+from cincoconfig.abc import Field, AnyField
+from cincoconfig.config import Config, Schema
 
 
 __all__ = ('StringField', 'IntField', 'FloatField', 'PortField', 'IPv4AddressField',

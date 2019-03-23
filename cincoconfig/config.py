@@ -7,7 +7,6 @@
 
 from typing import Union, Any, Iterator, Tuple
 from . import abc
-# from .formats import FormatRegistry
 from . import formats
 
 
