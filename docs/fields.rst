@@ -19,6 +19,9 @@ fields
 .. autoclass:: cincoconfig.ApplicationModeField
     :members:
 
+.. autoclass:: cincoconfig.SecureField
+    :members:
+
 .. autoclass:: cincoconfig.IntField
     :members:
 
