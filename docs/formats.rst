@@ -27,6 +27,13 @@ This will automatically create the :class:`cincoconfig.formats.json.JsonConfigFo
 .. autoclass:: cincoconfig.formats.PickleConfigFormat
     :members:
 
+.. autoclass:: cincoconfig.formats.XmlConfigFormat
+    :members:
+
+    .. automethod:: _to_element
+    .. automethod:: _from_element
+    .. automethod:: _prettify
+
 .. autoclass:: cincoconfig.formats.YamlConfigFormat
     :members:
 

@@ -9,6 +9,7 @@ from typing import Type, Dict
 from ..abc import ConfigFormat
 from .json import JsonConfigFormat
 from .pickle import PickleConfigFormat
+from .xml import XmlConfigFormat
 from .yaml import YamlConfigFormat, IS_AVAILABLE as YAML_IS_AVAILABLE
 from .bson import BsonConfigFormat, IS_AVAILABLE as BSON_IS_AVAILABLE
 
@@ -27,6 +28,7 @@ class _FormatRegistrySingleton:
     - ``bson`` - :class:`~cincoconfig.formats.BsonConfigFormat`
     - ``json`` - :class:`~cincoconfig.formats.JsonConfigFormat`
     - ``pickle`` - :class:`~cincoconfig.formats.PickleConfigFormat`
+    - ``xml`` - :class:`~cincoconfig.formats.XmlConfigFormat`
     - ``yaml`` - :class:`~cincoconfig.formats.YamlConfigFormat`
     '''
 
@@ -70,7 +72,8 @@ class _FormatRegistrySingleton:
 
             self._formats.update({
                 'json': JsonConfigFormat,
-                'pickle': PickleConfigFormat
+                'pickle': PickleConfigFormat,
+                'xml': XmlConfigFormat
             })
 
             if YAML_IS_AVAILABLE:

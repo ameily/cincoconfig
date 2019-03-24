@@ -4,6 +4,7 @@ from cincoconfig.formats.registry import FormatRegistry, _FormatRegistrySingleto
 from cincoconfig.formats.json import JsonConfigFormat
 from cincoconfig.formats.bson import BsonConfigFormat
 from cincoconfig.formats.yaml import YamlConfigFormat
+from cincoconfig.formats.xml import XmlConfigFormat
 from cincoconfig.formats.pickle import PickleConfigFormat
 
 
@@ -50,5 +51,6 @@ class TestFormatRegistry:
             'json': JsonConfigFormat,
             'yaml': YamlConfigFormat,
             'bson': BsonConfigFormat,
-            'pickle': PickleConfigFormat
+            'pickle': PickleConfigFormat,
+            'xml': XmlConfigFormat
         }
