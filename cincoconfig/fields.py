@@ -714,7 +714,7 @@ class SecureField(Field):
     .. code-block:: json
 
         "password": {
-            "value": <hash_of_mySecretPassword>
+            "value": <salt:hash_of_mySecretPassword>
             "type": "secure_value"
         }
 
@@ -754,15 +754,15 @@ class SecureField(Field):
         >>> config.password
         'P@55w0rd'
         >>> config.hash
-        '37e4392dad1ad3d86680a8c6b06ede92'
+        'Ei6VAB/l1zR2aHfHkze9RQ==:2eab68777305da854d084b67765b5de6'
         >>> print(json.dumps(config.to_tree(), indent=4))
         {
             "hash": {
-                "value": "37e4392dad1ad3d86680a8c6b06ede92",
+                "value": "Ei6VAB/l1zR2aHfHkze9RQ==:2eab68777305da854d084b67765b5de6",
                 "type": "secure_value"
             },
             "password": {
-                "value": "nf5eOOHbgG2MPlxd2GhvnvH1C2RnNIHp",
+                "value": "af2FFKKLFHpSQqZhj96gmn3XGl2AvQ1h",
                 "type": "secure_value"
             }
         }
@@ -923,12 +923,24 @@ class SecureField(Field):
         raise TypeError('invalid encryption action %s' % self._action)
 
     def check_hash(self, cfg: BaseConfig, password: str) -> bool:
+        # pylint: disable=line-too-long
         '''
         Helper method to check if a password hashes to the provided hash value
 
         .. code-block:: python
 
-            # TODO: Add python code example usage
+            >>> from cincoconfig import *
+            >>> cfg = Schema()
+            >>> cfg.hash = SecureField(action="hash_sha256")
+            >>> config = cfg()
+            >>> config.hash = "password"
+            >>> config.hash
+            'Vmwhhwp2VX3SOwBVKjz/Q5az+40rsGqtcES+bAd/N0Y=:a6c878405e5bb324611fbe828bb0f1334d199c5c3bbd3d7b5076bb21418786ea'
+            >>> cfg.hash.check_hash(config, "password")
+            True
+            >>> cfg.hash.check_hash(config, "herpderp")
+            False
+            >>>
 
         :param password: The password to check
         :returns: True if they match, False otherwise
