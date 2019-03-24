@@ -10,6 +10,7 @@ from cincoconfig import *
 cfg = Schema()
 cfg.hash = SecureField(action="hash_md5", default="herpderp")
 cfg.password = SecureField(action="enc_aes256", default="herpderp")
+cfg.xorpass = SecureField(action="enc_xor", default="herpderp")
 
 config = cfg()
 
@@ -19,6 +20,7 @@ if os.path.isfile("test.cfg.json"):
 
 print("hash:", config.hash)
 print("password (should be cleartext):", config.password)
+print("xor pass (should be cleartext):", config.xorpass)
 
 if cfg.hash.check_hash(config, "herpderp"):
     print("WE DID IT")

@@ -14,7 +14,7 @@ import json
 import socket
 import base64
 import hashlib
-import pathlib
+import random
 from ipaddress import IPv4Address, IPv4Network
 from urllib.parse import urlparse
 from typing import Union, List, Any, Iterator, Callable
@@ -735,8 +735,9 @@ class SecureField(Field):
     The *.cincokey* file will store the following information:
         1. The AES 265 key used to encrypt data using *action* ``enc_aes256``
         2. A very long XOR key used to encrypt data using *action* ``enc_xor``
-        3. A 512 byte 'secret' key used to further secure hashes when using a hash function.
-           This secret is used in addition to a salt.
+        3. A 512 byte 'secret' key used to further secure hashes when using a hash function and
+           to seed a random number generator used to pick the bytes from the XOR key to encrypt
+           a message. For hasing, this secret is used in addition to a salt.
 
     When using a ``SecureField`` in code it's important to remember that encryption
     and hashing will happen automatically and transparently. Never set the value
@@ -898,7 +899,13 @@ class SecureField(Field):
             ciphertext = obj.encrypt(value)
             return base64.b64encode(ivec + ciphertext).decode()
         if self._action == "enc_xor":
-            return value  # TODO: implement XOR to support no-dependency encryption
+            secret = base64.b64decode(self._keys["secret"].encode())
+            key = base64.b64decode(self._keys["xor"].encode())
+            random.seed(secret)
+            ciphertext = b''
+            for clear_char in value:
+                ciphertext += bytes([(ord(clear_char) ^ key[random.randint(0, len(key) - 1)])])
+            return base64.b64encode(ciphertext).decode()
 
         raise TypeError('invalid encryption action %s' % self._action)
 
@@ -918,7 +925,14 @@ class SecureField(Field):
             obj = AES.new(key, AES.MODE_CFB, ivec)
             return obj.decrypt(ciphertext).decode()
         if self._action == "enc_xor":
-            return value  # TODO: implement XOR to support no-dependency encryption
+            secret = base64.b64decode(self._keys["secret"].encode())
+            key = base64.b64decode(self._keys["xor"].encode())
+            random.seed(secret)
+            ciphertext = base64.b64decode(value.encode())
+            cleartext = b''
+            for cipher_byte in ciphertext:
+                cleartext += bytes([(cipher_byte ^ key[random.randint(0, len(key) - 1)])])
+            return cleartext.decode()
 
         raise TypeError('invalid encryption action %s' % self._action)
 
