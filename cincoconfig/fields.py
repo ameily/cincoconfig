@@ -1046,9 +1046,6 @@ class SecureField(Field):
         if self._action in self.ENC_ACTION:
             return self._encrypt(value)
 
-        # TODO: Do I need to raise an exception? I check in __init__() that the
-        # action is valid. Maybe self._action should be self._action to imply
-        # private membership?
         raise TypeError("unknown action %s" % self._action)
 
     def to_basic(self, cfg: BaseConfig, value: str) -> dict:
@@ -1116,9 +1113,6 @@ class SecureField(Field):
                 # _validate() when the value is set
                 return value
 
-            # TODO: Do I need to raise an exception? I check in __init__() that the
-            # action is valid. Maybe self._action should be self._action to imply
-            # private membership?
             raise TypeError("unknown action %s" % self._action)
 
         raise ValueError("unsupported type %s" % type(value))
