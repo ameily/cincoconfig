@@ -10,9 +10,11 @@ Cinco Config Fields.
 
 import os
 import re
+import json
 import socket
 import base64
 import hashlib
+import pathlib
 from ipaddress import IPv4Address, IPv4Network
 from urllib.parse import urlparse
 from typing import Union, List, Any, Iterator, Callable
@@ -721,7 +723,7 @@ class SecureField(Field):
     re-secured. If the dict is modified in place, the system will fail to properly secure
     the value.
 
-    For encryption, ``SecureField`` will generate a *.cincokey* file in the current user's
+    To secure fields, ``SecureField`` will generate a *.cincokey* file in the current user's
     home directory if one has not already been generated. Cinco config will handle key
     management automatically. Encryption within CinoConfig is all "best-effort", meaning
     it will not protect passwords or data from people who have full access to the system
@@ -729,6 +731,12 @@ class SecureField(Field):
     secure fields could be exposed to that user. The goal here is to secure the config
     file against accidental leaks or application vulnerabilities that expose the config
     file itself.
+
+    The *.cincokey* file will store the following information:
+        1. The AES 265 key used to encrypt data using *action* ``enc_aes256``
+        2. A very long XOR key used to encrypt data using *action* ``enc_xor``
+        3. A 512 byte 'secret' key used to further secure hashes when using a hash function.
+           This secret is used in addition to a salt.
 
     When using a ``SecureField`` in code it's important to remember that encryption
     and hashing will happen automatically and transparently. Never set the value
@@ -767,7 +775,8 @@ class SecureField(Field):
     ]
     ENC_ACTION = ['enc_xor', 'enc_aes256']
 
-    def __init__(self, action: str = None, **kwargs):
+    def __init__(self, action: str = None, key_path: str = None, key_exists: bool = None,
+                 **kwargs):
         '''
         The *action* parameter is used to specify how the field should be secured. Valid
         values for *action* are:
@@ -788,13 +797,19 @@ class SecureField(Field):
         could be for a field that is used to validate user provided credentials.
 
         :param action: specifies how to secure the field (default will be ``hash_sha256``)
+        :param key_path: Path to a key file otherwise ``user/home/dir/.cincokey` will be used.
+        :param key_exists: If true, validate the key file exists. If False, validate the key
+            file does not exist. If None, do not validate whether the key exists or not.
         :raises TypeError: if the user specifies an invalid action or if the user attempts
             to use an action that requires a python library that is not installed
+        :raises FileNotFoundError: if ``key_exists`` is True and the file is not found
+        :raises FileExistsError: if ``key_exists`` is False and the file is found
         '''
         super().__init__(**kwargs)
         self._action = action or 'hash_sha256'
-        self.hashed = False  # Whether or not we've already hashed a value
+        self._hashed = False  # Whether or not we've already hashed a value
         self._method = 'hash' if self._action in self.HASH_ACTION else 'enc'
+        self._keys = {}  # Store keys for encryption (AES, XOR)
 
         # Validate the action
         if self._action not in self.HASH_ACTION + self.ENC_ACTION:
@@ -807,15 +822,35 @@ class SecureField(Field):
             except ImportError:
                 raise TypeError('action %s requires the pycrypto module' % self._action)
 
-        if self._method == 'enc':
-            # TODO: Generate/read/manage a key file
-            self._generate_key_file()
+        # Create the key path or use the user provided path
+        self._key_path = key_path or os.path.join(os.path.expanduser("~"), ".cincokey")
 
-    def _generate_key_file(self, must_exist=False):
+        # Check if the file exists and is a file
+        exists = os.path.exists(self._key_path) and os.path.isfile(self._key_path)
+        if key_exists is True and not exists:
+            raise FileNotFoundError("key file %s must exist" % self._key_path)
+        if key_exists is False and exists:
+            raise FileExistsError("key file %s must not exist" % self._key_path)
+
+        self._generate_key_file()
+
+    def _generate_key_file(self) -> None:
         '''
-        TODO: Generate or load an application specific key file
+        Method to generate or load a key file. Keys are loaded into the
+        ``_keys`` dict.
         '''
-        return b'B' * 32
+        if not os.path.exists(self._key_path):
+            aes_key = os.urandom(32)  # Secure random 32 bytes (AES 256 key size)
+            xor_key = os.urandom(4096)  # Need more data to avoid overlap as much as possible
+            secret = os.urandom(512)  # Secret key used to further secure hashed passwords
+            self._keys["aes256"] = base64.b64encode(aes_key).decode()
+            self._keys["xor"] = base64.b64encode(xor_key).decode()
+            self._keys["secret"] = base64.b64encode(secret).decode()
+            with open(self._key_path, 'w') as fhandle:
+                fhandle.write(json.dumps(self._keys))
+        else:
+            with open(self._key_path, 'r') as fhandle:
+                self._keys = json.loads(fhandle.read())
 
     def __setdefault__(self, cfg: BaseConfig):
         '''
@@ -857,19 +892,14 @@ class SecureField(Field):
         '''
         if self._action == "enc_aes256":
             from Crypto.Cipher import AES
-
             ivec = os.urandom(AES.block_size)
-
-            # TODO: Use key from generated key file
-            obj = AES.new(self._generate_key_file(), AES.MODE_CFB, ivec)
+            key = base64.b64decode(self._keys["aes256"].encode())
+            obj = AES.new(key, AES.MODE_CFB, ivec)
             ciphertext = obj.encrypt(value)
             return base64.b64encode(ivec + ciphertext).decode()
         if self._action == "enc_xor":
             return value  # TODO: implement XOR to support no-dependency encryption
 
-        # TODO: Do I need to raise an exception? I check in __init__() that the
-        # action is valid. Maybe self._action should be self._action to imply
-        # private membership?
         raise TypeError('invalid encryption action %s' % self._action)
 
     def _decrypt(self, value: str) -> str:
@@ -881,63 +911,75 @@ class SecureField(Field):
         '''
         if self._action == "enc_aes256":
             from Crypto.Cipher import AES
-
             ciphertext = base64.b64decode(value.encode())
             ivec = ciphertext[:AES.block_size]
             ciphertext = ciphertext[AES.block_size:]
-
-            # TODO: Use key from generated key file
-            obj = AES.new(self._generate_key_file(must_exist=True), AES.MODE_CFB, ivec)
+            key = base64.b64decode(self._keys["aes256"].encode())
+            obj = AES.new(key, AES.MODE_CFB, ivec)
             return obj.decrypt(ciphertext).decode()
         if self._action == "enc_xor":
             return value  # TODO: implement XOR to support no-dependency encryption
 
-        # TODO: Do I need to raise an exception? I check in __init__() that the
-        # action is valid. Maybe self._action should be self._action to imply
-        # private membership?
         raise TypeError('invalid encryption action %s' % self._action)
 
-    @staticmethod
-    def hash(value: str, action: str) -> str:
+    def check_hash(self, cfg: BaseConfig, password: str) -> bool:
         '''
-        Helper public method provided for easy hashing. This can be used
-        to check if a provided clear-text password matches the hash for that
-        password:
+        Helper method to check if a password hashes to the provided hash value
 
         .. code-block:: python
 
-            >>> from cincoconfig import *
-            >>> cfg = Schema()
-            >>> cfg.password_hash = SecureField(action="hash_sha256")
-            >>> config = cfg()
-            >>> config.password_hash = "mySecretPassword"
-            >>> config.password_hash
-            '2250e74c6f823de9d70c2222802cd059dc970f56ed8d41d5d22d1a6d4a2ab66f'
-            >>> config.password_hash == SecureField.hash("mySecretPassword", "hash_sha256")
-            True
-            >>>
+            # TODO: Add python code example usage
+
+        :param password: The password to check
+        :returns: True if they match, False otherwise
+        :raises ValueError: if the hashval has not been calculated for the given field yet
+        '''
+        hashval = cfg._data[self.key]
+        if not hashval:
+            raise ValueError("hash has not been calculated for this field yet")
+
+        salt = hashval.split(":")[0]
+        passhash = self._hash_value(password, base64.b64decode(salt.encode()))
+
+        return hashval == passhash
+
+    def _hash_value(self, value: str, salt: bytes = None) -> str:
+        '''
+        Private method that performs the actual hash. This method does not
+        check if the value has already been hashed.
 
         :param value: the value to be hashed
-        :param action: the hash action
-        :raise TypeError: if the action provided is invalid
+        :param salt: specify the salt to use. Used by :meth:`check_hash`
+        :raise TypeError: if the action is invalid
         '''
 
-        # TODO: Salt the hashes
+        hashval = None
+        salt = salt
+        secret = base64.b64decode(self._keys["secret"].encode())
 
-        if action == "hash_md5":
-            return hashlib.md5(value.encode()).hexdigest()
-        if action == "hash_sha1":
-            return hashlib.sha1(value.encode()).hexdigest()
-        if action == "hash_sha224":
-            return hashlib.sha224(value.encode()).hexdigest()
-        if action == "hash_sha256":
-            return hashlib.sha256(value.encode()).hexdigest()
-        if action == "hash_sha384":
-            return hashlib.sha384(value.encode()).hexdigest()
-        if action == "hash_sha512":
-            return hashlib.sha512(value.encode()).hexdigest()
+        if self._action == "hash_md5":
+            salt = salt or os.urandom(hashlib.md5().digest_size)
+            hashval = hashlib.md5(salt + value.encode() + secret).hexdigest()
+        elif self._action == "hash_sha1":
+            salt = salt or os.urandom(hashlib.sha1().digest_size)
+            hashval = hashlib.sha1(salt + value.encode() + secret).hexdigest()
+        elif self._action == "hash_sha224":
+            salt = salt or os.urandom(hashlib.sha224().digest_size)
+            hashval = hashlib.sha224(salt + value.encode() + secret).hexdigest()
+        elif self._action == "hash_sha256":
+            salt = salt or os.urandom(hashlib.sha256().digest_size)
+            hashval = hashlib.sha256(salt + value.encode() + secret).hexdigest()
+        elif self._action == "hash_sha384":
+            salt = salt or os.urandom(hashlib.sha384().digest_size)
+            hashval = hashlib.sha384(salt + value.encode() + secret).hexdigest()
+        elif self._action == "hash_sha512":
+            salt = salt or os.urandom(hashlib.sha512().digest_size)
+            hashval = hashlib.sha512(salt + value.encode() + secret).hexdigest()
+        else:
+            raise TypeError("action %s is not a valid hash action" % self._action)
 
-        raise TypeError("action %s is not a valid hash action" % action)
+        b64salt = base64.b64encode(salt).decode()
+        return "{}:{}".format(b64salt, hashval)
 
     def _hash(self, value: str) -> str:  # pylint: disable=too-many-return-statements
         '''
@@ -947,12 +989,12 @@ class SecureField(Field):
         :returns: hashed value
         '''
 
-        if self.hashed:
+        if self._hashed:
             return value
 
-        self.hashed = True
+        self._hashed = True
 
-        return self.hash(value, self._action)
+        return self._hash_value(value)
 
     def _validate(self, cfg: BaseConfig, value: str) -> str:
         '''
@@ -962,14 +1004,14 @@ class SecureField(Field):
         :param value: value to validate
         '''
         if value is None:
-            self.hashed = False
+            self._hashed = False
             return value
 
         if self._action in self.HASH_ACTION:
             if value != cfg._data[self.key]:
                 # Only hash if the value has changed
                 # to avoid hashing a hash
-                self.hashed = False
+                self._hashed = False
 
             return self._hash(value)
         if self._action in self.ENC_ACTION:
@@ -1018,7 +1060,7 @@ class SecureField(Field):
         if isinstance(value, dict) and value.get("type", "") == "secure_value":
             if self._action in self.HASH_ACTION:
                 # It's a dict with type 'secure_value', we assume it's already hashed
-                self.hashed = True
+                self._hashed = True
 
                 # Set manually so we don't hash again in _validate()
                 cfg._data[self.key] = value.get("value")
@@ -1033,7 +1075,7 @@ class SecureField(Field):
         if isinstance(value, str):
             if self._action in self.HASH_ACTION:
                 # String value, assume it's not hashed. User-modified config
-                self.hashed = False
+                self._hashed = False
 
                 # Set manually so we don't hash again in _validate()
                 cfg._data[self.key] = self._hash(value)
