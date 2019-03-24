@@ -901,7 +901,7 @@ class SecureField(Field):
         if self._action == "enc_xor":
             secret = base64.b64decode(self._keys["secret"].encode())
             key = base64.b64decode(self._keys["xor"].encode())
-            random.seed(secret)
+            random.seed(secret)  # TODO: Make better use of the XOR key. This will use same bytes
             ciphertext = b''
             for clear_char in value:
                 ciphertext += bytes([(ord(clear_char) ^ key[random.randint(0, len(key) - 1)])])
@@ -927,7 +927,7 @@ class SecureField(Field):
         if self._action == "enc_xor":
             secret = base64.b64decode(self._keys["secret"].encode())
             key = base64.b64decode(self._keys["xor"].encode())
-            random.seed(secret)
+            random.seed(secret)  # TODO: Make better use of the XOR key. This will use same bytes
             ciphertext = base64.b64decode(value.encode())
             cleartext = b''
             for cipher_byte in ciphertext:
