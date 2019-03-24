@@ -899,13 +899,15 @@ class SecureField(Field):
             ciphertext = obj.encrypt(value)
             return base64.b64encode(ivec + ciphertext).decode()
         if self._action == "enc_xor":
-            secret = base64.b64decode(self._keys["secret"].encode())
+            seed = os.urandom(64)
             key = base64.b64decode(self._keys["xor"].encode())
-            random.seed(secret)  # TODO: Make better use of the XOR key. This will use same bytes
+            random.seed(seed)
             ciphertext = b''
             for clear_char in value:
                 ciphertext += bytes([(ord(clear_char) ^ key[random.randint(0, len(key) - 1)])])
-            return base64.b64encode(ciphertext).decode()
+            ciphertext = base64.b64encode(ciphertext).decode()
+            seed = base64.b64encode(seed).decode()
+            return "{}:{}".format(seed, ciphertext)
 
         raise TypeError('invalid encryption action %s' % self._action)
 
@@ -925,10 +927,11 @@ class SecureField(Field):
             obj = AES.new(key, AES.MODE_CFB, ivec)
             return obj.decrypt(ciphertext).decode()
         if self._action == "enc_xor":
-            secret = base64.b64decode(self._keys["secret"].encode())
+            seed, ciphertext = value.split(":")
+            seed = base64.b64decode(seed.encode())
+            ciphertext = base64.b64decode(ciphertext.encode())
             key = base64.b64decode(self._keys["xor"].encode())
-            random.seed(secret)  # TODO: Make better use of the XOR key. This will use same bytes
-            ciphertext = base64.b64decode(value.encode())
+            random.seed(seed)
             cleartext = b''
             for cipher_byte in ciphertext:
                 cleartext += bytes([(cipher_byte ^ key[random.randint(0, len(key) - 1)])])
