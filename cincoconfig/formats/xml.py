@@ -105,26 +105,29 @@ class XmlConfigFormat(ConfigFormat):
             *type* attribute
         :returns: the parsed Python value
         '''
+        # pylint: disable=too-many-branches
         pytype = pytype or ele.attrib.get('type')
+        text = ele.text or ''
+        value = None  # type: Any
         if pytype == 'str':
-            value = ele.text
+            value = text
         elif pytype == 'bool':
-            if ele.text.lower() in BoolField.TRUE_VALUES:
+            if text.lower() in BoolField.TRUE_VALUES:
                 value = True
-            elif ele.text.lower() in BoolField.FALSE_VALUES:
+            elif text.lower() in BoolField.FALSE_VALUES:
                 value = False
             else:
-                value = ele.text
+                value = text
         elif pytype == 'int':
             try:
-                value = int(ele.text)
+                value = int(text)
             except:
-                value = ele.text
+                value = text
         elif pytype == 'float':
             try:
-                value = float(ele.text)
+                value = float(text)
             except:
-                value = ele.text
+                value = text
         elif pytype == 'none':
             value = None
         elif pytype == 'list':
@@ -138,7 +141,7 @@ class XmlConfigFormat(ConfigFormat):
                 item = self._from_element(sub)
                 value[sub.tag] = item
         else:
-            value = ele.text
+            value = text
 
         return value
 

@@ -84,7 +84,8 @@ class YamlConfigFormat(ConfigFormat):
         '''
         Deserialize the ``content`` (a :class:`bytes` instance containing a YAML document) to a
         Python basic value tree.  If *root_key* was specified, the returned basic value tree will
-        be scoped to *root_key*, if it exists in the deserialized :class:`dict`. This is equivalent to:
+        be scoped to *root_key*, if it exists in the deserialized :class:`dict`. This is
+        equivalent to:
 
         .. code-block:: python
 
