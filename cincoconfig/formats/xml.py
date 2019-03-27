@@ -65,7 +65,7 @@ class XmlConfigFormat(ConfigFormat):
             ele.attrib['type'] = 'float'
             ele.text = str(value)
         elif value is None:
-            ele.attrib['type'] = 'null'
+            ele.attrib['type'] = 'none'
         elif isinstance(value, list):
             ele.attrib['type'] = 'list'
             for item in value:

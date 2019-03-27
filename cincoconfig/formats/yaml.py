@@ -75,10 +75,7 @@ class YamlConfigFormat(ConfigFormat):
         '''
         if self.root_key:
             tree = {self.root_key: tree}
-        # for some reason, mypy thinks that yaml.CDumper doesn't exist, but it really does, so
-        # ignore the false positive
-        dumper = yaml.CDumper  # type: ignore
-        return yaml.dump(tree, Dumper=dumper).encode()
+        return yaml.dump(tree, Dumper=yaml.Dumper).encode()
 
     def loads(self, config: BaseConfig, content: bytes) -> dict:
         '''
@@ -96,7 +93,7 @@ class YamlConfigFormat(ConfigFormat):
         :param content: content to deserialize
         :returns: deserialized basic value tree
         '''
-        tree = yaml.load(content.decode(), Loader=yaml.CLoader)
+        tree = yaml.load(content.decode(), Loader=yaml.Loader)
         if self.root_key and self.root_key in tree:
             tree = tree[self.root_key]
         return tree
