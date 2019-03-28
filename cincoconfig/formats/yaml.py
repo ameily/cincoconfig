@@ -65,26 +65,24 @@ class YamlConfigFormat(ConfigFormat):
 
     def dumps(self, config: BaseConfig, tree: dict) -> bytes:
         '''
-        Deserialize the ``content`` (a :class:`bytes` instance containing a JSON document) to a
-        Python basic value tree. If *root_key* was specified, the returned YAML document will
-        contain a single top-level field named *root_key* that all other values are stored under.
+        Serialize the basic value ``tree`` to YAML :class:`bytes` document. If *root_key* was
+        specified, the returned YAML document will contain a single top-level field named
+        *root_key* that all other values are stored under.
 
         :param config: current config
-        :param content: content to serialize
-        :returns: the deserialized basic value tree
+        :param tree: basic value tree
+        :returns: the serialized basic value tree
         '''
         if self.root_key:
             tree = {self.root_key: tree}
-        # for some reason, mypy thinks that yaml.CDumper doesn't exist, but it really does, so
-        # ignore the false positive
-        dumper = yaml.CDumper  # type: ignore
-        return yaml.dump(tree, Dumper=dumper).encode()
+        return yaml.dump(tree, Dumper=yaml.Dumper).encode()
 
     def loads(self, config: BaseConfig, content: bytes) -> dict:
         '''
-        Serialize the basic value ``tree`` to JSON :class:`bytes` document. If *root_key* was
-        specified, the returned basic value tree will be scoped to *root_key*, if it exists in
-        the deserialized :class:`dict`. This is equivalent to:
+        Deserialize the ``content`` (a :class:`bytes` instance containing a YAML document) to a
+        Python basic value tree.  If *root_key* was specified, the returned basic value tree will
+        be scoped to *root_key*, if it exists in the deserialized :class:`dict`. This is
+        equivalent to:
 
         .. code-block:: python
 
@@ -92,9 +90,10 @@ class YamlConfigFormat(ConfigFormat):
             return tree[self.root_key]
 
         :param config: current config
-        :param tree: basic value tree
+        :param content: content to deserialize
+        :returns: deserialized basic value tree
         '''
-        tree = yaml.load(content.decode(), Loader=yaml.CLoader)
+        tree = yaml.load(content.decode(), Loader=yaml.Loader)
         if self.root_key and self.root_key in tree:
             tree = tree[self.root_key]
         return tree

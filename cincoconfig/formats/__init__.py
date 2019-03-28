@@ -10,6 +10,7 @@ from .json import JsonConfigFormat
 from .pickle import PickleConfigFormat
 from .yaml import YamlConfigFormat
 from .bson import BsonConfigFormat
+from .xml import XmlConfigFormat
 
 
 __all__ = ('FormatRegistry',)
