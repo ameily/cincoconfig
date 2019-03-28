@@ -13,21 +13,46 @@ import pytest
 from Crypto.Cipher import AES
 from cincoconfig.fields import SecureField
 
-SECURE_KEY = b"B" * 32
-SECURE_IV = b"B" * AES.block_size
-SECURE_VAL = "password"
-SECURE_VAL_SHA1 = hashlib.sha1(SECURE_VAL.encode()).hexdigest()
-SECURE_VAL_MD5 = hashlib.md5(SECURE_VAL.encode()).hexdigest()
-SECURE_VAL_SHA224 = hashlib.sha224(SECURE_VAL.encode()).hexdigest()
-SECURE_VAL_SHA256 = hashlib.sha256(SECURE_VAL.encode()).hexdigest()
-SECURE_VAL_SHA384 = hashlib.sha384(SECURE_VAL.encode()).hexdigest()
-SECURE_VAL_SHA512 = hashlib.sha512(SECURE_VAL.encode()).hexdigest()
+SECRET = b'B' * 512
+AESKEY = b'B' * 32
+XORKEY = b'B' * 4096
 
 KEY_FILE_CONTENTS = json.dumps({
-    "secret": base64.b64encode(b'B' * 512).decode(),
-    "aes256": base64.b64encode(b'B' * 32).decode(),
-    "xor": base64.b64encode(b'B' * 4096).decode()
+    "secret": base64.b64encode(SECRET).decode(),
+    "aes256": base64.b64encode(AESKEY).decode(),
+    "xor": base64.b64encode(XORKEY).decode()
 })
+
+SECURE_IV = b"B" * AES.block_size
+SECURE_SALT = b"B"
+B64_SALT = base64.b64encode(SECURE_SALT).decode()
+
+SECURE_VAL = "password"
+
+SECURE_VAL_SHA1 = "{}:{}".format(
+    B64_SALT,
+    hashlib.sha1(SECURE_SALT + SECURE_VAL.encode() + SECRET).hexdigest()
+)
+SECURE_VAL_MD5 = "{}:{}".format(
+    B64_SALT,
+    hashlib.md5(SECURE_SALT + SECURE_VAL.encode() + SECRET).hexdigest()
+)
+SECURE_VAL_SHA224 = "{}:{}".format(
+    B64_SALT,
+    hashlib.sha224(SECURE_SALT + SECURE_VAL.encode() + SECRET).hexdigest()
+)
+SECURE_VAL_SHA256 = "{}:{}".format(
+    B64_SALT,
+    hashlib.sha256(SECURE_SALT + SECURE_VAL.encode() + SECRET).hexdigest()
+)
+SECURE_VAL_SHA384 = "{}:{}".format(
+    B64_SALT,
+    hashlib.sha384(SECURE_SALT + SECURE_VAL.encode() + SECRET).hexdigest()
+)
+SECURE_VAL_SHA512 = "{}:{}".format(
+    B64_SALT,
+    hashlib.sha512(SECURE_SALT + SECURE_VAL.encode() + SECRET).hexdigest()
+)
 
 
 class MockConfig:
@@ -62,10 +87,23 @@ class TestSecureField:
         field = SecureField()
         assert field._action == "hash_sha256"
 
-    ''' TODO: Fix
+    @patch("os.path.isfile", return_value=False)
+    @patch("os.path.exists", return_value=False)
+    def test_key_file_not_found(self, _mock_exists, _mock_isfile):
+        with pytest.raises(FileNotFoundError):
+            field = SecureField(key_path="/ferp/merp/.cincokey", key_exists=True)
+
+    @patch("os.path.isfile", return_value=True)
+    @patch("os.path.exists", return_value=True)
+    def test_key_file_exists(self, _mock_exists, _mock_isfile):
+        with pytest.raises(FileExistsError):
+            field = SecureField(key_path="/ferp/merp/.cincokey", key_exists=False)
+
+    @patch('os.urandom', return_value=SECURE_SALT)
     @patch('builtins.open', new_callable=mock_open, read_data=KEY_FILE_CONTENTS)
-    def test_default_hash(self):
+    def test_default_hash(self, _mock_file, _mock_urandom):
         field = SecureField(action="hash_sha1", default="password")
         field.__setdefault__(self.cfg)
+        print(field.__getval__(self.cfg))
+        print(SECURE_VAL_SHA1)
         assert field.__getval__(self.cfg) == SECURE_VAL_SHA1
-    '''
