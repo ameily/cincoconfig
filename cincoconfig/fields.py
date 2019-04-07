@@ -733,8 +733,9 @@ class SecureField(Field):
     file itself.
 
     The *.cincokey* file will store the following information:
-        1. The AES 265 key used to encrypt data using *action* ``enc_aes256``
-        2. A very long XOR key used to encrypt data using *action* ``enc_xor``
+        1. The AES 265 key used to encrypt data using *action* ``enc_aes256`` (requires pycrypto)
+        2. A very long XOR key used to encrypt data using *action* ``enc_xor`` (to support
+           zero dependency encryption scenarios)
         3. A 512 byte 'secret' key used to further secure hashes when using a hash function and
            to seed a random number generator used to pick the bytes from the XOR key to encrypt
            a message. For hasing, this secret is used in addition to a salt.
@@ -748,10 +749,10 @@ class SecureField(Field):
 
         >>> import json
         >>> from cincoconfig import *
-        >>> cfg = Schema()
-        >>> cfg.password = SecureField(action="enc_aes256", default="P@55w0rd")
-        >>> cfg.hash = SecureField(action="hash_md5", default="P@55w0rd")
-        >>> config = cfg()
+        >>> schema = Schema()
+        >>> schema.password = SecureField(action="enc_aes256", default="P@55w0rd")
+        >>> schema.hash = SecureField(action="hash_md5", default="P@55w0rd")
+        >>> config = schema()
         >>> config.password
         'P@55w0rd'
         >>> config.hash
@@ -783,7 +784,7 @@ class SecureField(Field):
         values for *action* are:
 
         * Encryption:
-            1. ``enc_xor``
+            1. ``enc_xor`` (no dependencies)
             2. ``enc_aes256`` (requires that *pycrypto* is installed)
         * Hashing:
             1. ``hash_md5``
@@ -899,14 +900,19 @@ class SecureField(Field):
             ciphertext = obj.encrypt(value)
             return base64.b64encode(ivec + ciphertext).decode()
         if self._action == "enc_xor":
-            seed = os.urandom(64)
-            key = base64.b64decode(self._keys["xor"].encode())
-            random.seed(seed)
+            seed = os.urandom(64)  # Generate 64 bytes to use as a seed
+            key = base64.b64decode(self._keys["xor"].encode())  # Get the raw key bytes
+            random.seed(seed)  # Seed the random number generator with our seed
             ciphertext = b''
+            # XOR each byte of the value with a random bytes from the XOR key
             for clear_char in value:
                 ciphertext += bytes([(ord(clear_char) ^ key[random.randint(0, len(key) - 1)])])
+
+            # Base 64 encode the seed and the message content
             ciphertext = base64.b64encode(ciphertext).decode()
             seed = base64.b64encode(seed).decode()
+
+            # Store the seed and the ciphertext
             return "{}:{}".format(seed, ciphertext)
 
         raise TypeError('invalid encryption action %s' % self._action)
@@ -927,14 +933,23 @@ class SecureField(Field):
             obj = AES.new(key, AES.MODE_CFB, ivec)
             return obj.decrypt(ciphertext).decode()
         if self._action == "enc_xor":
+            # Recover the seed and ciphertext then decode them to get raw bytes
             seed, ciphertext = value.split(":")
             seed = base64.b64decode(seed.encode())
             ciphertext = base64.b64decode(ciphertext.encode())
+
+            # Decode the key
             key = base64.b64decode(self._keys["xor"].encode())
+
+            # Seed with the provided seed
             random.seed(seed)
             cleartext = b''
+
+            # XOR each byte of the ciphertext with random (seeded) bytes from the XOR key
             for cipher_byte in ciphertext:
                 cleartext += bytes([(cipher_byte ^ key[random.randint(0, len(key) - 1)])])
+
+            # Return as ASCII
             return cleartext.decode()
 
         raise TypeError('invalid encryption action %s' % self._action)
@@ -947,15 +962,15 @@ class SecureField(Field):
         .. code-block:: python
 
             >>> from cincoconfig import *
-            >>> cfg = Schema()
-            >>> cfg.hash = SecureField(action="hash_sha256")
-            >>> config = cfg()
+            >>> schema = Schema()
+            >>> schema.hash = SecureField(action="hash_sha256")
+            >>> config = schema()
             >>> config.hash = "password"
             >>> config.hash
             'Vmwhhwp2VX3SOwBVKjz/Q5az+40rsGqtcES+bAd/N0Y=:a6c878405e5bb324611fbe828bb0f1334d199c5c3bbd3d7b5076bb21418786ea'
-            >>> cfg.hash.check_hash(config, "password")
+            >>> schema.hash.check_hash(config, "password")
             True
-            >>> cfg.hash.check_hash(config, "herpderp")
+            >>> schema.hash.check_hash(config, "herpderp")
             False
             >>>
 
