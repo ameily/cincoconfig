@@ -7,6 +7,8 @@
 '''
 Cinco Config Fields.
 '''
+# This is temporary. Will be fixed with issue #9
+# pylint: disable=too-many-lines
 
 import os
 import re
@@ -808,10 +810,14 @@ class SecureField(Field):
         :raises FileExistsError: if ``key_exists`` is False and the file is found
         '''
         super().__init__(**kwargs)
-        self._action = action or 'hash_sha256'
-        self._hashed = False  # Whether or not we've already hashed a value
-        self._method = 'hash' if self._action in self.HASH_ACTION else 'enc'
-        self._keys = {}  # Store keys for encryption (AES, XOR)
+        #: Action (defaults to ``hash_sha256``)
+        self._action = action or 'hash_sha256'  # type: str
+        #: Whether or not we've already hashed a value
+        self._hashed = False  # type: bool
+        #: Set to either 'hash' or 'enc' based on provided action
+        self._method = 'hash' if self._action in self.HASH_ACTION else 'enc'  # type: str
+        #: Stores the AES, XOR, and secret keys used for crypto
+        self._keys = {}  # type: dict
 
         # Validate the action
         if self._action not in self.HASH_ACTION + self.ENC_ACTION:
@@ -821,6 +827,7 @@ class SecureField(Field):
             # Need to make sure pycrypto is installed
             try:
                 from Crypto.Cipher import AES  # pylint: disable=unused-import
+                from Crypto.Random import get_random_bytes  # pylint: disable=unused-import
             except ImportError:
                 raise TypeError('action %s requires the pycrypto module' % self._action)
 
@@ -894,10 +901,11 @@ class SecureField(Field):
         '''
         if self._action == "enc_aes256":
             from Crypto.Cipher import AES
-            ivec = os.urandom(AES.block_size)
+            from Crypto.Random import get_random_bytes
+            ivec = get_random_bytes(AES.block_size)
             key = base64.b64decode(self._keys["aes256"].encode())
             obj = AES.new(key, AES.MODE_CFB, ivec)
-            ciphertext = obj.encrypt(value)
+            ciphertext = obj.encrypt(value.encode())
             return base64.b64encode(ivec + ciphertext).decode()
         if self._action == "enc_xor":
             seed = os.urandom(64)  # Generate 64 bytes to use as a seed
@@ -909,11 +917,11 @@ class SecureField(Field):
                 ciphertext += bytes([(ord(clear_char) ^ key[random.randint(0, len(key) - 1)])])
 
             # Base 64 encode the seed and the message content
-            ciphertext = base64.b64encode(ciphertext).decode()
-            seed = base64.b64encode(seed).decode()
+            b64ciphertext = base64.b64encode(ciphertext).decode()
+            b64seed = base64.b64encode(seed).decode()
 
             # Store the seed and the ciphertext
-            return "{}:{}".format(seed, ciphertext)
+            return "{}:{}".format(b64seed, b64ciphertext)
 
         raise TypeError('invalid encryption action %s' % self._action)
 
@@ -934,9 +942,9 @@ class SecureField(Field):
             return obj.decrypt(ciphertext).decode()
         if self._action == "enc_xor":
             # Recover the seed and ciphertext then decode them to get raw bytes
-            seed, ciphertext = value.split(":")
-            seed = base64.b64decode(seed.encode())
-            ciphertext = base64.b64decode(ciphertext.encode())
+            b64seed, b64ciphertext = value.split(":")
+            seed = base64.b64decode(b64seed.encode())
+            ciphertext = base64.b64decode(b64ciphertext.encode())
 
             # Decode the key
             key = base64.b64decode(self._keys["xor"].encode())
@@ -1085,7 +1093,7 @@ class SecureField(Field):
             "value": value
         }
 
-    def to_python(self, cfg: BaseConfig, value: Union[dict, str]) -> str:
+    def to_python(self, cfg: BaseConfig, value: Union[dict, str]) -> Any:
         '''
         Decrypt the value if loading something we've already handled.
         Hash the value if it hasn't been hashed yet.
@@ -1109,7 +1117,7 @@ class SecureField(Field):
                 return value.get("value")
             if self._action in self.ENC_ACTION:
                 # It's a dict with type 'secure_value', we assume it's already encrypted
-                return self._decrypt(value.get("value"))
+                return self._decrypt(value.get("value", ""))
 
             raise TypeError("unknown action %s" % self._action)
 

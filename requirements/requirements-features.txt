@@ -5,4 +5,4 @@ bson
 PyYAML
 
 # AES Crypto for SecureField
-pycrypto
+pycryptodome
