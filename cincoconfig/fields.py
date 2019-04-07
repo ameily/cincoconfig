@@ -827,8 +827,7 @@ class SecureField(Field):
             # Need to make sure pycrypto is installed
             try:
                 from Crypto.Cipher import AES  # pylint: disable=unused-import
-                from Crypto.Random import get_random_bytes  # pylint: disable=unused-import
-            except ImportError:
+            except ImportError:  # pragma: no cover
                 raise TypeError('action %s requires the pycrypto module' % self._action)
 
         # Create the key path or use the user provided path
@@ -901,8 +900,7 @@ class SecureField(Field):
         '''
         if self._action == "enc_aes256":
             from Crypto.Cipher import AES
-            from Crypto.Random import get_random_bytes
-            ivec = get_random_bytes(AES.block_size)
+            ivec = os.urandom(AES.block_size)
             key = base64.b64decode(self._keys["aes256"].encode())
             obj = AES.new(key, AES.MODE_CFB, ivec)
             ciphertext = obj.encrypt(value.encode())
@@ -1093,7 +1091,7 @@ class SecureField(Field):
             "value": value
         }
 
-    def to_python(self, cfg: BaseConfig, value: Union[dict, str]) -> Any:
+    def to_python(self, cfg: BaseConfig, value: Union[dict, str]) -> str:
         '''
         Decrypt the value if loading something we've already handled.
         Hash the value if it hasn't been hashed yet.
@@ -1114,7 +1112,7 @@ class SecureField(Field):
                 # Set manually so we don't hash again in _validate()
                 cfg._data[self.key] = value.get("value")
 
-                return value.get("value")
+                return value.get("value", "")
             if self._action in self.ENC_ACTION:
                 # It's a dict with type 'secure_value', we assume it's already encrypted
                 return self._decrypt(value.get("value", ""))

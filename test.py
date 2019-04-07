@@ -7,22 +7,25 @@ import json
 import hashlib
 from cincoconfig import *
 
-cfg = Schema()
-cfg.hash = SecureField(action="hash_md5", default="herpderp")
-cfg.password = SecureField(action="enc_aes256", default="herpderp")
-cfg.xorpass = SecureField(action="enc_xor", default="herpderp")
+schema = Schema()
+schema.hash = SecureField(action="hash_md5", default="herpderp")
+schema.nodefault = SecureField(action="hash_md5")
+schema.password = SecureField(action="enc_aes256", default="herpderp")
+schema.xorpass = SecureField(action="enc_xor", default="herpderp")
 
-config = cfg()
+config = schema()
+config.nodefault = "nodefault"
 
 if os.path.isfile("test.cfg.json"):
     print("Load")
     config.load("test.cfg.json", "json")
 
 print("hash:", config.hash)
+print("nodef:", config.nodefault)
 print("password (should be cleartext):", config.password)
 print("xor pass (should be cleartext):", config.xorpass)
 
-if cfg.hash.check_hash(config, "herpderp"):
+if schema.hash.check_hash(config, "herpderp"):
     print("WE DID IT")
 
 print("Save")
