@@ -798,7 +798,7 @@ class SecureField(Field):
         could be for a field that is used to validate user provided credentials.
 
         :param action: specifies how to secure the field (default will be ``hash_sha256``)
-        :param key_path: Path to a key file otherwise ``user/home/dir/.cincokey` will be used.
+        :param key_path: Path to a key file otherwise ``user/home/dir/.cincokey`` will be used.
         :param key_exists: If true, validate the key file exists. If False, validate the key
             file does not exist. If None, do not validate whether the key exists or not.
         :raises TypeError: if the user specifies an invalid action or if the user attempts
