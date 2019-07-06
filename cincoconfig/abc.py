@@ -8,7 +8,10 @@
 Abstract base classes.
 '''
 
+import os
 from typing import Any, Callable, Union, Optional, Dict
+
+from .encryption import KeyFile
 
 SchemaField = Union['BaseSchema', 'Field']
 
@@ -262,7 +265,10 @@ class BaseConfig(BaseSchema):
     :ivar BaseConfig _parent: parent configuration
     '''
 
-    def __init__(self, schema: BaseSchema, parent: 'BaseConfig' = None):
+    DEFAULT_CINCOKEY_FILEPATH = os.path.join("~", ".cincokey")
+
+    def __init__(self, schema: BaseSchema, parent: 'BaseConfig' = None,
+                 key_filename: str = None):
         '''
         :param schema: backing schema
         :param parent: parent configuration, when this object is a sub configuration
@@ -271,6 +277,35 @@ class BaseConfig(BaseSchema):
         self._schema = schema
         self._parent = parent
         self._data = dict()  # type: Dict[str, Any]
+        self.__keyfile = None  # type: KeyFile
+
+        if key_filename:
+            self._key_filename = key_filename
+
+    @property
+    def _key_filename(self) -> str:
+        if self.__keyfile:
+            return self.__keyfile.filename
+        if self._parent:
+            return self._parent._key_filename
+        return BaseConfig.DEFAULT_CINCOKEY_FILEPATH
+
+    @_key_filename.setter
+    def _key_filename(self, key_filename: str) -> None:
+        if not key_filename:
+            self.__keyfile = None
+        else:
+            self.__keyfile = KeyFile(key_filename)
+
+    @property
+    def _keyfile(self) -> KeyFile:
+        if not self.__keyfile:
+            if self._parent:
+                # This will bubble up to the root config
+                self.__keyfile = self._parent._keyfile
+            else:
+                self.__keyfile = KeyFile(BaseConfig.DEFAULT_CINCOKEY_FILEPATH)
+        return self.__keyfile
 
     def _add_field(self, key: str, field: SchemaField) -> SchemaField:
         '''

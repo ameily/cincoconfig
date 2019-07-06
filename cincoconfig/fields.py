@@ -17,16 +17,19 @@ import socket
 import base64
 import hashlib
 import random
+from _hashlib import HASH
 from ipaddress import IPv4Address, IPv4Network
 from urllib.parse import urlparse
-from typing import Union, List, Any, Iterator, Callable
+from typing import Union, List, Any, Iterator, Callable, AnyStr, NamedTuple
+
 from .abc import Field, AnyField, BaseConfig, BaseSchema
+from .encryption import EncryptionError, SecureValue
 
 
 __all__ = ('StringField', 'IntField', 'FloatField', 'PortField', 'IPv4AddressField',
            'IPv4NetworkField', 'FilenameField', 'BoolField', 'UrlField', 'ListField',
            'HostnameField', 'DictField', 'ListProxy', 'VirtualField', 'ApplicationModeField',
-           'LogLevelField', 'SecureField', 'NumberField')
+           'LogLevelField', 'NumberField', 'ChallengeField', 'DigestValue', 'SecureField')
 
 
 class StringField(Field):
@@ -666,334 +669,208 @@ class DictField(Field):
         return value
 
 
-class SecureField(Field):
+#: Hash algorithm, as returned by hashlib.new()
+HashAlgorithm = Callable[[], HASH]
+
+#: Named tuple for digest, value, algorithm
+TDigestValue = NamedTuple('TDigestValue', [
+    ('salt', bytes),
+    ('digest', bytes),
+    ('algorithm', HashAlgorithm)
+])
+
+
+class DigestValue(TDigestValue):
     '''
-    A field that will be encrypted/hashed when written to or read from disk
+    Digest value tuple storing hashed value: (salt, digest, algorithm). The digest is the hash
+    of the concatenated salt and plaintext value (``hash(salt + plaintext)``).
+    '''
 
-    The purpose of this field is to provide a method to store sensitive information
-    in config file(s) in a way that does not leak that information to those who can
-    read the config file(s). A ``SecureField`` can either be encrypted or hashed.
-    Using encryption has the benefit of providing access to the clear-text value in
-    code. Using a hash on the other hand is more secure because there is no way
-    to get the clear-text data back after it has been hashed.
+    def __str__(self) -> str:
+        '''
+        :returns: the salt and digest pair, both base64 encoded, separated by a ``:``.
+        '''
+        return (base64.b64encode(self.salt) + b':' + base64.b64encode(self.digest)).decode()
 
-    For example, if your application requires a password to be stored in the
-    config that is used to automatically authenticate with another service, the
-    value should be encrypted so that the password can be recovered when needed.
-    Alternatively, if your application stores a user's credentials to authenticate
-    them with your service, it should be stored hashed and that hash should be compared
-    to the hash of the value submitted by a user for authentication.
+    @classmethod
+    def parse(cls, value: str, algorithm: HashAlgorithm) -> 'DigestValue':
+        '''
+        Parse a base64-encoded salt/digest pair, as returned by :meth:`__str__`
+        '''
+        try:
+            salt_b64, digest_b64 = value.split(':', 1)
+            salt = base64.b64decode(salt_b64)
+            digest = base64.b64decode(digest_b64)
+        except:
+            raise ValueError('invalid salt/digest tuple value')
 
-    When written to a config file, a ``SecureField`` is stored as a dict, for example:
+        return DigestValue(salt, digest, algorithm)
 
-    .. code-block:: json
+    @classmethod
+    def create(cls, plaintext: AnyStr, algorithm: HashAlgorithm,
+               salt: bytes = None) -> 'DigestValue':
+        '''
+        Hash a plaintext value and return the new digest value. The digest is calculated as:
 
-        "password": {
-            "value": "+QR/5ZV8XDes52YNoE624UyHcQNtQPQC",
-            "type": "secure_value"
-        }
+        .. code-block::
 
-    The above is an example of an encrypted value. This password was encrypted using
-    AES256 and the resulting ciphertext is base64 encoded so it can be written as text.
+            salt[:digest_size] + plaintext
 
-    When a ``SecureField`` is read from a config, it is expected to be in either string
-    or dict form. In dict form, it is assumed that the value has not been modified, meaning
-    encrypted values are encrypted and hashed values are hashed. In string form the value
-    is assumed to be clear-text and in need of securing (e.g. hashing or encryption).
+        The *salt* will be randomly generated if not specified. If the salt is specified and it is
+        larger than the algorithm ``digest_size``, the salt will be truncated to the
+        ``digest_size``.
 
-    Consider the following config file:
+        :param plaintext: string to hash
+        :param algorithm: hashlib algorithm to use
+        :param salt: hash salt
+        :return the created digest value
+        '''
+        if isinstance(plaintext, DigestValue):
+            return plaintext
 
-    .. code-block:: json
+        hasher = algorithm()
+        if salt and len(salt) < hasher.digest_size:
+            raise TypeError('salt must be at least %d bytes' % hasher.digest_size)
+        elif salt:
+            salt = salt[:hasher.digest_size]
+        else:
+            salt = os.urandom(hasher.digest_size)
 
-        "password": "mySecretPassword"
+        if isinstance(plaintext, str):
+            plaintext = plaintext.encode()
 
-    If *password* is defined in the schema as a ``SecureField``, when this value is read,
-    the system will know it needs to be secured due to the lack of *type* information (e.g.
-    it's not a dict with ``type: "secure_value"``). If the secure **action** is a hashing
-    algorithm, the value will be hashed and next time ``Config.save`` is called, the value
-    for password will be overwritten:
+        hasher.update(salt + plaintext)
+        return DigestValue(salt, hasher.digest(), algorithm)
 
-    .. code-block:: json
+    def challenge(self, plaintext: AnyStr) -> None:
+        '''
+        Challenge a plaintext value against the digest value. This will raise a :class:`ValueError`
+        if the challenge is unsuccessful.
 
-        "password": {
-            "value": <salt:hash_of_mySecretPassword>
-            "type": "secure_value"
-        }
+        :raises ValueError: the challenge was unsuccessful
+        '''
+        if isinstance(plaintext, str):
+            plaintext = plaintext.encode()
 
-    If a ``SecureField`` is modified in a config file manually, the user must ensure
-    they set the value to a string so the system recognizes that the field needs to be
-    re-secured. If the dict is modified in place, the system will fail to properly secure
-    the value.
+        challenge = self.algorithm(self.salt + plaintext).digest()
+        if self.digest != challenge:
+            raise ValueError('challenge failed')
 
-    To secure fields, ``SecureField`` will generate a *.cincokey* file in the current user's
-    home directory if one has not already been generated. Cinco config will handle key
-    management automatically. Encryption within CinoConfig is all "best-effort", meaning
-    it will not protect passwords or data from people who have full access to the system
-    running the application. If a user has access to read the *.cincokey* file, all the
-    secure fields could be exposed to that user. The goal here is to secure the config
-    file against accidental leaks or application vulnerabilities that expose the config
-    file itself.
 
-    The *.cincokey* file will store the following information:
-        1. The AES 265 key used to encrypt data using *action* ``enc_aes256`` (requires pycrypto)
-        2. A very long XOR key used to encrypt data using *action* ``enc_xor`` (to support
-           zero dependency encryption scenarios)
-        3. A 512 byte 'secret' key used to further secure hashes when using a hash function and
-           to seed a random number generator used to pick the bytes from the XOR key to encrypt
-           a message. For hasing, this secret is used in addition to a salt.
+class ChallengeField(Field):
+    '''
+    A field whose value is securely stored as a hash (:class:`DigestValue`). This field can be
+    used as a secure method of password storage and comparison, since the password is only stored
+    in hashed form and not in plaintext. A digest value is pair of salt and
+    ``hash(salt + plaintext)`` values.
 
-    When using a ``SecureField`` in code it's important to remember that encryption
-    and hashing will happen automatically and transparently. Never set the value
-    of the field to encrypted or hashed data unless you want that data hashed/encrypted
-    again.
+    Values are stored in memory as :class:`DigestValue` instances. For example:
 
     .. code-block:: python
 
-        >>> import json
-        >>> from cincoconfig import *
         >>> schema = Schema()
-        >>> schema.password = SecureField(action="enc_aes256", default="P@55w0rd")
-        >>> schema.hash = SecureField(action="hash_md5", default="P@55w0rd")
-        >>> config = schema()
-        >>> config.password
-        'P@55w0rd'
-        >>> config.hash
-        'Ei6VAB/l1zR2aHfHkze9RQ==:2eab68777305da854d084b67765b5de6'
-        >>> print(json.dumps(config.to_tree(), indent=4))
-        {
-            "hash": {
-                "value": "Ei6VAB/l1zR2aHfHkze9RQ==:2eab68777305da854d084b67765b5de6",
-                "type": "secure_value"
-            },
-            "password": {
-                "value": "af2FFKKLFHpSQqZhj96gmn3XGl2AvQ1h",
-                "type": "secure_value"
-            }
-        }
-        >>>
+        >>> schema.password = ChallengeField('md5')
+        >>> cfg = schema()
+        >>> cfg.password = "Hello"
+        >>> print(type(cfg.password))
+        <class 'cincoconfig.fields.DigestValue'>
+
+        >>> print(cfg.password)
+        Yt4Qm5cC9FoRSdU3Ly7B7A==:+GXXhO36XvJ446fqXYJ+1w==
+
+        >>> cfg.password.digest
+        b'\xf8e\xd7\x84\xed\xfa^\xf2x\xe3\xa7\xea]\x82~\xd7'
+
+    The ``default`` value of a challenge field can be either:
+
+    - A plaintext string. In this case, the salt will be randomly generated.
+    - A :class:`DigestValue` instance.
+
+    When the default value is a string, the salt will change between application executions. For
+    example:
+
+    .. code-block:: python
+
+        >>> schema = Schema()
+        >>> schema.password = ChallengeField('md5', default='hello')
+        >>> cfg = schema()
+        # First time application executes
+        >>> print(cfg.password)
+        Yt4Qm5cC9FoRSdU3Ly7B7A==:+GXXhO36XvJ446fqXYJ+1w==
+
+        # Secon time application executes
+        >>> print(cfg.password)
+        j1DumfRtnRCJxjCAAXzxww==:vKphx3hWXTaOUacYj+4agw==
+
+    Digest values are saved to disk as a :class:`dict` containing two keys:
+
+    - ``salt`` - base64 encoded salt
+    - ``digest`` - base64 encoded digest
+
+    The challenge field supports loading plaintext string values from the configuration file. So,
+    when manually writting the config file, the user does not need to create the salt and digest
+    pair but, instead, just specify a plaintext string to hash. The value will be properly saved
+    as a salt/digest pair the next time the config file is saved to disk.
+
+    Available hash algorithms are:
+
+    - md5
+    - sha1
+    - sha224
+    - sha256
+    - sha384
+    - sha512
     '''
 
-    HASH_ACTION = [
-        'hash_md5', 'hash_sha1', 'hash_sha224',
-        'hash_sha256', 'hash_sha384', 'hash_sha512'
-    ]
-    ENC_ACTION = ['enc_xor', 'enc_aes256']
+    #: Available hashing algorithms
+    ALGORITHMS = {
+        'md5': hashlib.md5,
+        'sha1': hashlib.sha1,
+        'sha224': hashlib.sha224,
+        'sha256': hashlib.sha256,
+        'sha384': hashlib.sha384,
+        'sha512': hashlib.sha512
+    }
 
-    def __init__(self, action: str = None, key_path: str = None, key_exists: bool = None,
-                 **kwargs):
+    def __init__(self, hash_algorithm: str = 'sha256', **kwargs):
         '''
-        The *action* parameter is used to specify how the field should be secured. Valid
-        values for *action* are:
-
-        * Encryption:
-            1. ``enc_xor`` (no dependencies)
-            2. ``enc_aes256`` (requires that *pycrypto* is installed)
-        * Hashing:
-            1. ``hash_md5``
-            2. ``hash_sha1``
-            3. ``hash_sha224``
-            4. ``hash_sha256``
-            5. ``hash_sha384``
-            6. ``hash_sha512``
-
-        Using a hashing algorithm will result in data loss since there will be no way
-        to get the original value back. Use cases for a hash algorithm on a config field
-        could be for a field that is used to validate user provided credentials.
-
-        :param action: specifies how to secure the field (default will be ``hash_sha256``)
-        :param key_path: Path to a key file otherwise ``user/home/dir/.cincokey`` will be used.
-        :param key_exists: If true, validate the key file exists. If False, validate the key
-            file does not exist. If None, do not validate whether the key exists or not.
-        :raises TypeError: if the user specifies an invalid action or if the user attempts
-            to use an action that requires a python library that is not installed
-        :raises FileNotFoundError: if ``key_exists`` is True and the file is not found
-        :raises FileExistsError: if ``key_exists`` is False and the file is found
+        :param hash_algorithm: hash algorithm to use, must be a key of :prop:`ALGORITHMS`
         '''
         super().__init__(**kwargs)
-        #: Action (defaults to ``hash_sha256``)
-        self._action = action or 'hash_sha256'  # type: str
-        #: Whether or not we've already hashed a value
-        self._hashed = False  # type: bool
-        #: Set to either 'hash' or 'enc' based on provided action
-        self._method = 'hash' if self._action in self.HASH_ACTION else 'enc'  # type: str
-        #: Stores the AES, XOR, and secret keys used for crypto
-        self._keys = {}  # type: dict
+        algorithm = self.ALGORITHMS.get(hash_algorithm.lower())
+        if not algorithm:
+            raise TypeError('Unknown hash algorithm: ' + hash_algorithm)
+        self.algorithm = algorithm
 
-        # Validate the action
-        if self._action not in self.HASH_ACTION + self.ENC_ACTION:
-            raise TypeError('action %s is not a valid hash or encryption action' % self._action)
-
-        if self._method == 'enc' and self._action != 'enc_xor':
-            # Need to make sure pycrypto is installed
-            try:
-                from Crypto.Cipher import AES  # pylint: disable=unused-import
-            except ImportError:  # pragma: no cover
-                raise TypeError('action %s requires the pycrypto module' % self._action)
-
-        # Create the key path or use the user provided path
-        self._key_path = key_path or os.path.join(os.path.expanduser("~"), ".cincokey")
-
-        # Check if the file exists and is a file
-        exists = os.path.exists(self._key_path) and os.path.isfile(self._key_path)
-        if key_exists is True and not exists:
-            raise FileNotFoundError("key file %s must exist" % self._key_path)
-        if key_exists is False and exists:
-            raise FileExistsError("key file %s must not exist" % self._key_path)
-
-        self._generate_key_file()
-
-    def _generate_key_file(self) -> None:
+    def __setdefault__(self, cfg: BaseConfig) -> None:
         '''
-        Method to generate or load a key file. Keys are loaded into the
-        ``_keys`` dict.
-        '''
-        if not os.path.exists(self._key_path):
-            aes_key = os.urandom(32)  # Secure random 32 bytes (AES 256 key size)
-            xor_key = os.urandom(4096)  # Need more data to avoid overlap as much as possible
-            secret = os.urandom(512)  # Secret key used to further secure hashed passwords
-            self._keys["aes256"] = base64.b64encode(aes_key).decode()
-            self._keys["xor"] = base64.b64encode(xor_key).decode()
-            self._keys["secret"] = base64.b64encode(secret).decode()
-            with open(self._key_path, 'w') as fhandle:
-                fhandle.write(json.dumps(self._keys))
-        else:
-            with open(self._key_path, 'r') as fhandle:
-                self._keys = json.loads(fhandle.read())
-
-    def __setdefault__(self, cfg: BaseConfig):
-        '''
-        Set the default value for a secure field
-
-        :param cfg: current config
+        Set default value by creating a :class:`DigestValue` if the default value is a string.
         '''
         if self.default is None:
             super().__setdefault__(cfg)
             return
 
-        if self._action in self.HASH_ACTION:
-            cfg._data[self.key] = self._hash(self.default)
-        elif self._action in self.ENC_ACTION:
-            cfg._data[self.key] = self._encrypt(self.default)
+        if isinstance(self.default, str):
+            val = DigestValue.create(self.default, self.algorithm)
+        elif isinstance(self.default, DigestValue):
+            val = self.default
+        else:
+            raise TypeError('invalid default value: %r' % self.default)
+        cfg._data[self.key] = val
 
-    def __getval__(self, cfg: BaseConfig) -> Any:
+    def _validate(self, cfg: BaseConfig, value: Any) -> DigestValue:
         '''
-        Retrieve the value and decrypt it if it's not a hashed value
-
-        :param cfg: current config
-        :returns: decrypted value if possible
+        Validate the value. If the value is a plaintext string, a :class:`DigestValue`
         '''
-        if cfg._data[self.key] is None:
-            return None
+        if isinstance(value, (str, bytes)):
+            val = self._hash(value)
+        elif isinstance(value, DigestValue):
+            val = value
+        else:
+            raise TypeError('%s must be a string' % self.name)
+        return val
 
-        if self._action in self.ENC_ACTION:
-            return self._decrypt(cfg._data[self.key])
-
-        return cfg._data[self.key]
-
-    def _encrypt(self, value: str) -> str:
-        '''
-        Encrypt the value
-
-        :param value: value to encrypt
-        :returns: encrypted value
-        :raises TypeError: if the action is not valid
-        '''
-        if self._action == "enc_aes256":
-            from Crypto.Cipher import AES
-            ivec = os.urandom(AES.block_size)
-            key = base64.b64decode(self._keys["aes256"].encode())
-            obj = AES.new(key, AES.MODE_CFB, ivec)
-            ciphertext = obj.encrypt(value.encode())
-            return base64.b64encode(ivec + ciphertext).decode()
-        if self._action == "enc_xor":
-            seed = os.urandom(64)  # Generate 64 bytes to use as a seed
-            key = base64.b64decode(self._keys["xor"].encode())  # Get the raw key bytes
-            random.seed(seed)  # Seed the random number generator with our seed
-            ciphertext = b''
-            # XOR each byte of the value with a random bytes from the XOR key
-            for clear_char in value:
-                ciphertext += bytes([(ord(clear_char) ^ key[random.randint(0, len(key) - 1)])])
-
-            # Base 64 encode the seed and the message content
-            b64ciphertext = base64.b64encode(ciphertext).decode()
-            b64seed = base64.b64encode(seed).decode()
-
-            # Store the seed and the ciphertext
-            return "{}:{}".format(b64seed, b64ciphertext)
-
-        raise TypeError('invalid encryption action %s' % self._action)
-
-    def _decrypt(self, value: str) -> str:
-        '''
-        Decrypt the value
-
-        :param value: value to decrypt
-        :returns: decrypted value
-        '''
-        if self._action == "enc_aes256":
-            from Crypto.Cipher import AES
-            ciphertext = base64.b64decode(value.encode())
-            ivec = ciphertext[:AES.block_size]
-            ciphertext = ciphertext[AES.block_size:]
-            key = base64.b64decode(self._keys["aes256"].encode())
-            obj = AES.new(key, AES.MODE_CFB, ivec)
-            return obj.decrypt(ciphertext).decode()
-        if self._action == "enc_xor":
-            # Recover the seed and ciphertext then decode them to get raw bytes
-            b64seed, b64ciphertext = value.split(":")
-            seed = base64.b64decode(b64seed.encode())
-            ciphertext = base64.b64decode(b64ciphertext.encode())
-
-            # Decode the key
-            key = base64.b64decode(self._keys["xor"].encode())
-
-            # Seed with the provided seed
-            random.seed(seed)
-            cleartext = b''
-
-            # XOR each byte of the ciphertext with random (seeded) bytes from the XOR key
-            for cipher_byte in ciphertext:
-                cleartext += bytes([(cipher_byte ^ key[random.randint(0, len(key) - 1)])])
-
-            # Return as ASCII
-            return cleartext.decode()
-
-        raise TypeError('invalid encryption action %s' % self._action)
-
-    def check_hash(self, cfg: BaseConfig, password: str) -> bool:
-        # pylint: disable=line-too-long
-        '''
-        Helper method to check if a password hashes to the provided hash value
-
-        .. code-block:: python
-
-            >>> from cincoconfig import *
-            >>> schema = Schema()
-            >>> schema.hash = SecureField(action="hash_sha256")
-            >>> config = schema()
-            >>> config.hash = "password"
-            >>> config.hash
-            'Vmwhhwp2VX3SOwBVKjz/Q5az+40rsGqtcES+bAd/N0Y=:a6c878405e5bb324611fbe828bb0f1334d199c5c3bbd3d7b5076bb21418786ea'
-            >>> schema.hash.check_hash(config, "password")
-            True
-            >>> schema.hash.check_hash(config, "herpderp")
-            False
-            >>>
-
-        :param password: The password to check
-        :returns: True if they match, False otherwise
-        :raises ValueError: if the hashval has not been calculated for the given field yet
-        '''
-        hashval = cfg._data[self.key]
-        if not hashval:
-            raise ValueError("hash has not been calculated for this field yet")
-
-        salt = hashval.split(":")[0]
-        passhash = self._hash_value(password, base64.b64decode(salt.encode()))
-
-        return hashval == passhash
-
-    def _hash_value(self, value: str, salt: bytes = None) -> str:
+    def _hash(self, plaintext: AnyStr, salt: bytes = None) -> DigestValue:
         '''
         Private method that performs the actual hash. This method does not
         check if the value has already been hashed.
@@ -1003,73 +880,9 @@ class SecureField(Field):
         :raise TypeError: if the action is invalid
         '''
 
-        hashval = None
-        salt = salt
-        secret = base64.b64decode(self._keys["secret"].encode())
+        return DigestValue.create(plaintext, self.algorithm, salt=salt)
 
-        if self._action == "hash_md5":
-            salt = salt or os.urandom(hashlib.md5().digest_size)
-            hashval = hashlib.md5(salt + value.encode() + secret).hexdigest()
-        elif self._action == "hash_sha1":
-            salt = salt or os.urandom(hashlib.sha1().digest_size)
-            hashval = hashlib.sha1(salt + value.encode() + secret).hexdigest()
-        elif self._action == "hash_sha224":
-            salt = salt or os.urandom(hashlib.sha224().digest_size)
-            hashval = hashlib.sha224(salt + value.encode() + secret).hexdigest()
-        elif self._action == "hash_sha256":
-            salt = salt or os.urandom(hashlib.sha256().digest_size)
-            hashval = hashlib.sha256(salt + value.encode() + secret).hexdigest()
-        elif self._action == "hash_sha384":
-            salt = salt or os.urandom(hashlib.sha384().digest_size)
-            hashval = hashlib.sha384(salt + value.encode() + secret).hexdigest()
-        elif self._action == "hash_sha512":
-            salt = salt or os.urandom(hashlib.sha512().digest_size)
-            hashval = hashlib.sha512(salt + value.encode() + secret).hexdigest()
-        else:
-            raise TypeError("action %s is not a valid hash action" % self._action)
-
-        b64salt = base64.b64encode(salt).decode()
-        return "{}:{}".format(b64salt, hashval)
-
-    def _hash(self, value: str) -> str:  # pylint: disable=too-many-return-statements
-        '''
-        Private method used to hash a value only if it hasn't already been hashed.
-
-        :param value: value to hash
-        :returns: hashed value
-        '''
-
-        if self._hashed:
-            return value
-
-        self._hashed = True
-
-        return self._hash_value(value)
-
-    def _validate(self, cfg: BaseConfig, value: str) -> str:
-        '''
-        Validate a value.
-
-        :param cfg: current Config
-        :param value: value to validate
-        '''
-        if value is None:
-            self._hashed = False
-            return value
-
-        if self._action in self.HASH_ACTION:
-            if value != cfg._data[self.key]:
-                # Only hash if the value has changed
-                # to avoid hashing a hash
-                self._hashed = False
-
-            return self._hash(value)
-        if self._action in self.ENC_ACTION:
-            return self._encrypt(value)
-
-        raise TypeError("unknown action %s" % self._action)
-
-    def to_basic(self, cfg: BaseConfig, value: str) -> dict:
+    def to_basic(self, cfg: BaseConfig, value: DigestValue) -> dict:
         '''
         Convert to a dict and indicate the type so we know
         on load whether we've already dealt with the field
@@ -1081,17 +894,12 @@ class SecureField(Field):
         if value is None:
             return value
 
-        if self._action in self.ENC_ACTION:
-            value = self._encrypt(value)
-        if self._action in self.HASH_ACTION:
-            value = self._hash(value)
-
         return {
-            "type": "secure_value",
-            "value": value
+            'salt': base64.b64encode(value.salt).decode(),
+            'digest': base64.b64encode(value.digest).decode(),
         }
 
-    def to_python(self, cfg: BaseConfig, value: Union[dict, str]) -> str:
+    def to_python(self, cfg: BaseConfig, value: Union[dict, str]) -> DigestValue:
         '''
         Decrypt the value if loading something we've already handled.
         Hash the value if it hasn't been hashed yet.
@@ -1104,36 +912,132 @@ class SecureField(Field):
         if value is None:
             return value
 
-        if isinstance(value, dict) and value.get("type", "") == "secure_value":
-            if self._action in self.HASH_ACTION:
-                # It's a dict with type 'secure_value', we assume it's already hashed
-                self._hashed = True
+        if isinstance(value, dict):
+            salt_b64 = value.get('salt')
+            digest_b64 = value.get('digest')
 
-                # Set manually so we don't hash again in _validate()
-                cfg._data[self.key] = value.get("value")
+            try:
+                salt = base64.b64decode(value['salt'])
+            except:
+                raise ValueError('%s has invalid salt: salt must be base64-encoded value' %
+                                 self.name)
 
-                return value.get("value", "")
-            if self._action in self.ENC_ACTION:
-                # It's a dict with type 'secure_value', we assume it's already encrypted
-                return self._decrypt(value.get("value", ""))
+            try:
+                digest = base64.b64decode(value['digest'])
+            except:
+                raise ValueError('%s has invalid digest: digest must be base64-encoded value' %
+                                 self.name)
 
-            raise TypeError("unknown action %s" % self._action)
+            return DigestValue(salt, digest, self.algorithm)
+        elif isinstance(value, str):
+            return self._hash(value)
+        else:
+            raise ValueError('invalid salt-digest tuple')
+
+
+class SecureField(Field):
+
+    def __init__(self, method: str = 'best', **kwargs):
+        super().__init__(**kwargs)
+        self.method = method
+
+    def to_basic(self, cfg: BaseConfig, value: str) -> dict:
+        if value is None:
+            return None
+
+        with cfg._keyfile as ctx:
+            secret = ctx.encrypt(value, method=self.method)
+
+        return {
+            'method': secret.method,
+            'ciphertext': base64.b64encode(secret.ciphertext).decode()
+        }
+
+    def to_python(self, cfg: BaseConfig, value: Any) -> str:
+        if value is None:
+            return value
 
         if isinstance(value, str):
-            if self._action in self.HASH_ACTION:
-                # String value, assume it's not hashed. User-modified config
-                self._hashed = False
+            return value
 
-                # Set manually so we don't hash again in _validate()
-                cfg._data[self.key] = self._hash(value)
+        if isinstance(value, dict):
+            method = value.get('method')
+            ciphertext_b64 = value.get('ciphertext')
 
-                return cfg._data[self.key]
-            if self._action in self.ENC_ACTION:
-                # String value, assume it's not encrypted but
-                # don't encrypt here, it'll get encrypted in
-                # _validate() when the value is set
-                return value
+            if not method or method == 'best':
+                raise ValueError('%s has invalid encryption method: %s' % (self.name, method))
 
-            raise TypeError("unknown action %s" % self._action)
+            try:
+                ciphertext = base64.b64decode(ciphertext_b64)
+            except:
+                raise ValueError('%s has invalid ciphertext' % self.name)
 
-        raise ValueError("unsupported type %s" % type(value))
+            try:
+                with cfg._keyfile as ctx:
+                    text = ctx.decrypt(SecureValue(method, ciphertext))
+            except EncryptionError as err:
+                raise ValueError('failed to decrypt %s: %s' % (self.name, str(err)))
+            else:
+                return text.decode()
+
+        raise ValueError('invalid encrypted value %s' % self.name)
+
+
+class BytesField(Field):
+    ENCODINGS = ('base64', 'hex')
+
+    def __init__(self, encoding: str = 'base64', **kwargs):
+        super().__init__(**kwargs)
+
+        if encoding not in BytesField.ENCODINGS:
+            raise TypeError('invalid encoding: %s' % encoding)
+        self.encoding = encoding
+
+    def _validate(self, cfg: BaseConfig, value: Any) -> bytes:
+        if value is None:
+            return value
+
+        if isinstance(value, str):
+            return value.encode()
+
+        if isinstance(value, bytes):
+            return value
+
+        raise ValueError('%s must be bytes' % self.name)
+
+    def to_basic(self, cfg: BaseConfig, value: bytes) -> str:
+        if value is None:
+            return value
+
+        if self.encoding == 'base64':
+            return base64.b64encode(value).decode()
+
+        if self.encoding == 'hex':
+            return value.hex()
+
+        raise TypeError('invalid encoding: %s' % self.encoding)
+
+    def to_python(self, cfg: BaseConfig, value: Any) -> bytes:
+        if value is None:
+            return value
+
+        if not isinstance(value, str):
+            raise ValueError('%s must be a string' % self.name)
+
+        if self.encoding == 'base64':
+            try:
+                ret = base64.b64decode(value)
+            except:
+                raise ValueError('%s has invalid base64 encoding' % self.name)
+            else:
+                return ret
+
+        if self.encoding == 'hex':
+            try:
+                ret = bytes.fromhex(value)
+            except:
+                raise ValueError('%s has invalid hex encoding' % self.name)
+            else:
+                return ret
+
+        raise TypeError('%s has invalid encoding: %s' % (self.name, self.encoding))
