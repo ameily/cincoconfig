@@ -939,7 +939,7 @@ class SecureField(Field):
     def __init__(self, method: str = 'best', **kwargs):
         '''
         :param method: encryption method, see
-            :meth:`~cincoconfig.encryption.KeyFile._get_provider`
+            :meth:`~cincoconfig.KeyFile._get_provider`
         '''
         super().__init__(**kwargs)
         self.method = method

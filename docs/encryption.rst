@@ -1,7 +1,7 @@
 encryption
 ==========
 
-.. autoclass:: cincoconfig.encryption.KeyFile
+.. autoclass:: cincoconfig.KeyFile
     :members:
 
     .. automethod:: _get_provider

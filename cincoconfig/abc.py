@@ -258,7 +258,7 @@ class BaseSchema:
 class BaseConfig(BaseSchema):
     '''
     Base configuration that holds configuration values in the *_data* attribute. Each base config
-    object can have an associated :class:`cincoconfig.encryption.KeyFile`, passed in the
+    object can have an associated :class:`cincoconfig.KeyFile`, passed in the
     constructor as ``key_filename``. If the configuration file doesn't have a key file path set,
     the config object will use the parent config's key file. Requesting a key file will bubble up
     to the first config object that has the key filename set and, if no config has a keyfile, the
