@@ -7,7 +7,7 @@
 
 import os
 from itertools import cycle
-from typing import AnyStr, NamedTuple
+from typing import NamedTuple, Optional, Union
 
 try:
     from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -18,7 +18,7 @@ except ImportError:  # pragma: no cover
 else:
     AES_AVAILABLE = True
 
-
+#: A encrypted value tuple containg the encryption method and the cipher text
 SecureValue = NamedTuple('SecureValue', [
     ('method', str),
     ('ciphertext', bytes)
@@ -66,15 +66,35 @@ class IEncryptionProvider:
 
 class KeyFile:
     '''
-    Wrapper around the cincoconfig encryption key file.
+    The cincoconfig key file, containing a randomly generated 32 byte encryption key. The cinco
+    key file is used by :class:`~cincoconfig.fields.SecureField` to encrypt and decrypt values as
+    they are written to and read from the configuration file.
+
+    The keyfile is loaded as needed by using this class as a context manager. The key has an
+    internal reference count and is only freed once the reference count is 0 (all context managers
+    exited). THe key is cached internally so that the keyfile only has to be open and read once
+    per configuration load or save.
+
+    To encrypt a value:
+
+    .. highlight:: python
+
+        with keyfile as ctx:
+            secret = ctx.encrypt(method='xor', text='hello, world')
     '''
 
     def __init__(self, filename: str):
+        '''
+        :param filename: the cinco key filename
+        '''
         self.filename = filename
-        self.__key = None  # type: bytes
+        self.__key = None  # type: Optional[bytes]
         self.__refcount = 0
 
     def __load_key(self) -> None:
+        '''
+        INTERNAL METHOD. Load configuration key.
+        '''
         try:
             with open(self.filename, 'rb') as fp:
                 self.__key = fp.read()
@@ -84,12 +104,19 @@ class KeyFile:
             self._validate_key()
 
     def generate_key(self) -> None:
+        '''
+        Generate a random 32 byte key and save it to ``filename``.
+        '''
         key = os.urandom(32)
         with open(self.filename, 'wb') as fp:
             fp.write(key)
-        self.__key = key
 
     def _validate_key(self) -> None:
+        '''
+        Validate the key.
+
+        :raises EncryptionError: invalid key
+        '''
         if not self.__key or len(self.__key) != 32:
             raise EncryptionError('invalid encryption key file: %s' % self.filename)
 
@@ -108,50 +135,84 @@ class KeyFile:
         return False
 
     def _get_provider(self, method: str) -> IEncryptionProvider:
-        if method == 'aes':
+        '''
+        Get the encryption provider. ``method`` must be one of
+
+        - ``aes`` - returns :class:`AesProvider`
+        - ``xor`` - returns :class:`XorProvider`
+        - ``best`` - returns the best available encryption provider: :class:`AesProvider` if AES
+          encryption is available (``cryptography`` is installed), :class:`XorProvider` if AES
+          is not available
+
+        :returns: the encryption provide instance
+        '''
+        if not self.__key:
+            raise TypeError('keyfile is not open')
+
+        if method == 'aes' or (method == 'best' and AES_AVAILABLE):
             return AesProvider(self.__key)
-        elif method == 'xor':
+        if method in ('xor', 'best'):
             return XorProvider(self.__key)
         raise TypeError('invalid encryption method: %s' % method)
 
-    def encrypt(self, text: AnyStr, method: str = 'best') -> SecureValue:
+    def encrypt(self, text: Union[str, bytes], method: str = 'best') -> SecureValue:
+        '''
+        :param text: plaintext to encrypt
+        :param method: encryption method to use
+        :returns: the encrypted value
+        '''
         if not self.__key:
             raise TypeError('key file is not open')
 
-        if method == 'best':
-            method = 'aes' if AES_AVAILABLE else 'xor'
-
-        if isinstance(text, str):
-            text = text.encode()
+        bindata = text.encode() if isinstance(text, str) else text
 
         provider = self._get_provider(method)
-        ciphertext = provider.encrypt(text)
+        ciphertext = provider.encrypt(bindata)
         return SecureValue(method, ciphertext)
 
-    def decrypt(self, secret: SecureValue) -> str:
+    def decrypt(self, secret: SecureValue) -> bytes:
+        '''
+        :param secret: encrypted value
+        :returns: decrypted value
+        '''
         if not self.__key:
             raise TypeError('key file is not open')
 
         provider = self._get_provider(secret.method)
-        return provider.decrypt(secret.ciphertext).decode()
+        return provider.decrypt(secret.ciphertext)
 
 
 class XorProvider(IEncryptionProvider):
+    '''
+    XOR-bitwise "encryption". The XOR provider should only be used to obfuscate, not encrypt, a
+    value since XOR operations can be easily reversed.
+    '''
 
     def __init__(self, key: bytes):
         self.__key = key
 
-    def encrypt(self, value: bytes) -> bytes:
-        buff = bytearray(value)
+    def encrypt(self, text: Union[str, bytes]) -> bytes:
+        '''
+        :returns: the encrypted value
+        '''
+        bindata = text.encode() if isinstance(text, str) else text
+        buff = bytearray(bindata)
         for i, c in zip(range(len(buff)), cycle(self.__key)):
             buff[i] ^= c
         return bytes(buff)
 
     def decrypt(self, ciphertext: bytes) -> bytes:
+        '''
+        :returns: the decrypted values
+        '''
         return self.encrypt(ciphertext)
 
 
 class AesProvider(IEncryptionProvider):
+    '''
+    AES-256 encryption provider. This class requires the ``cryptography`` library. Each encrypted
+    value has a randomly generated 16-byte IV.
+    '''
 
     def __init__(self, key: bytes):
         if not AES_AVAILABLE:
@@ -159,6 +220,9 @@ class AesProvider(IEncryptionProvider):
         self.__key = key
 
     def decrypt(self, ciphertext: bytes) -> bytes:
+        '''
+        :returns: the plaintext value
+        '''
         if not ciphertext or len(ciphertext) < 32:
             raise EncryptionError('invalid initialization vector')
 
@@ -173,6 +237,9 @@ class AesProvider(IEncryptionProvider):
         return unpadder.update(text) + unpadder.finalize()
 
     def encrypt(self, text: bytes) -> bytes:
+        '''
+        :returns: the encrypted value
+        '''
         iv = os.urandom(16)
         cipher = Cipher(algorithms.AES(self.__key), modes.CBC(iv), backend=default_backend())
         encryptor = cipher.encryptor()

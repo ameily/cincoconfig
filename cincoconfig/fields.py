@@ -12,15 +12,12 @@ Cinco Config Fields.
 
 import os
 import re
-import json
 import socket
 import base64
-import hashlib
-import random
-from _hashlib import HASH
 from ipaddress import IPv4Address, IPv4Network
 from urllib.parse import urlparse
-from typing import Union, List, Any, Iterator, Callable, AnyStr, NamedTuple
+from typing import Union, List, Any, Iterator, Callable, NamedTuple, Optional, Dict
+import hashlib
 
 from .abc import Field, AnyField, BaseConfig, BaseSchema
 from .encryption import EncryptionError, SecureValue
@@ -670,7 +667,7 @@ class DictField(Field):
 
 
 #: Hash algorithm, as returned by hashlib.new()
-HashAlgorithm = Callable[[], HASH]
+HashAlgorithm = Callable[[Optional[bytes]], 'hashlib._Hash']
 
 #: Named tuple for digest, value, algorithm
 TDigestValue = NamedTuple('TDigestValue', [
@@ -707,7 +704,7 @@ class DigestValue(TDigestValue):
         return DigestValue(salt, digest, algorithm)
 
     @classmethod
-    def create(cls, plaintext: AnyStr, algorithm: HashAlgorithm,
+    def create(cls, plaintext: Union[str, bytes], algorithm: HashAlgorithm,
                salt: bytes = None) -> 'DigestValue':
         '''
         Hash a plaintext value and return the new digest value. The digest is calculated as:
@@ -725,13 +722,12 @@ class DigestValue(TDigestValue):
         :param salt: hash salt
         :return the created digest value
         '''
-        if isinstance(plaintext, DigestValue):
-            return plaintext
 
-        hasher = algorithm()
+        hasher = algorithm()  # type: ignore
         if salt and len(salt) < hasher.digest_size:
             raise TypeError('salt must be at least %d bytes' % hasher.digest_size)
-        elif salt:
+
+        if salt:
             salt = salt[:hasher.digest_size]
         else:
             salt = os.urandom(hasher.digest_size)
@@ -742,7 +738,7 @@ class DigestValue(TDigestValue):
         hasher.update(salt + plaintext)
         return DigestValue(salt, hasher.digest(), algorithm)
 
-    def challenge(self, plaintext: AnyStr) -> None:
+    def challenge(self, plaintext: Union[str, bytes]) -> None:
         '''
         Challenge a plaintext value against the digest value. This will raise a :class:`ValueError`
         if the challenge is unsuccessful.
@@ -830,7 +826,7 @@ class ChallengeField(Field):
         'sha256': hashlib.sha256,
         'sha384': hashlib.sha384,
         'sha512': hashlib.sha512
-    }
+    }  # type: Dict[str, Callable]
 
     def __init__(self, hash_algorithm: str = 'sha256', **kwargs):
         '''
@@ -870,7 +866,7 @@ class ChallengeField(Field):
             raise TypeError('%s must be a string' % self.name)
         return val
 
-    def _hash(self, plaintext: AnyStr, salt: bytes = None) -> DigestValue:
+    def _hash(self, plaintext: Union[str, bytes], salt: bytes = None) -> DigestValue:
         '''
         Private method that performs the actual hash. This method does not
         check if the value has already been hashed.
@@ -913,9 +909,6 @@ class ChallengeField(Field):
             return value
 
         if isinstance(value, dict):
-            salt_b64 = value.get('salt')
-            digest_b64 = value.get('digest')
-
             try:
                 salt = base64.b64decode(value['salt'])
             except:
@@ -929,15 +922,24 @@ class ChallengeField(Field):
                                  self.name)
 
             return DigestValue(salt, digest, self.algorithm)
-        elif isinstance(value, str):
+
+        if isinstance(value, str):
             return self._hash(value)
-        else:
-            raise ValueError('invalid salt-digest tuple')
+
+        raise ValueError('invalid salt-digest tuple')
 
 
 class SecureField(Field):
+    '''
+    A secure storage field where the plaintext configuration value is encrypted on disk and
+    decrypted in memory when the configuration file is loaded.
+    '''
 
     def __init__(self, method: str = 'best', **kwargs):
+        '''
+        :param method: encryption method, see
+            :meth:`~cincoconfig.encryption.KeyFile._get_provider`
+        '''
         super().__init__(**kwargs)
         self.method = method
 
@@ -953,7 +955,7 @@ class SecureField(Field):
             'ciphertext': base64.b64encode(secret.ciphertext).decode()
         }
 
-    def to_python(self, cfg: BaseConfig, value: Any) -> str:
+    def to_python(self, cfg: BaseConfig, value: Any) -> Optional[str]:
         if value is None:
             return value
 
@@ -966,6 +968,9 @@ class SecureField(Field):
 
             if not method or method == 'best':
                 raise ValueError('%s has invalid encryption method: %s' % (self.name, method))
+
+            if not isinstance(ciphertext_b64, str):
+                raise ValueError('%s has invalid ciphertext' % self.name)
 
             try:
                 ciphertext = base64.b64decode(ciphertext_b64)
@@ -984,9 +989,16 @@ class SecureField(Field):
 
 
 class BytesField(Field):
+    '''
+    Store binary data in an encoded string.
+    '''
+    #: Available encodings: base64 and hex
     ENCODINGS = ('base64', 'hex')
 
     def __init__(self, encoding: str = 'base64', **kwargs):
+        '''
+        :param encoding: binary data encoding, must be one of :attr:`ENCODINGS`
+        '''
         super().__init__(**kwargs)
 
         if encoding not in BytesField.ENCODINGS:
@@ -994,9 +1006,6 @@ class BytesField(Field):
         self.encoding = encoding
 
     def _validate(self, cfg: BaseConfig, value: Any) -> bytes:
-        if value is None:
-            return value
-
         if isinstance(value, str):
             return value.encode()
 
@@ -1006,6 +1015,9 @@ class BytesField(Field):
         raise ValueError('%s must be bytes' % self.name)
 
     def to_basic(self, cfg: BaseConfig, value: bytes) -> str:
+        '''
+        :returns: the encoded binary data
+        '''
         if value is None:
             return value
 
@@ -1017,7 +1029,10 @@ class BytesField(Field):
 
         raise TypeError('invalid encoding: %s' % self.encoding)
 
-    def to_python(self, cfg: BaseConfig, value: Any) -> bytes:
+    def to_python(self, cfg: BaseConfig, value: Any) -> Optional[bytes]:
+        '''
+        :returns: the decoded binary data
+        '''
         if value is None:
             return value
 

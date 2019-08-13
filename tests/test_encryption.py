@@ -98,8 +98,14 @@ class TestKeyFile:
 
     def test_get_provider_unknown(self):
         kf = KeyFile('asdf.txt')
+        kf._KeyFile__key = b'x' * 32
         with pytest.raises(TypeError):
             kf._get_provider('balh')
+
+    def test_get_provider_no_key(self):
+        kf = KeyFile('asdf.txt')
+        with pytest.raises(TypeError):
+            kf._get_provider('xor')
 
     def test_encrypt(self):
         provider = StubProvider()
@@ -121,7 +127,7 @@ class TestKeyFile:
         text = kf.decrypt(SecureValue('test', b'hello'))
         provider.decrypt.assert_called_once_with(b'hello')
         kf._get_provider.assert_called_once_with('test')
-        assert text == 'plaintext'
+        assert text == b'plaintext'
 
     def test_encrypt_nokey(self):
         kf = KeyFile('asdf.txt')
@@ -133,24 +139,16 @@ class TestKeyFile:
         with pytest.raises(TypeError):
             kf.decrypt(b'asdf')
 
-    @patch.object(KeyFile, '_get_provider')
-    def test_encrypt_best_aes(self, get_mock):
-        get_mock.return_value = StubProvider()
+    def test_encrypt_best_aes(self):
         kf = KeyFile('asdf.txt')
         kf._KeyFile__key = b'x' * 32
-        kf.encrypt(b'hello', method='best')
-
-        get_mock.assert_called_once_with('aes')
+        assert isinstance(kf._get_provider(method='best'), AesProvider)
 
     @patch('cincoconfig.encryption.AES_AVAILABLE', False)
-    @patch.object(KeyFile, '_get_provider')
-    def test_encrypt_best_xor(self, get_mock):
-        get_mock.return_value = StubProvider()
+    def test_encrypt_best_xor(self):
         kf = KeyFile('asdf.txt')
         kf._KeyFile__key = b'x' * 32
-        kf.encrypt(b'hello', method='best')
-
-        get_mock.assert_called_once_with('xor')
+        assert isinstance(kf._get_provider(method='best'), XorProvider)
 
 
 class TestAesProvider:

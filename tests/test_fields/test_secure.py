@@ -82,6 +82,18 @@ class TestSecureField:
 
         cfg._keyfile.decrypt.assert_called_once_with(SecureValue('test', b'hello'))
 
+    def test_to_python_dict_invalid_ciphertext_int(self):
+        cfg = StubConfig()
+        field = SecureField(name='asdf')
+        cfg._keyfile.decrypt.side_effect = EncryptionError()
+        cfg._keyfile.__exit__.return_value = False
+
+        with pytest.raises(ValueError):
+            field.to_python(cfg, {
+                'method': 'test',
+                'ciphertext': 10
+            })
+
     def test_to_python_dict_valid(self):
         cfg = StubConfig()
         field = SecureField(name='asdf')

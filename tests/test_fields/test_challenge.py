@@ -66,10 +66,6 @@ class TestDigestValue:
         val = DigestValue.create(msg, hashlib.sha256, salt=salt)
         assert val.salt == salt
 
-    def test_create_tuple(self):
-        val = DigestValue.create('hello', hashlib.sha256)
-        assert DigestValue.create(val, hashlib.sha256) is val
-
 
 class TestChallengeField:
 

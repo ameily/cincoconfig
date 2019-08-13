@@ -20,10 +20,6 @@ class TestBytesField:
         with pytest.raises(TypeError):
             BytesField('asdf')
 
-    def test_validate_none(self):
-        field = BytesField()
-        field._validate(None, None) is None
-
     def test_validate_str(self):
         field = BytesField()
         field._validate(None, 'hello') == b'hello'
