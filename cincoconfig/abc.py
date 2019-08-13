@@ -258,21 +258,19 @@ class BaseSchema:
 class BaseConfig(BaseSchema):
     '''
     Base configuration that holds configuration values in the *_data* attribute. Each base config
-    object can have an associated :class:`KeyFile`, passed in the constructor as ``key_filename``.
-    If the configuration file doesn't have a key file path set, the config object will use the
-    parent config's key file. Requesting a key file will bubble up to the first config object
-    that has the key filename set and, if no config has a keyfile, the default path will be
-    used, :const:`DEFAULT_CINCOKEY_FILEPATH`.
+    object can have an associated :class:`cincoconfig.encryption.KeyFile`, passed in the
+    constructor as ``key_filename``. If the configuration file doesn't have a key file path set,
+    the config object will use the parent config's key file. Requesting a key file will bubble up
+    to the first config object that has the key filename set and, if no config has a keyfile, the
+    default path will be used, :const:`DEFAULT_CINCOKEY_FILEPATH`.
 
     :ivar dict _data: currently set configuration values
     :ivar dict _fields: dynamically added fields (not in *_schema*)
     :ivar BaseSchema _schema: backing schema
     :ivar BaseConfig _parent: parent configuration
-    :ivar KeyFile _keyfile: encryption key file
-    :ivar str _key_filename: path to encryption key file (pulled from _keyfile)
     '''
 
-    #: Default file path to the cincokey file (``~/.cincokey```). This value is deferenced on first
+    #: Default file path to the cincokey file (``~/.cincokey``). This value is deferenced on first
     #: access so you can modify this value for the entire cincoconfig installation
     DEFAULT_CINCOKEY_FILEPATH = os.path.join("~", ".cincokey")
 
@@ -295,7 +293,8 @@ class BaseConfig(BaseSchema):
     @property
     def _key_filename(self) -> str:
         '''
-        :return: the path to the cinco encryption key file
+        :return: the path to the cinco encryption key file (if not set, get the parent config's
+            key filename)
         '''
         if self.__keyfile:
             return self.__keyfile.filename
@@ -318,7 +317,7 @@ class BaseConfig(BaseSchema):
     @property
     def _keyfile(self) -> KeyFile:
         '''
-        :returns: the config's encryption key file
+        :returns: the config's encryption key file (if not set, get the parent config's key file)
         '''
         if not self.__keyfile:
             if self._parent:

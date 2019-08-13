@@ -26,7 +26,8 @@ from .encryption import EncryptionError, SecureValue
 __all__ = ('StringField', 'IntField', 'FloatField', 'PortField', 'IPv4AddressField',
            'IPv4NetworkField', 'FilenameField', 'BoolField', 'UrlField', 'ListField',
            'HostnameField', 'DictField', 'ListProxy', 'VirtualField', 'ApplicationModeField',
-           'LogLevelField', 'NumberField', 'ChallengeField', 'DigestValue', 'SecureField')
+           'LogLevelField', 'NumberField', 'ChallengeField', 'DigestValue', 'SecureField',
+           'BytesField')
 
 
 class StringField(Field):
@@ -709,7 +710,7 @@ class DigestValue(TDigestValue):
         '''
         Hash a plaintext value and return the new digest value. The digest is calculated as:
 
-        .. code-block::
+        .. code-block:: python
 
             salt[:digest_size] + plaintext
 
@@ -720,7 +721,7 @@ class DigestValue(TDigestValue):
         :param plaintext: string to hash
         :param algorithm: hashlib algorithm to use
         :param salt: hash salt
-        :return the created digest value
+        :returns: the created digest value
         '''
 
         hasher = algorithm()  # type: ignore
@@ -830,7 +831,7 @@ class ChallengeField(Field):
 
     def __init__(self, hash_algorithm: str = 'sha256', **kwargs):
         '''
-        :param hash_algorithm: hash algorithm to use, must be a key of :prop:`ALGORITHMS`
+        :param hash_algorithm: hash algorithm to use, must be a key of :attr:`ALGORITHMS`
         '''
         super().__init__(**kwargs)
         algorithm = self.ALGORITHMS.get(hash_algorithm.lower())

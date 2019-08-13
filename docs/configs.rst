@@ -24,7 +24,6 @@ configs
     .. automethod:: __iter__
 
 
-
 Internal Classes
 ----------------
 
@@ -37,10 +36,10 @@ The following base classes are used internally and should not be directly refere
     .. automethod:: _get_field
 
 
-
-
 .. autoclass:: cincoconfig.abc.BaseConfig
     :members:
 
     .. automethod:: _add_field
     .. automethod:: _get_field
+    .. autoattribute:: _keyfile
+    .. autoattribute:: _key_filename

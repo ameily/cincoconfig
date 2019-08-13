@@ -16,13 +16,22 @@ try:
 except ImportError:  # pragma: no cover
     AES_AVAILABLE = False
 else:
+    #: AES is available (``cryptography`` is installed)
     AES_AVAILABLE = True
 
-#: A encrypted value tuple containg the encryption method and the cipher text
-SecureValue = NamedTuple('SecureValue', [
-    ('method', str),
-    ('ciphertext', bytes)
-])
+
+#:
+#: An encrypted value tuple containing the encryption method and the ciphertext.
+#:
+#: .. py:attribute:: method
+#:
+#:  the encryption method (:class:`str`)
+#:
+#: .. py:attribute:: ciphertext
+#:
+#:  the encrypted value (:class:`bytes`)
+#:
+SecureValue = NamedTuple('SecureValue', [('method', str), ('ciphertext', bytes)])
 
 
 class EncryptionError(Exception):
@@ -67,7 +76,7 @@ class IEncryptionProvider:
 class KeyFile:
     '''
     The cincoconfig key file, containing a randomly generated 32 byte encryption key. The cinco
-    key file is used by :class:`~cincoconfig.fields.SecureField` to encrypt and decrypt values as
+    key file is used by :class:`~cincoconfig.SecureField` to encrypt and decrypt values as
     they are written to and read from the configuration file.
 
     The keyfile is loaded as needed by using this class as a context manager. The key has an
@@ -77,7 +86,7 @@ class KeyFile:
 
     To encrypt a value:
 
-    .. highlight:: python
+    .. code-block:: python
 
         with keyfile as ctx:
             secret = ctx.encrypt(method='xor', text='hello, world')
