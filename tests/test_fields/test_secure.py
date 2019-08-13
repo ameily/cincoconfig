@@ -40,7 +40,7 @@ class TestSecureField:
             'method': 'test',
             'ciphertext': base64.b64encode(b'ciphertext').decode()
         }
-        cfg._keyfile.__enter__.assert_called_once()
+        cfg._keyfile.__enter__.assert_called_once_with()
         cfg._keyfile.encrypt.assert_called_once_with('hello', method='test')
         cfg._keyfile.__exit__.assert_called_once_with(None, None, None)
 

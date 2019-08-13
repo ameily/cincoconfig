@@ -52,7 +52,7 @@ class TestKeyFile:
         kf._KeyFile__load_key()
 
         open_mock.assert_called_once_with('asdf.txt', 'rb')
-        genkey_mock.assert_called_once()
+        genkey_mock.assert_called_once_with()
 
     @patch('cincoconfig.encryption.open', new_callable=mock_open)
     @patch('os.urandom')
