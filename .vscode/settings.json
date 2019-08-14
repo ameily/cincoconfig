@@ -29,4 +29,7 @@
   "python.linting.pylintArgs": [
     "--rcfile=./.pylintrc"
   ],
+  "cSpell.words": [
+    "pycrypto"
+  ],
 }

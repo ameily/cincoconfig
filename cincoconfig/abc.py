@@ -8,7 +8,10 @@
 Abstract base classes.
 '''
 
+import os
 from typing import Any, Callable, Union, Optional, Dict
+
+from .encryption import KeyFile
 
 SchemaField = Union['BaseSchema', 'Field']
 
@@ -130,7 +133,7 @@ class Field:
     def __setval__(self, cfg: 'BaseConfig', value: Any):
         '''
         Set the validated value in the config. The default implementation passes the value through
-        the validation chain and then set's the validated value int he config.
+        the validation chain and then set's the validated value int the config.
 
         :param cfg: current config
         :param value: value to validated
@@ -176,14 +179,14 @@ class Field:
             assert field.to_python(field.to_basic(value)) == value
 
         The default implementation just returns ``value``. This method is called when the config is
-        saved to a file and will only be called with the value associated with this field.
+        loaded from a file and will only be called with the value associated with this field.
 
         In general, basic types are any types that can be represented in JSON: string, number,
         list, dict, boolean.
 
         :param cfg: current config
-        :param value: value to convert to a basic type
-        :returns: the converted basic type
+        :param value: value to convert to a Python type
+        :returns: the converted Python type
         '''
         return value
 
@@ -195,8 +198,8 @@ class Field:
         saved to a file and will only be called with the value associated with this field.
 
         :param cfg: current config
-        :param value: value to convert to a Python type
-        :returns: the converted Python type
+        :param value: value to convert to a basic type
+        :returns: the converted basic type
         '''
         return value
 
@@ -254,7 +257,12 @@ class BaseSchema:
 
 class BaseConfig(BaseSchema):
     '''
-    Base configuration that holds configuration values in the *_data* attribute.
+    Base configuration that holds configuration values in the *_data* attribute. Each base config
+    object can have an associated :class:`cincoconfig.KeyFile`, passed in the
+    constructor as ``key_filename``. If the configuration file doesn't have a key file path set,
+    the config object will use the parent config's key file. Requesting a key file will bubble up
+    to the first config object that has the key filename set and, if no config has a keyfile, the
+    default path will be used, :const:`DEFAULT_CINCOKEY_FILEPATH`.
 
     :ivar dict _data: currently set configuration values
     :ivar dict _fields: dynamically added fields (not in *_schema*)
@@ -262,15 +270,62 @@ class BaseConfig(BaseSchema):
     :ivar BaseConfig _parent: parent configuration
     '''
 
-    def __init__(self, schema: BaseSchema, parent: 'BaseConfig' = None):
+    #: Default file path to the cincokey file (``~/.cincokey``). This value is deferenced on first
+    #: access so you can modify this value for the entire cincoconfig installation
+    DEFAULT_CINCOKEY_FILEPATH = os.path.join("~", ".cincokey")
+
+    def __init__(self, schema: BaseSchema, parent: 'BaseConfig' = None,
+                 key_filename: str = None):
         '''
         :param schema: backing schema
         :param parent: parent configuration, when this object is a sub configuration
+        :param key_filename: path to cinco key file
         '''
         super().__init__()
         self._schema = schema
         self._parent = parent
         self._data = dict()  # type: Dict[str, Any]
+        self.__keyfile = None  # type: Optional[KeyFile]
+
+        if key_filename:
+            self._key_filename = key_filename
+
+    @property
+    def _key_filename(self) -> str:
+        '''
+        :return: the path to the cinco encryption key file (if not set, get the parent config's
+            key filename)
+        '''
+        if self.__keyfile:
+            return self.__keyfile.filename
+        if self._parent:
+            return self._parent._key_filename
+        return BaseConfig.DEFAULT_CINCOKEY_FILEPATH
+
+    @_key_filename.setter
+    def _key_filename(self, key_filename: str) -> None:
+        '''
+        Set the cinco encryption key file
+
+        :param key_filename: path to the cinco encryption key file
+        '''
+        if not key_filename:
+            self.__keyfile = None
+        else:
+            self.__keyfile = KeyFile(key_filename)
+
+    @property
+    def _keyfile(self) -> KeyFile:
+        '''
+        :returns: the config's encryption key file (if not set, get the parent config's key file)
+        '''
+        if not self.__keyfile:
+            if self._parent:
+                # This will bubble up to the root config
+                self.__keyfile = self._parent._keyfile
+            else:
+                self.__keyfile = KeyFile(BaseConfig.DEFAULT_CINCOKEY_FILEPATH)
+        return self.__keyfile
 
     def _add_field(self, key: str, field: SchemaField) -> SchemaField:
         '''

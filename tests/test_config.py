@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch, mock_open
 import pytest
 from cincoconfig.formats.registry import FormatRegistry
 from cincoconfig.config import Config, Schema, Field, AnyField
+from cincoconfig.fields import IncludeField
 from cincoconfig.version import __version__
 
 
@@ -13,6 +14,12 @@ class MockFormatter:
 
         self.dumps.return_value = b'hello, world'
         self.loads.return_value = {'x': 1}
+
+
+class MockFormatInclude:
+
+    def __init__(self):
+        self.loads = MagicMock(return_value={'include': 'blah.txt', 'include2': None})
 
 
 class TestConfig:
@@ -185,3 +192,37 @@ class TestConfig:
 
     def test_version(self):
         assert isinstance(__version__, str)
+
+    def test_getitem_nested(self):
+        schema = Schema()
+        schema.x.y = AnyField(default=2)
+        config = schema()
+
+        assert config['x.y'] == 2
+
+    def test_setitem_nested(self):
+        schema = Schema()
+        schema.x.y = AnyField(default=2)
+        config = schema()
+
+        config['x.y'] = 10
+        assert config['x.y'] == 10
+
+    @patch('cincoconfig.formats.registry.FormatRegistry.get')
+    def test_include_field(self, fr_get):
+        fmt = MockFormatInclude()
+        fr_get.return_value = fmt
+
+        schema = Schema()
+        field = IncludeField()
+        field.include = MagicMock(return_value={'x': 1, 'y': 2})
+        schema.include = field
+        schema.include2 = IncludeField()
+        schema.include3 = IncludeField()
+        config = schema()
+
+        load_tree = MagicMock()
+        object.__setattr__(config, 'load_tree', load_tree)
+        config.loads('asdf', format='json')
+        field.include.assert_called_once_with(config, fmt, 'blah.txt', {'include': 'blah.txt', 'include2': None})
+        load_tree.assert_called_once_with({'x': 1, 'y': 2})

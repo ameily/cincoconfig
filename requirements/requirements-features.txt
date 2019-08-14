@@ -3,3 +3,6 @@ bson
 
 # YAML format
 PyYAML
+
+# AES Crypto for SecureField
+cryptography

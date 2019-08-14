@@ -19,6 +19,9 @@ fields
 .. autoclass:: cincoconfig.ApplicationModeField
     :members:
 
+.. autoclass:: cincoconfig.SecureField
+    :members:
+
 .. autoclass:: cincoconfig.IntField
     :members:
 
@@ -50,12 +53,31 @@ fields
 .. autoclass:: cincoconfig.ListField
     :members:
 
-
-
 .. autoclass:: cincoconfig.VirtualField
     :members:
 
 .. autoclass:: cincoconfig.DictField
+    :members:
+
+.. autoclass:: cincoconfig.BytesField
+    :members:
+
+.. autoclass:: cincoconfig.IncludeField
+    :members:
+
+
+Secure Fields
+-------------
+
+The following fields provide secure configuration option storage and challenges.
+
+.. autoclass:: cincoconfig.ChallengeField
+    :members:
+
+.. autoclass:: cincoconfig.DigestValue
+    :members:
+
+.. autoclass:: cincoconfig.SecureField
     :members:
 
 
