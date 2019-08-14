@@ -20,14 +20,20 @@ setup(
     license='ISC',
     description='Universal configuration file parser',
     long_description=open("README.md", 'r').read(),
+    long_description_content_type='text/markdown',
     author='Adam Meily',
     author_email='meily.adam@gmail.com',
-    url='https://github.com/ameily/cincoconfig',
+    url='https://cincoconfig.readthedocs.io/en/latest/',
     packages=['cincoconfig', 'cincoconfig.formats'],
     install_requires=requirements,
     extras_require={
         'dev': dev_requirements,
         'features': feature_requirements
+    },
+    project_urls={
+        'Travis CI': 'https://travis-ci.org/ameily/cincoconfig',
+        'Documentation': 'https://cincoconfig.readthedocs.io/en/latest/',
+        'Source': 'https://github.com/ameily/cincoconfig/',
     },
     keywords=['config', 'configuration'],
     classifiers=[
