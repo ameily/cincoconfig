@@ -62,6 +62,9 @@ fields
 .. autoclass:: cincoconfig.BytesField
     :members:
 
+.. autoclass:: cincoconfig.IncludeField
+    :members:
+
 
 Secure Fields
 -------------

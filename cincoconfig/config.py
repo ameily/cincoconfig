@@ -8,6 +8,7 @@
 from typing import Union, Any, Iterator, Tuple
 from itertools import chain
 from .abc import Field, BaseConfig, BaseSchema, SchemaField, AnyField
+from .fields import IncludeField
 from .formats import FormatRegistry
 
 
@@ -174,15 +175,41 @@ class Config(BaseConfig):
 
     def __getitem__(self, key: str) -> Any:
         '''
-        :returns: field value, equivalent to ``getattr(config, key)``
+        :returns: field value, equivalent to ``getattr(config, key)``, however his method handles
+            retrieving nested values. For example:
+
+            .. code-block:: python
+
+                >>> schema = Schema()
+                >>> schema.x.y = IntField(default=10)
+                >>> config = schema()
+                >>> print(config['x.y'])
+                10
         '''
+        if '.' in key:
+            key, remainder = key.split('.', 1)
+            return getattr(self, key).__getitem__(remainder)
         return getattr(self, key)
 
     def __setitem__(self, key: str, value: Any):
         '''
-        Set a field value, equivalent to ``setattr(config, key)``.
+        Set a field value, equivalent to ``setattr(config, key)``, however this method handles
+        setting nested values. For example:
+
+        .. code-block:: python
+
+            >>> schema = Schema()
+            >>> schema.x.y = IntField(default=10)
+            >>> config = schema()
+            >>> config['x.y'] = 20
+            >>> print(config.x.y)
+            20
         '''
-        setattr(self, key, value)
+        if '.' in key:
+            key, remainder = key.split('.', 1)
+            getattr(self, key).__setitem__(remainder, value)
+        else:
+            setattr(self, key, value)
 
     def save(self, filename: str, format: str):
         '''
@@ -222,7 +249,8 @@ class Config(BaseConfig):
 
     def loads(self, content: Union[str, bytes], format: str, **kwargs):
         '''
-        Load a configuration from a str or bytes.
+        Load a configuration from a str or bytes and process any
+        :class:`~cincoconfig.IncludeField`.
 
         :param content: configuration content
         :param format: content format
@@ -234,6 +262,23 @@ class Config(BaseConfig):
         formatter = FormatRegistry.get(format, **kwargs)
 
         tree = formatter.loads(self, content)
+
+        # Process includes
+        # Get the include fields in the backing schema
+        includes = [(key, field) for key, field in self._schema._fields.items()
+                    if isinstance(field, IncludeField)]
+        for key, field in includes:
+            # For each of the included field names, check if it has a value in the parsed tree
+            # and, if it does, load the included file and combine it with the existing tree.
+            filename = tree.get(key)
+            if filename is None:
+                continue
+
+            # All included config files must have the same file format (you can't include XML from
+            # a JSON file, for example).
+            formatter = FormatRegistry.get(format, **kwargs)
+            tree = field.include(self, formatter, filename, tree)
+
         self.load_tree(tree)
 
     def load_tree(self, tree: dict):
