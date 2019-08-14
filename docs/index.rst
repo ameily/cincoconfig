@@ -24,7 +24,15 @@ custom application and library configurations declaritively without any subclass
 specializations. Cincoconfig ships with 20+ builtin :doc:`fields` with comprehensive value
 validation.
 
-Configuration values are directly accessed as attributes
+cincoconfig has no hard dependencies, however, several features become available by
+installing several dependencies, including (see `requirements/requirements-features.txt` for full
+list):
+
+ - Configuration value encryption (:class:`~cincoconfig.SecureField`) - requires ``cryptography``
+ - YAML config file support - requires ``PyYaml``
+ - BSON config file support - requires ``bson``
+
+Configuration values are directly accessed as attributes.
 
 .. code-block:: python
 

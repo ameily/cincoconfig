@@ -7,3 +7,4 @@ pytest-cov
 sphinx
 sphinx-autodoc-typehints
 sphinx-rtd-theme
+wheel
