@@ -5,7 +5,7 @@
 # this source code package.
 #
 
-from typing import Union, Any, Iterator, Tuple
+from typing import Union, Any, Iterator, Tuple, Callable
 from itertools import chain
 from .abc import Field, BaseConfig, BaseSchema, SchemaField, AnyField
 from .fields import IncludeField
@@ -13,6 +13,8 @@ from .formats import FormatRegistry
 
 
 __all__ = ('Config', 'Schema')
+
+ConfigValidator = Callable[['Config'], None]
 
 
 class Schema(BaseSchema):
@@ -65,11 +67,11 @@ class Schema(BaseSchema):
         for key, field in self._fields.items():
             yield key, field
 
-    def __call__(self) -> 'Config':
+    def __call__(self, validator: ConfigValidator = None) -> 'Config':
         '''
         Compile the schema into an initial config with default values set.
         '''
-        return Config(self)
+        return Config(self, validator=validator)
 
 
 class Config(BaseConfig):
@@ -111,13 +113,15 @@ class Config(BaseConfig):
         # config = schema()
     '''
 
-    def __init__(self, schema: BaseSchema, parent: 'Config' = None):
+    def __init__(self, schema: BaseSchema, parent: 'Config' = None,
+                 validator: ConfigValidator = None):
         '''
         :param schema: backing schema, stored as *_schema*
         :param parent: parent config instance, only set when this config is a field of another
             config, stored as *_parent*
         '''
         super().__init__(schema, parent)
+        self._validator = validator
 
         for key, field in schema._fields.items():
             if isinstance(field, BaseSchema):
@@ -293,6 +297,9 @@ class Config(BaseConfig):
                 value = field.to_python(self, value)
 
             self.__setattr__(key, value)
+
+        if self._validator:
+            self._validator(self)
 
     def __iter__(self) -> Iterator[Tuple[str, Any]]:
         '''
