@@ -7,7 +7,6 @@
 
 import sys
 from typing import Union, Any, Iterator, Tuple, Callable
-from types import ModuleType
 from itertools import chain
 from .abc import Field, BaseConfig, BaseSchema, SchemaField, AnyField
 from .fields import IncludeField
@@ -75,7 +74,7 @@ class Schema(BaseSchema):
         '''
         return Config(self, validator=validator)
 
-    def make_type(self, name: str, module: ModuleType = None, key_filename: str = None,
+    def make_type(self, name: str, module: str = None, key_filename: str = None,
                   validator: ConfigValidator = None) -> type:
         '''
         Create a new type that wraps this schema. This method should only be called once per
@@ -109,7 +108,7 @@ class Schema(BaseSchema):
 
             # same schema as above
             config = schema()
-            Item = item_schema.make_class('Item')
+            Item = item_schema.make_type('Item')
 
             item = Item(url='https://google.com', verify_ssl=False)
             config.endpoints.append(item)

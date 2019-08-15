@@ -567,16 +567,17 @@ class ListProxy:
         '''
         if isinstance(self.field, BaseSchema):
             if isinstance(value, dict):
-                cfg = self.field()
+                cfg = self.field()  # type: ignore
+                cfg._parent = self.cfg
                 cfg.load_tree(value)
-                value = cfg
+            elif isinstance(value, BaseConfig):
+                value._parent = self.cfg
+                value._validate()
+                cfg = value
+            else:
+                raise ValueError('invalid configuration object')
 
-            if not isinstance(value, BaseConfig):
-                raise ValueError('invalid configuration')
-
-            value._parent = self.cfg
-            value._validate()
-            return value
+            return cfg
 
         return self.field.validate(self.cfg, value)
 
