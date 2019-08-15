@@ -226,3 +226,35 @@ class TestConfig:
         config.loads('asdf', format='json')
         field.include.assert_called_once_with(config, fmt, 'blah.txt', {'include': 'blah.txt', 'include2': None})
         load_tree.assert_called_once_with({'x': 1, 'y': 2})
+
+    def test_set_config(self):
+        schema = Schema()
+        schema.x.y = Field()
+        config = schema()
+
+        sub = schema.x()
+        sub.y = 10
+        config.x = sub
+        assert sub._parent is config
+        assert config.x is sub
+
+    def test_validate(self):
+        pass
+
+    def test_load_tree_validate(self):
+        schema = Schema()
+        schema.x = Field()
+        config = schema()
+
+        mock_validate = MagicMock()
+        object.__setattr__(config, '_validate', mock_validate)
+        config.load_tree({'x': 1})
+        mock_validate.assert_called_once_with()
+
+    def test_validator(self):
+        validator = MagicMock()
+        schema = Schema()
+        schema.x = Field()
+        config = schema(validator=validator)
+        config._validate()
+        validator.assert_called_once_with(config)

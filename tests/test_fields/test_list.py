@@ -7,6 +7,7 @@
 
 import pytest
 from cincoconfig.fields import ListField, ListProxy, IntField
+from cincoconfig.config import Schema, Config
 
 
 class MockConfig:
@@ -135,6 +136,53 @@ class TestListProxy:
         del wrap[1]
         assert wrap._items == [1, 3]
 
+    def test_to_basic_schema(self):
+        schema = Schema()
+        schema.x = IntField(default=1)
+        schema.y = IntField(default=2)
+        field = ListProxy(MockConfig(), schema)
+        field.append(schema())
+        assert field.to_basic() == [{'x': 1, 'y': 2}]
+
+    def test_validate_schema_dict(self):
+        schema = Schema()
+        schema.x = IntField(default=1)
+        schema.y = IntField(default=2)
+        cfg = MockConfig()
+        proxy = ListProxy(cfg, schema)
+
+        check = proxy._validate({'x': 10})
+        assert isinstance(check, Config)
+        assert check.x == 10
+        assert check.y == 2
+        assert check._parent is cfg
+        assert check._schema is schema
+
+    def test_validate_schema_config(self):
+        schema = Schema()
+        schema.x = IntField(default=1)
+        schema.y = IntField(default=2)
+        cfg = MockConfig()
+        proxy = ListProxy(cfg, schema)
+
+        val = schema()
+        val.x = 10
+        check = proxy._validate(val)
+        assert isinstance(check, Config)
+        assert check is val
+        assert check._parent is cfg
+        assert check._schema is schema
+
+    def test_validate_schema_invalid(self):
+        schema = Schema()
+        schema.x = IntField(default=1)
+        schema.y = IntField(default=2)
+        cfg = MockConfig()
+        proxy = ListProxy(cfg, schema)
+
+        with pytest.raises(ValueError):
+            proxy._validate(100)
+
 
 class TestListField:
 
@@ -182,3 +230,12 @@ class TestListField:
         value = field.to_python(MockConfig(), [1, 2, 3])
         assert value == [1, 2, 3]
         assert isinstance(value, list)
+
+    def test_validate_list_proxy(self):
+        field = ListField(IntField())
+        orig = ListProxy(MockConfig(), IntField(), [1, 2, 3])
+        check = field._validate(MockConfig(), ListProxy(MockConfig(), IntField(), orig))
+        assert isinstance(check, ListProxy)
+        assert check._items == orig
+        assert check is not orig
+        assert check._items is not orig._items

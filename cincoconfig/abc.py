@@ -347,6 +347,11 @@ class BaseConfig(BaseSchema):
         '''
         return self._schema._get_field(key) or super()._get_field(key)
 
+    def _validate(self) -> None:
+        '''
+        Validate the configuration. The default implementation does nothing.
+        '''
+
 
 class ConfigFormat:
     '''

@@ -5,7 +5,9 @@
 # this source code package.
 #
 
+import sys
 from typing import Union, Any, Iterator, Tuple, Callable
+from types import ModuleType
 from itertools import chain
 from .abc import Field, BaseConfig, BaseSchema, SchemaField, AnyField
 from .fields import IncludeField
@@ -73,6 +75,73 @@ class Schema(BaseSchema):
         '''
         return Config(self, validator=validator)
 
+    def make_type(self, name: str, module: ModuleType = None, key_filename: str = None,
+                  validator: ConfigValidator = None) -> type:
+        '''
+        Create a new type that wraps this schema. This method should only be called once per
+        schema object.
+
+        Use this method when to create reusable configuration objects that can be used multiple
+        times  in code in a more traditional Pythonic manner. For example, consider the following:
+
+        .. code-block:: python
+
+            item_schema = Schema()
+            item_schema.url = UrlField()
+            item_schema.verify_ssl = BoolField(default=True)
+
+            schema = Schema()
+            schema.endpoints = ListField(item_schema)
+
+            config = schema()
+
+            # to create new web hook items
+            item = webhook_schema()
+            item.url = 'https://google.com'
+            item.verify_ssl = False
+
+            config.endpoints.append(item)
+
+        This is a cumbersome design when creating these objects within code. ``make_type`` will
+        dynamically create a new class that can be used in a more Pythonic way:
+
+        .. code-block:: python
+
+            # same schema as above
+            config = schema()
+            Item = item_schema.make_class('Item')
+
+            item = Item(url='https://google.com', verify_ssl=False)
+            config.endpoints.append(item)
+
+        The new class inherits from :class:`Config`.
+
+        :param name: the new class name
+        :param module: the owning module
+        :param key_filename: the key file name passed to each new config object,
+        :param validator: config validator callback method
+        :returns: the new type
+        '''
+        schema = self
+
+        def init_method(self, **kwargs):
+            Config.__init__(self, schema, key_filename=key_filename, validator=validator)
+            for key, value in kwargs.items():
+                self.__setattr__(key, value)
+
+        result = type(name, (Config,), {'__init__': init_method})
+        # This is copied from the namedtuple method. We try to set the module of the new
+        # class to the calling module.
+        if module is None:
+            try:
+                module = sys._getframe(1).f_globals.get('__name__', '__main__')
+            except (AttributeError, ValueError):  # pragma: no cover
+                pass
+        if module is not None:
+            result.__module__ = module
+
+        return result
+
 
 class Config(BaseConfig):
     '''
@@ -113,14 +182,17 @@ class Config(BaseConfig):
         # config = schema()
     '''
 
-    def __init__(self, schema: BaseSchema, parent: 'Config' = None,
+    def __init__(self, schema: BaseSchema, parent: 'Config' = None, key_filename: str = None,
                  validator: ConfigValidator = None):
         '''
         :param schema: backing schema, stored as *_schema*
         :param parent: parent config instance, only set when this config is a field of another
             config, stored as *_parent*
+        :param key_filename: path to key file
+        :param validator: callback method that performs custom validation after the config is
+            loaded
         '''
-        super().__init__(schema, parent)
+        super().__init__(schema, parent, key_filename)
         self._validator = validator
 
         for key, field in schema._fields.items():
@@ -150,11 +222,16 @@ class Config(BaseConfig):
             field = self._add_field(name, AnyField())
 
         if isinstance(field, BaseSchema):
-            if not isinstance(value, dict):
+            if isinstance(value, Config):
+                cfg = value
+                cfg._parent = self
+            elif not isinstance(value, dict):
                 raise TypeError('Config value must be a dict object')
+            else:
+                cfg = Config(field, parent=self)
+                cfg.load_tree(value)
 
-            cfg = self._data[name] = Config(field, parent=self)
-            cfg.load_tree(value)
+            self._data[name] = cfg
         else:
             field.__setval__(self, value)
 
@@ -298,8 +375,7 @@ class Config(BaseConfig):
 
             self.__setattr__(key, value)
 
-        if self._validator:
-            self._validator(self)
+        self._validate()
 
     def __iter__(self) -> Iterator[Tuple[str, Any]]:
         '''
@@ -329,3 +405,10 @@ class Config(BaseConfig):
                 tree[key] = field.to_basic(self, field.__getval__(self))
 
         return tree
+
+    def _validate(self) -> None:
+        '''
+        Perform validation on the entire config.
+        '''
+        if self._validator:
+            self._validator(self)

@@ -91,3 +91,48 @@ values.
 Using ``__getitem__`` and ``__setitem__`` is useful in situations where you need dynamic
 programmatic access to the configuration values, such as supporting a generic REST API to interact
 with the configuration.
+
+
+List Field of Complex Types
+---------------------------
+
+The :class:`~cincoconfig.ListField` performs value validation for each item by accepting either a
+:class:`~cincoconfig.Field` or :class:`~cincoconfig.Schema`. Consider the example of a list of
+webhooks.
+
+.. code-block:: python
+
+    webhook_schema = Schema()
+    webhook_schema.url = UrlField(required=True)
+    webhook_schema.verify_ssl = BoolField(default=True)
+
+    schema = Schema()
+    schema.issue_webhooks = ListField(webhook_schema)
+    schema.merge_request_webhooks = ListField(webhook_schema)
+
+    config = schema()
+
+    wh = webhook_schema()
+    wh.url = 'https://google.com'
+    config.issue_webhooks.append(wh)
+
+Here, the ``webhook`` schema is usable across mutliple configurations. As seen here, it is not
+very intuative to create reusable configuration items. The Schema
+:meth:`~cincoconfig.Schema.make_type` method is designed to make working with these reusable
+configurations easier. ``make_type`` creates a new type, inheriting from
+:class:`~cincoconfig.Config` that is more Pythonic.
+
+.. code-block:: python
+
+    webhook_schema = Schema()
+    webhook_schema.url = UrlField(required=True)
+    webhook_schema.verify_ssl = BoolField(default=True)
+
+    schema = Schema()
+    schema.issue_webhooks = ListField(webhook_schema)
+    schema.merge_request_webhooks = ListField(webhook_schema)
+
+    config = schema()
+
+    wh = WebHook(url='https://google.com')
+    config.issue_webhooks.append(wh)

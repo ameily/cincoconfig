@@ -19,7 +19,7 @@ from urllib.parse import urlparse
 from typing import Union, List, Any, Iterator, Callable, NamedTuple, Optional, Dict
 import hashlib
 
-from .abc import Field, AnyField, BaseConfig, BaseSchema, ConfigFormat
+from .abc import Field, AnyField, BaseConfig, BaseSchema, ConfigFormat, SchemaField
 from .encryption import EncryptionError, SecureValue
 
 
@@ -438,7 +438,7 @@ class ListProxy:
     the field returned by the :class:`ListField` validation chain.
     '''
 
-    def __init__(self, cfg: BaseConfig, field: Field, items: list = None):
+    def __init__(self, cfg: BaseConfig, field: SchemaField, items: list = None):
         '''
         :param cfg: current config
         :param field: field to validate against
@@ -475,7 +475,7 @@ class ListProxy:
         '''
         Validate a new item and then append it to the list if validation succeededs.
         '''
-        value = self.field.validate(self.cfg, item)
+        value = self._validate(item)
         self._items.append(value)
 
     def __add__(self, other: Union[list, 'ListProxy']) -> 'ListProxy':
@@ -508,7 +508,7 @@ class ListProxy:
         del self._items[index]
 
     def __setitem__(self, index: int, value: Any) -> None:
-        self._items[index] = self.field.validate(self.cfg, value)
+        self._items[index] = self._validate(value)
 
     def clear(self) -> None:
         '''
@@ -542,14 +542,14 @@ class ListProxy:
         return self._items.index(value)
 
     def insert(self, index, value: Any) -> None:
-        value = self.field.validate(self.cfg, value)
+        value = self._validate(value)
         self._items.insert(index, value)
 
     def pop(self, index: int = None) -> Any:
         return self._items.pop() if index is None else self._items.pop(index)
 
     def remove(self, value: Any) -> None:
-        value = self.field.validate(self.cfg, value)
+        value = self._validate(value)
         self._items.remove(value)
 
     def reverse(self) -> None:
@@ -557,6 +557,36 @@ class ListProxy:
 
     def sort(self, key=None, reverse=False) -> None:
         self._items.sort(key=key, reverse=reverse)
+
+    def _validate(self, value: Any) -> Any:
+        '''
+        Validate a value.
+
+        :param value: value to validate
+        :returns: the validated value
+        '''
+        if isinstance(self.field, BaseSchema):
+            if isinstance(value, dict):
+                cfg = self.field()
+                cfg.load_tree(value)
+                value = cfg
+
+            if not isinstance(value, BaseConfig):
+                raise ValueError('invalid configuration')
+
+            value._parent = self.cfg
+            value._validate()
+            return value
+
+        return self.field.validate(self.cfg, value)
+
+    def to_basic(self) -> list:
+        '''
+        :returns: the basic representation of the list items, suitable for saving to disk
+        '''
+        if isinstance(self.field, BaseSchema):
+            return [item.to_tree() for item in self._items]
+        return self._items
 
 
 class ListField(Field):
@@ -569,7 +599,7 @@ class ListField(Field):
     ``None`` and is not empty.
     '''
 
-    def __init__(self, field: Field = None, **kwargs):
+    def __init__(self, field: SchemaField = None, **kwargs):
         '''
         :param field: Field to validate values against
         '''
@@ -584,6 +614,9 @@ class ListField(Field):
         :param value: value to validate
         :returns: a :class:`list` if not field is specified, a :class:`ListProxy` otherwise
         '''
+        if isinstance(value, ListProxy):
+            return ListProxy(cfg, self.field, value._items)
+
         if not isinstance(value, (list, tuple)):
             raise ValueError('%s is not a list object' % self.name)
 
@@ -604,7 +637,7 @@ class ListField(Field):
         :param value: value to convert
         '''
         if isinstance(value, ListProxy):
-            return value._items
+            return value.to_basic()
         return value
 
     def to_python(self, cfg: BaseConfig, value: list) -> Union[list, ListProxy]:

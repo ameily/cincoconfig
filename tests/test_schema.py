@@ -48,3 +48,14 @@ class TestConfig:
         cfg = schema()
         assert isinstance(cfg, Config)
         assert cfg._schema is schema
+
+    def test_make_type(self):
+        schema = Schema()
+        schema.x = Field(default=2)
+        schema.y = Field()
+
+        CustomConfig = schema.make_type('CustomConfig')
+        a = CustomConfig(y=10)
+        assert isinstance(a, Config)
+        assert a.x == 2
+        assert a.y == 10
