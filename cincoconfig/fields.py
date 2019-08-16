@@ -572,7 +572,7 @@ class ListProxy:
                 cfg.load_tree(value)
             elif isinstance(value, BaseConfig):
                 value._parent = self.cfg
-                value._validate()
+                value.validate()
                 cfg = value
             else:
                 raise ValueError('invalid configuration object')

@@ -6,7 +6,7 @@
 #
 
 import sys
-from typing import Union, Any, Iterator, Tuple, Callable
+from typing import Union, Any, Iterator, Tuple, Callable, List
 from itertools import chain
 from .abc import Field, BaseConfig, BaseSchema, SchemaField, AnyField
 from .fields import IncludeField
@@ -40,6 +40,12 @@ class Schema(BaseSchema):
     configuration from a file.
     '''
 
+    def __post_init__(self) -> None:
+        '''
+        Initialize the schema.
+        '''
+        self._validators = []  # type: List[ConfigValidator]
+
     def __setattr__(self, name: str, value: SchemaField):
         '''
         :param name: attribute name
@@ -68,14 +74,13 @@ class Schema(BaseSchema):
         for key, field in self._fields.items():
             yield key, field
 
-    def __call__(self, validator: ConfigValidator = None) -> 'Config':
+    def __call__(self) -> 'Config':
         '''
         Compile the schema into an initial config with default values set.
         '''
-        return Config(self, validator=validator)
+        return Config(self)
 
-    def make_type(self, name: str, module: str = None, key_filename: str = None,
-                  validator: ConfigValidator = None) -> type:
+    def make_type(self, name: str, module: str = None, key_filename: str = None) -> type:
         '''
         Create a new type that wraps this schema. This method should only be called once per
         schema object.
@@ -124,7 +129,7 @@ class Schema(BaseSchema):
         schema = self
 
         def init_method(self, **kwargs):
-            Config.__init__(self, schema, key_filename=key_filename, validator=validator)
+            Config.__init__(self, schema, key_filename=key_filename)
             for key, value in kwargs.items():
                 self.__setattr__(key, value)
 
@@ -140,6 +145,53 @@ class Schema(BaseSchema):
             result.__module__ = module
 
         return result
+
+    def validator(self, func: ConfigValidator) -> ConfigValidator:
+        '''
+        Decorator to register a new validator with the schema. All validators will be run against
+        the configuration whenever the configuration is loaded from disk. Multiple validators can
+        be registered by using the decorator multiple times. Subconfigs can also be validated by
+        using the decorateor on the sub schema.
+
+        .. code-block:: python
+
+            schema = Schema()
+            schema.x = IntField()
+            schema.y = IntField()
+            schema.db.username = StringField()
+            schema.db.password = StringField()
+
+            @schema.validator
+            def validate_x_lt_y(cfg):
+                if cfg.x and cfg.y and cfg.x >= cfg.y:
+                    raise ValueError('x must be less-than y')
+
+            @schema.db.validator
+            def validate_db_creds(cfg):
+                if cfg.username and not db.password:
+                    raise ValueError('db.password is required when username is specified')
+
+            config = schema()
+            config.load('mycfg.json', format='json')  # will call the above validators
+            # .....
+
+        The validator function needs to raise an exception, preferably a :class:`ValueError`, if
+        the validation fails.
+
+        :param func: validator function that accepts a single argument: :class:`Config`.
+        :returns: ``func``
+        '''
+        self._validators.append(func)
+        return func
+
+    def _validate(self, config: 'Config') -> None:
+        '''
+        Validate the configuration by running any registered validators against it.
+
+        :param config: config to validate
+        '''
+        for validator in self._validators:
+            validator(config)
 
 
 class Config(BaseConfig):
@@ -181,18 +233,14 @@ class Config(BaseConfig):
         # config = schema()
     '''
 
-    def __init__(self, schema: BaseSchema, parent: 'Config' = None, key_filename: str = None,
-                 validator: ConfigValidator = None):
+    def __init__(self, schema: BaseSchema, parent: 'Config' = None, key_filename: str = None):
         '''
         :param schema: backing schema, stored as *_schema*
         :param parent: parent config instance, only set when this config is a field of another
             config, stored as *_parent*
         :param key_filename: path to key file
-        :param validator: callback method that performs custom validation after the config is
-            loaded
         '''
         super().__init__(schema, parent, key_filename)
-        self._validator = validator
 
         for key, field in schema._fields.items():
             if isinstance(field, BaseSchema):
@@ -374,7 +422,7 @@ class Config(BaseConfig):
 
             self.__setattr__(key, value)
 
-        self._validate()
+        self.validate()
 
     def __iter__(self) -> Iterator[Tuple[str, Any]]:
         '''
@@ -405,9 +453,8 @@ class Config(BaseConfig):
 
         return tree
 
-    def _validate(self) -> None:
+    def validate(self) -> None:
         '''
         Perform validation on the entire config.
         '''
-        if self._validator:
-            self._validator(self)
+        self._schema._validate(self)  # type: ignore

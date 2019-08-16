@@ -230,6 +230,14 @@ class BaseSchema:
         self._key = key
         self._dynamic = dynamic
         self._fields = dict()  # type: Dict[str, SchemaField]
+        self.__post_init__()
+
+    def __post_init__(self) -> None:
+        '''
+        Subclass hook that is called at the end of ``__init__``. This allows subclasses to perform
+        additional initialization without overriding the ``__init__`` method. The default
+        implementation does nothing.
+        '''
 
     def __setkey__(self, parent: 'BaseSchema', key: str) -> None:
         '''
@@ -347,7 +355,7 @@ class BaseConfig(BaseSchema):
         '''
         return self._schema._get_field(key) or super()._get_field(key)
 
-    def _validate(self) -> None:
+    def validate(self) -> None:
         '''
         Validate the configuration. The default implementation does nothing.
         '''

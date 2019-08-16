@@ -247,7 +247,7 @@ class TestConfig:
         config = schema()
 
         mock_validate = MagicMock()
-        object.__setattr__(config, '_validate', mock_validate)
+        object.__setattr__(config, 'validate', mock_validate)
         config.load_tree({'x': 1})
         mock_validate.assert_called_once_with()
 
@@ -255,6 +255,11 @@ class TestConfig:
         validator = MagicMock()
         schema = Schema()
         schema.x = Field()
-        config = schema(validator=validator)
-        config._validate()
+
+        @schema.validator
+        def validate(cfg):
+            validator(cfg)
+
+        config = schema()
+        config.validate()
         validator.assert_called_once_with(config)

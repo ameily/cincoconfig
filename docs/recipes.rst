@@ -4,25 +4,34 @@ Recipes
 Validate Configuration On Load
 ------------------------------
 
-When creating the configuration, by calling the :class:`~cincoconfig.Schema` object, you can pass in
-a callback method that will be called whenever the configuration file is loaded from disk. The
-callback accepts a single argument: the configuration.
+The :class:`~cincoconfig.Schema` object has a :meth:`~cincoconfig.Schema.validator` decorator that
+registers a method as a validator. Whenever the configuration is loaded, the schema's validators
+are run against the configuration. Custom config validators can perform advanced validations, like
+the following:
 
 .. code-block:: python
-
-    def validate_config(config: Config) -> None:
-        '''
-        Validates that if both x and y are specified in the config that x is less than y.
-        '''
-        if config.x and config.y and config.x < config.y:
-            raise ValueError('x must be < y')
 
     schema = Schema()
     schema.x = IntField()
     schema.y = IntField()
+    schema.db.username = StringField()
+    schema.db.password = StringField()
 
-    config = schema(validator=validate_config)
-    config.load('myconfig.json', format='json')
+    @schema.validator
+    def validate_x_lt_y(cfg):
+        # validates that x < y
+        if cfg.x and cfg.y and cfg.x >= cfg.y:
+            raise ValueError('x must be less-than y')
+
+    @schema.db.validator
+    def validate_db_creds(cfg):
+        # validates that if the db username is specifed then the password must
+        # also be specified.
+        if cfg.username and not db.password:
+            raise ValueError('db.password is required when username is specified')
+
+    config = schema()
+    config.load('mycfg.json', format='json')  # will call the above validators
 
 
 Allow Multiple Configuration Files
