@@ -136,6 +136,7 @@ configurations easier. ``make_type`` creates a new type, inheriting from
     webhook_schema = Schema()
     webhook_schema.url = UrlField(required=True)
     webhook_schema.verify_ssl = BoolField(default=True)
+    WebHook = webhook_schema.make_type('WebHook')  # WebHook is now a new type
 
     schema = Schema()
     schema.issue_webhooks = ListField(webhook_schema)
