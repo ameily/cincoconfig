@@ -116,9 +116,9 @@ class KeyFile:
         '''
         Generate a random 32 byte key and save it to ``filename``.
         '''
-        key = os.urandom(32)
+        self.__key = os.urandom(32)
         with open(self.filename, 'wb') as fp:
-            fp.write(key)
+            fp.write(self.__key)
 
     def _validate_key(self) -> None:
         '''
