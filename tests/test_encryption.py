@@ -45,7 +45,7 @@ class TestKeyFile:
         genkey_mock.assert_not_called()
 
     @patch('cincoconfig.encryption.open')
-    @patch.object(KeyFile, 'generate_key')
+    @patch.object(KeyFile, '_KeyFile__generate_key')
     def test_load_generate(self, genkey_mock, open_mock):
         open_mock.side_effect = IOError()
         kf = KeyFile('asdf.txt')
