@@ -108,17 +108,28 @@ class KeyFile:
             with open(self.filename, 'rb') as fp:
                 self.__key = fp.read()
         except OSError:
-            self.generate_key()
+            self.__key = self.__generate_key()
         else:
             self._validate_key()
+
+    def __generate_key(self) -> bytes:
+        '''
+        Generate a random 32 byte key and save it to ``filename``.
+
+        :returns: the generated key
+        '''
+        key = os.urandom(32)
+        with open(self.filename, 'wb') as fp:
+            fp.write(key)
+        return key
 
     def generate_key(self) -> None:
         '''
         Generate a random 32 byte key and save it to ``filename``.
         '''
-        key = os.urandom(32)
-        with open(self.filename, 'wb') as fp:
-            fp.write(key)
+        # We generate the key but don't return the value in the public API so that we don't leak
+        # the key outside of a with context.
+        self.__generate_key()
 
     def _validate_key(self) -> None:
         '''

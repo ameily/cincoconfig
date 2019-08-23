@@ -278,9 +278,9 @@ class BaseConfig(BaseSchema):
     :ivar BaseConfig _parent: parent configuration
     '''
 
-    #: Default file path to the cincokey file (``~/.cincokey``). This value is deferenced on first
+    #: Default file path to the cincokey file (``~/.cincokey``). This value is dereferenced on first
     #: access so you can modify this value for the entire cincoconfig installation
-    DEFAULT_CINCOKEY_FILEPATH = os.path.join("~", ".cincokey")
+    DEFAULT_CINCOKEY_FILEPATH = os.path.join(os.path.expanduser("~"), ".cincokey")
 
     def __init__(self, schema: BaseSchema, parent: 'BaseConfig' = None,
                  key_filename: str = None):
