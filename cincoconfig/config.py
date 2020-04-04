@@ -191,6 +191,10 @@ class Schema(BaseSchema):
 
         :param config: config to validate
         '''
+        for field in self._fields.values():
+            val = field.__getval__(config)
+            field.validate(config, val)
+
         for validator in self._validators:
             validator(config)
 
@@ -451,7 +455,7 @@ class Config(BaseConfig):
             if key not in ignore and value is not None:
                 self.__setitem__(key, value)
 
-    def load_tree(self, tree: dict):
+    def load_tree(self, tree: dict) -> None:
         '''
         Load a tree and then validate the values.
 
