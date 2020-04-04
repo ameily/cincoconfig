@@ -346,7 +346,7 @@ class BaseConfig(BaseSchema):
         :raises TypeError: the configuration is not dynamic and new fields cannot be added
         '''
         if not self._schema._dynamic:
-            raise TypeError('configuration is not dynamic and new fields cannot be added')
+            raise TypeError('unrecgonized configuration field: %s' % key)
         return super()._add_field(key, field)
 
     def _get_field(self, key: str) -> Optional[SchemaField]:
