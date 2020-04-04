@@ -1,3 +1,4 @@
+import argparse
 from unittest.mock import MagicMock, patch, mock_open
 import pytest
 from cincoconfig.formats.registry import FormatRegistry
@@ -263,3 +264,43 @@ class TestConfig:
         config = schema()
         config.validate()
         validator.assert_called_once_with(config)
+
+    def test_cmdline_args_override(self):
+        parser = argparse.ArgumentParser()
+        schema = Schema()
+        schema.w = Field(default='w')
+        schema.x = Field(default='x')
+        schema.y.z = Field(default='z')
+        config = schema()
+
+        parser.add_argument('-x', action='store')
+        parser.add_argument('-z', action='store', dest='y.z')
+        parser.add_argument('-i', action='store')
+        parser.add_argument('-j', action='store')
+        args = parser.parse_args(['-x', '1', '-z', '2', '-j', '3'])
+
+        config.cmdline_args_override(args, ignore=['j'])
+
+        assert config.x == '1'
+        assert config.y.z == '2'
+        assert config.w == 'w'
+
+    def test_cmdline_args_ocverride_single_ignore(self):
+        parser = argparse.ArgumentParser()
+        schema = Schema()
+        schema.w = Field(default='w')
+        schema.x = Field(default='x')
+        schema.y.z = Field(default='z')
+        config = schema()
+
+        parser.add_argument('-x', action='store')
+        parser.add_argument('-z', action='store', dest='y.z')
+        parser.add_argument('-i', action='store')
+        parser.add_argument('-j', action='store')
+        args = parser.parse_args(['-x', '1', '-z', '2', '-j', '3'])
+
+        config.cmdline_args_override(args, ignore='j')
+
+        assert config.x == '1'
+        assert config.y.z == '2'
+        assert config.w == 'w'

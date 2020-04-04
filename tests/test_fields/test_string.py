@@ -103,6 +103,10 @@ class TestStringField:
         field = StringField(choices=['a', 'b', 'c'], transform_case='lower')
         assert field.validate(self.cfg, 'A') == 'a'
 
+    def test_non_string(self):
+        field = StringField()
+        assert field.validate(self.cfg, 100) == '100'
+
 
 class TestLogLevelField:
 
