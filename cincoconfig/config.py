@@ -7,6 +7,7 @@
 
 import sys
 from typing import Union, Any, Iterator, Tuple, Callable, List
+from argparse import Namespace
 from itertools import chain
 from .abc import Field, BaseConfig, BaseSchema, SchemaField, AnyField
 from .fields import IncludeField
@@ -408,6 +409,47 @@ class Config(BaseConfig):
             tree = field.include(self, formatter, filename, tree)
 
         self.load_tree(tree)
+
+    def cmdline_args_override(self, args: Namespace, ignore: Union[str, List[str]] = None) -> None:
+        '''
+        Override configuration setting based on command line arguments, parsed from the
+        :mod:`argparse` module. This method is useful when loading a configuration but allowing the
+        user the option to override or extend the configuration via command line arguments.
+
+        .. code-block:: python
+
+            parser = argparse.ArgumentParser()
+            parser.add_argument('-d', '--debug', action='store_const', const='debug', dest='mode')
+            parser.add_argument('-p', '--port', action='store', dest='http.port')
+            parser.add_argument('-H', '--host', action='store', dest='http.address')
+            parser.add_argument('-c', '--config', action='store')
+
+            args = parser.parse_args()
+            if args.config:
+                config.load(args.config, format='json')
+
+            config.cmdline_args_override(args, ignore=['config'])
+
+            # cmdline_args_override() is equivalent to doing:
+
+            if args.mode:
+                config.mode = args.mode
+            if getattr(args, 'http.port'):
+                config.http.port = getattr(args, 'http.port')
+            if getattr(args, 'http.address'):
+                config.http.address = getattr(args, 'http.address')
+
+        :param args: parsed command line arguments from :meth:`~argparse.ArgumentParser.parse_args`
+        :param ignore: list of arguments to ignore and not process
+        '''
+        if isinstance(ignore, str):
+            ignore = [ignore]
+        else:
+            ignore = ignore or []
+
+        for key, value in vars(args).items():
+            if key not in ignore and value is not None:
+                self.__setitem__(key, value)
 
     def load_tree(self, tree: dict):
         '''

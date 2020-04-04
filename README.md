@@ -78,3 +78,32 @@ print(config.dumps(format='json', pretty=True).decode())
 #   }
 # }
 ```
+
+### Override Configuration with Command Line Arguments (argparse)
+
+```python
+# config.py
+schema = Schema()
+schema.mode = ApplicationModeField(default='production', modes=['production', 'debug'])
+schema.http.port = PortField(default=8080, required=True)
+schema.http.address = IPv4AddressField(default='127.0.0.1', required=True)
+
+config = schema()
+
+# __main__.py
+import argparse
+from .config import config
+
+parser = argparse.ArgumentParser()
+
+parser.add_argument('-H', '--host', action='store', dest='http.address')
+parser.add_argument('-p', '--port', action='store', type=int, dest='http.port')
+parser.add_argument('-d', '--debug', action='store_const', const='debug', dest='mode')
+parser.add_argument('-c', '--config', action='store')
+
+args = parser.parse_args()
+if args.config:
+    config.load(args.config, format='json')
+
+config.cmdline_args_override(args, ignore=['config'])
+```
