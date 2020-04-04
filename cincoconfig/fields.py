@@ -70,6 +70,9 @@ class StringField(Field):
         :param cfg: current Config
         :param value: value to validate
         '''
+        if not isinstance(value, str):
+            value = str(value) if value is not None else ''
+
         if self.transform_strip:
             if isinstance(self.transform_strip, str):
                 value = value.strip(self.transform_strip)
