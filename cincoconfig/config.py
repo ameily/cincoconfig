@@ -40,19 +40,22 @@ class Schema(BaseSchema):
     config is populate with the default values specified for each field and can then load the
     configuration from a file.
     '''
+    __initialized = False
 
     def __post_init__(self) -> None:
         '''
         Initialize the schema.
         '''
         self._validators = []  # type: List[ConfigValidator]
+        self.__initialized = True
 
     def __setattr__(self, name: str, value: SchemaField):
         '''
         :param name: attribute name
         :param value: field or schema to add to the schema
         '''
-        if name[0] == '_':
+        # if name[0] == '_':
+        if not self.__initialized or name in self.__dict__:
             object.__setattr__(self, name, value)
         else:
             self._add_field(name, value)
@@ -237,6 +240,7 @@ class Config(BaseConfig):
         # schema.host = HostnameField(default='127.0.0.1')
         # config = schema()
     '''
+    __initialized = False
 
     def __init__(self, schema: BaseSchema, parent: 'Config' = None, key_filename: str = None):
         '''
@@ -246,6 +250,7 @@ class Config(BaseConfig):
         :param key_filename: path to key file
         '''
         super().__init__(schema, parent, key_filename)
+        self.__initialized = True
 
         for key, field in schema._fields.items():
             if isinstance(field, BaseSchema):
@@ -263,7 +268,8 @@ class Config(BaseConfig):
         :param name: field key
         :param value: value to validate and set
         '''
-        if name[0] == '_':
+        # if name[0] == '_':
+        if not self.__initialized or name in self.__dict__:
             object.__setattr__(self, name, value)
             return
 
