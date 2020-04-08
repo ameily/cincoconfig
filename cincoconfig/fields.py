@@ -34,6 +34,7 @@ class StringField(Field):
     '''
     A string field.
     '''
+    storage_type = str
 
     def __init__(self, *, min_len: int = None, max_len: int = None, regex: str = None,
                  choices: List[str] = None, transform_case: str = None,
@@ -101,6 +102,7 @@ class LogLevelField(StringField):
     '''
     A field representing the Python log level.
     '''
+    storage_type = str
 
     def __init__(self, levels: List[str] = None, **kwargs):
         '''
@@ -121,6 +123,7 @@ class ApplicationModeField(StringField):
     '''
     A field representing the application operating mode.
     '''
+    storage_type = str
     HELPER_MODE_PATTERN = re.compile('^[a-zA-Z0-9_]+$')
 
     def __init__(self, modes: List[str] = None, create_helpers: bool = True, **kwargs):
@@ -183,6 +186,7 @@ class NumberField(Field):
         self.type_cls = type_cls
         self.min = min
         self.max = max
+        self.storage_type = type_cls
 
     def _validate(self, cfg: BaseConfig, value: Union[str, int, float]) -> Union[int, float]:
         '''
@@ -210,6 +214,7 @@ class IntField(NumberField):
     '''
     Integer field.
     '''
+    storage_type = int
 
     def __init__(self, **kwargs):
         super().__init__(int, **kwargs)
@@ -219,6 +224,7 @@ class FloatField(NumberField):
     '''
     Float field.
     '''
+    storage_type = float
 
     def __init__(self, **kwargs):
         super().__init__(float, **kwargs)
@@ -228,6 +234,7 @@ class PortField(IntField):
     '''
     Network port field.
     '''
+    storage_type = int
 
     def __init__(self, **kwargs):
         kwargs.setdefault('min', 1)
@@ -239,6 +246,7 @@ class IPv4AddressField(StringField):
     '''
     IPv4 address field.
     '''
+    storage_type = str
 
     def _validate(self, cfg: BaseConfig, value: str) -> str:
         '''
@@ -258,6 +266,7 @@ class IPv4NetworkField(StringField):
     '''
     IPv4 network field. This field accepts CIDR notation networks in the form of ``A.B.C.D/Z``.
     '''
+    storage_type = str
 
     def _validate(self, cfg: BaseConfig, value: str) -> str:
         '''
@@ -277,6 +286,7 @@ class HostnameField(StringField):
     '''
     A field representing a network hostname or, optionally, a network address.
     '''
+    storage_type = str
     HOSTNAME_REGEX = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9.\-]+$')
     NETBIOS_REGEX = re.compile(r"^[\w!@#$%^()\-'{}\.~]{1,15}$")
 
@@ -329,6 +339,7 @@ class FilenameField(StringField):
     '''
     A field for representing a filename on disk.
     '''
+    storage_type = str
 
     def __init__(self, *, exists: Union[bool, str] = None, startdir: str = None, **kwargs):
         '''
@@ -384,6 +395,7 @@ class BoolField(Field):
     '''
     A boolean field.
     '''
+    storage_type = bool
     #: Accepted values that evaluate to ``True``
     TRUE_VALUES = ('t', 'true', '1', 'on', 'yes', 'y')
     #: Accepted values that evaluate to ``False``
@@ -417,6 +429,7 @@ class UrlField(StringField):
     '''
     A URL field. Values are validated that they are both a valid URL and contain a valid scheme.
     '''
+    storage_type = str
 
     def _validate(self, cfg: BaseConfig, value: str) -> str:
         '''
@@ -609,6 +622,7 @@ class ListField(Field):
         '''
         super().__init__(**kwargs)
         self.field = field
+        self.storage_type = List[field.storage_type]
 
     def _validate(self, cfg: BaseConfig, value: list) -> Union[list, ListProxy]:
         '''
@@ -687,6 +701,7 @@ class DictField(Field):
     Specifying *required=True* will cause the field validation to validate that the ``dict`` is
     not ``None`` and is not empty.
     '''
+    storage_type = dict
 
     def _validate(self, cfg: BaseConfig, value: dict) -> dict:
         '''
@@ -855,6 +870,7 @@ class ChallengeField(Field):
     - sha384
     - sha512
     '''
+    storage_type = DigestValue
 
     #: Available hashing algorithms
     ALGORITHMS = {
@@ -972,6 +988,7 @@ class SecureField(Field):
     A secure storage field where the plaintext configuration value is encrypted on disk and
     decrypted in memory when the configuration file is loaded.
     '''
+    storage_type = str
 
     def __init__(self, method: str = 'best', **kwargs):
         '''
@@ -1030,6 +1047,7 @@ class BytesField(Field):
     '''
     Store binary data in an encoded string.
     '''
+    storage_type = bytes
     #: Available encodings: base64 and hex
     ENCODINGS = ('base64', 'hex')
 

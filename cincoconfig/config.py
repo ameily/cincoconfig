@@ -137,6 +137,11 @@ class Schema(BaseSchema):
             for key, value in kwargs.items():
                 self.__setattr__(key, value)
 
+        annotations = {
+            key: getattr(field, 'storage_type', type(field)) for key, field in self._fields.items()
+        }
+        init_method.__annotations__ = annotations
+        init_method.__name__ = '__init__'
         result = type(name, (Config,), {'__init__': init_method})
         # This is copied from the namedtuple method. We try to set the module of the new
         # class to the calling module.
