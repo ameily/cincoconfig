@@ -163,7 +163,7 @@ class ApplicationModeField(StringField):
         Set the key and optionally add ``VirtualField`` helpers to the schema if
         *create_helpers=True*.
         '''
-        self.key = key
+        super().__setkey__(schema, key)
         if self.create_helpers:
             for mode in self.modes:
                 schema._add_field('is_%s_mode' % mode, self._create_helper(mode))
@@ -615,6 +615,7 @@ class ListField(Field):
     Specifying *required=True* will cause the field validation to validate that the list is not
     ``None`` and is not empty.
     '''
+    storage_type = List
 
     def __init__(self, field: SchemaField = None, **kwargs):
         '''
@@ -622,7 +623,6 @@ class ListField(Field):
         '''
         super().__init__(**kwargs)
         self.field = field
-        self.storage_type = List[field.storage_type]
 
     def _validate(self, cfg: BaseConfig, value: list) -> Union[list, ListProxy]:
         '''
@@ -675,19 +675,57 @@ class VirtualField(Field):
     A calculated, readonly field that is not read from or written to a configuration file.
     '''
 
-    def __init__(self, getter: Callable[[BaseConfig], Any], **kwargs):
+    def __init__(self, getter: Callable[[BaseConfig], Any],
+                 setter: Callable[[BaseConfig, Any], Any] = None, **kwargs):
         '''
         :param getter: a callable that is called whenever the value is retrieved, the callable
             will receive a single argument: the current :class:`Config`.
+        :param setter: a callable that is called whenever the value is set, the callable will
+            receive two arguments: ``config, value``, the current :class:`Config` and the value
+            being set
         '''
+        if kwargs.get('default') is not None:
+            raise TypeError('virutal fields cannot have a default value')
+
         super().__init__(**kwargs)
         self.getter = getter
+        self.setter = setter
 
     def __setdefault__(self, cfg: BaseConfig) -> None:
         pass
 
     def __getval__(self, cfg: BaseConfig) -> Any:
         return self.getter(cfg)
+
+    def __setval__(self, cfg: BaseConfig, value: Any) -> None:
+        if not self.setter:
+            raise TypeError('%s is readonly' % self.key)
+        self.setter(cfg, value)
+
+
+class InstanceMethodField(Field):
+    '''
+    A configuration instance method.
+    '''
+
+    def __init__(self, method: Callable[[BaseConfig], Any], **kwargs):
+        if kwargs.get('default') is not None:
+            raise TypeError('instance methods cannot have a default value')
+
+        super().__init__(**kwargs)
+        self.method = method
+
+    def __setdefault__(self, cfg: BaseConfig) -> None:
+        pass
+
+    def __getval__(self, cfg: BaseConfig) -> Callable:
+        def wrapper(*args, **kwargs) -> Any:
+            return self.method(cfg, *args, **kwargs)  # type: ignore
+
+        wrapper.__name__ = self.method.__name__
+        wrapper.__doc__ = self.method.__doc__
+        wrapper.__annotations__ = self.method.__annotations__
+        return wrapper
 
     def __setval__(self, cfg: BaseConfig, value: Any) -> None:
         raise TypeError('%s is readonly' % self.key)

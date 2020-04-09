@@ -10,13 +10,14 @@ from typing import Union, Any, Iterator, Tuple, Callable, List
 from argparse import Namespace
 from itertools import chain
 from .abc import Field, BaseConfig, BaseSchema, SchemaField, AnyField
-from .fields import IncludeField
+from .fields import IncludeField, InstanceMethodField
 from .formats import FormatRegistry
 
 
 __all__ = ('Config', 'Schema')
 
 ConfigValidator = Callable[['Config'], None]
+ConfigInstanceMethod = Callable[['BaseConfig'], Any]
 
 
 class Schema(BaseSchema):
@@ -200,11 +201,46 @@ class Schema(BaseSchema):
         :param config: config to validate
         '''
         for field in self._fields.values():
-            val = field.__getval__(config)
-            field.validate(config, val)
+            if isinstance(field, Field):
+                val = field.__getval__(config)
+                field.validate(config, val)
+            elif isinstance(field, Schema):
+                field._validate(config[field._key])
 
         for validator in self._validators:
             validator(config)
+
+    def instance_method(self, key: str) -> Callable:
+        '''
+        Bind an instance method to all configurations. This is a convenience method that adds a
+        :class:`~cincoconfig.fields.InstanceMethodField` to the schema. The instance method is
+        called with the signature ``(config, *args, **kwargs)``, where ``config`` is the instance
+        config object.
+
+        Use this decorator like this:
+
+        .. code-block:: python
+
+            schema = Schema()
+
+            @schema.instance_method('test')
+            def test(cfg, x, y, z=None):
+                # do stuff
+                pass
+
+            config = schema()
+            config.test(1, y=2)
+
+        This decorator is especially useful when creating new configuration types through the
+        :meth:`~Config.make_type`.
+
+        :param key: instance method name
+        :returns: the decorated method
+        '''
+        def wrapper(meth: ConfigInstanceMethod) -> ConfigInstanceMethod:
+            self._add_field(key, InstanceMethodField(meth))
+            return meth
+        return wrapper
 
 
 class Config(BaseConfig):
@@ -255,6 +291,7 @@ class Config(BaseConfig):
         :param key_filename: path to key file
         '''
         super().__init__(schema, parent, key_filename)
+
         self.__initialized = True
 
         for key, field in schema._fields.items():

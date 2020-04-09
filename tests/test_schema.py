@@ -1,16 +1,10 @@
 from unittest.mock import MagicMock
 from cincoconfig.abc import Field
 from cincoconfig.config import Schema, Config
+from cincoconfig.fields import InstanceMethodField
 
 
 class TestConfig:
-
-    def test_setattr_protected(selF):
-        schema = Schema()
-        schema._add_field = MagicMock()
-        schema._blah = 2
-        assert schema._blah == 2
-        assert not schema._add_field.called
 
     def test_setattr_field(self):
         field = Field()
@@ -59,3 +53,12 @@ class TestConfig:
         assert isinstance(a, Config)
         assert a.x == 2
         assert a.y == 10
+
+    def test_instance_method_decorator(self):
+        schema = Schema()
+        @schema.instance_method('test')
+        def meth(cfg):
+            pass
+
+        assert isinstance(schema._fields['test'], InstanceMethodField)
+        assert schema._fields['test'].method is meth

@@ -43,12 +43,6 @@ class TestConfig:
         assert config._data['sub']._schema is sub
         assert config._data['sub']._parent is config
 
-    def test_setattr_protected(self):
-        config = Config(Schema())
-        config._x = 1
-        assert config._x == 1
-        assert config._data == {}
-
     def test_setattr_field(self):
         schema = Schema()
         field = Field()
@@ -240,7 +234,15 @@ class TestConfig:
         assert config.x is sub
 
     def test_validate(self):
-        pass
+        schema = Schema()
+        schema.x.y = Field()
+        config = schema()
+
+        mock = MagicMock()
+        object.__setattr__(schema.x, '_validate', mock)
+        config.validate()
+
+        mock.assert_called_once_with(config.x)
 
     def test_load_tree_validate(self):
         schema = Schema()

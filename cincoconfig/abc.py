@@ -67,7 +67,11 @@ class Field:
     unless the field needs to modify the default behavior of these methods.
 
     The Field ``key`` is used to set and reference the value in the config.
+
+    Each Field subclass can define a class or instance level ``storage_type`` which holds the
+    annotation of the value being stored in memory.
     '''
+    storage_type = Any
 
     def __init__(self, *, name: str = None, key: str = None, required: bool = False,
                  default: Union[Callable, Any] = None,
@@ -219,6 +223,7 @@ class BaseSchema:
     :ivar bool _dynamic: the schema is dynamic
     :ivar dict _fields: registered fields
     '''
+    storage_type = 'BaseSchema'
 
     def __init__(self, key: str = None, dynamic: bool = False):
         '''
