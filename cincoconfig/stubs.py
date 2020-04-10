@@ -20,7 +20,7 @@ def get_annotation_type(field: SchemaField) -> str:
     storage_type = getattr(field, 'storage_type', type(field))
     if isinstance(storage_type, type):
         if storage_type.__module__ and storage_type.__module__ != 'builtins':
-            storage_type = f'{storage_type.__module__}.{storage_type.__name__}'
+            storage_type = '.'.join([storage_type.__module__, storage_type.__name__])
         else:
             storage_type = storage_type.__name__
     return str(storage_type)
@@ -55,14 +55,15 @@ def generate_stub(schema: Union[Schema, Type[ConfigType]], type_name: str = None
         else:
             allprops[key] = properties[key] = field
 
-    init_args = ', '.join([f'{key}: {get_annotation_type(field)}'
+    init_args = ', '.join(['{}: {}'.format(key, get_annotation_type(field))
                            for key, field in properties.items()])
-    init_meth = f'    def __init__(self, {init_args}): ...'
+    init_meth = '    def __init__(self, {}): ...'.format(init_args)
 
-    property_annotations = '\n'.join([f'    {key}: {get_annotation_type(field)}'
+    property_annotations = '\n'.join(['    {}: {}'.format(key, get_annotation_type(field))
                                       for key, field in allprops.items()])
-    blocks = [f'class {type_name}(ConfigType):', property_annotations, init_meth]
+    blocks = ['class {}(ConfigType):'.format(type_name), property_annotations, init_meth]
     if methods:
-        blocks.append('\n'.join([f'    def {key}(self, *args, **kwargs): ...' for key in methods]))
+        blocks.append('\n'.join(['    def {}(self, *args, **kwargs): ...'.format(key)
+                                 for key in methods]))
 
     return '\n\n'.join(blocks)

@@ -10,7 +10,7 @@ from typing import Union, Any, Iterator, Tuple, Callable, List
 from argparse import Namespace
 from itertools import chain
 from .abc import Field, BaseConfig, BaseSchema, SchemaField, AnyField
-from .fields import IncludeField, InstanceMethodField, VirtualField
+from .fields import IncludeField, InstanceMethodField
 from .formats import FormatRegistry
 
 
