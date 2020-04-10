@@ -556,4 +556,4 @@ class Config(BaseConfig):
 
 
 class ConfigType(Config):
-    __schema__: Schema = None
+    __schema__: Schema
