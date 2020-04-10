@@ -27,7 +27,7 @@ __all__ = ('StringField', 'IntField', 'FloatField', 'PortField', 'IPv4AddressFie
            'IPv4NetworkField', 'FilenameField', 'BoolField', 'UrlField', 'ListField',
            'HostnameField', 'DictField', 'ListProxy', 'VirtualField', 'ApplicationModeField',
            'LogLevelField', 'NumberField', 'ChallengeField', 'DigestValue', 'SecureField',
-           'BytesField', 'IncludeField')
+           'BytesField', 'IncludeField', 'InstanceMethodField')
 
 
 class StringField(Field):
