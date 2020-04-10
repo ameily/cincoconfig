@@ -62,3 +62,13 @@ class TestConfig:
 
         assert isinstance(schema._fields['test'], InstanceMethodField)
         assert schema._fields['test'].method is meth
+
+    def test_validate_ignore_methods(self):
+        getter = MagicMock()
+        schema = Schema()
+        schema.x = InstanceMethodField(getter)
+        schema.x.__getval__ = MagicMock()
+        config = schema()
+
+        schema._validate(config)
+        assert not schema.x.__getval__.called

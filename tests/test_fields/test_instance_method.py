@@ -32,10 +32,15 @@ class TestInstanceMethodField:
         with pytest.raises(TypeError):
             field = InstanceMethodField(self._meth, default=1)
 
-    def test_no_setdefault(self):
+    def test_setdefault(self):
         getter = MagicMock()
+        # getter.__name__ = 'my_method'
         getter.return_value = 'hello'
         cfg = MockConfig()
-        field = InstanceMethodField(getter)
+        field = InstanceMethodField(getter, key='func')
         field.__setdefault__(cfg)
         assert cfg._data == {}
+        assert callable(cfg.func)
+        x = cfg.func()
+        getter.assert_called_once_with(cfg)
+        assert x == 'hello'

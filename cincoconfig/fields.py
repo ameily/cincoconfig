@@ -716,16 +716,36 @@ class InstanceMethodField(Field):
         self.method = method
 
     def __setdefault__(self, cfg: BaseConfig) -> None:
-        pass
+        '''
+        Bind the instance method to the configuration. This is a performance enhancement since the
+        bound method, created in :meth:`_bind`, is config specific and this method will cache the
+        result in the configuration.
 
-    def __getval__(self, cfg: BaseConfig) -> Callable:
+        :param cfg: configuration
+        '''
+        object.__setattr__(cfg, self.key, self._bind(cfg))
+
+    def _bind(self, cfg: BaseConfig) -> Callable:
+        '''
+        Create a bound instance method on the configuration.
+
+        :param cfg: configuration
+        :returns: the bound method
+        '''
         def wrapper(*args, **kwargs) -> Any:
             return self.method(cfg, *args, **kwargs)  # type: ignore
 
-        wrapper.__name__ = self.method.__name__
-        wrapper.__doc__ = self.method.__doc__
-        wrapper.__annotations__ = self.method.__annotations__
+        wrapper.__name__ = getattr(self.method, '__name__', 'wrapper')
+        wrapper.__doc__ = getattr(self.method, '__doc__', '')
+        wrapper.__annotations__ = getattr(self.method, '__annotations__', {})
         return wrapper
+
+    def __getval__(self, cfg: BaseConfig) -> Callable:
+        '''
+        Get the bound method. This method should never be called since __setdefault__ caches the
+        result in the configuration.
+        '''
+        return self._bind(cfg)
 
     def __setval__(self, cfg: BaseConfig, value: Any) -> None:
         raise TypeError('%s is readonly' % self.key)
