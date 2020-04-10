@@ -201,7 +201,9 @@ class Schema(BaseSchema):
         :param config: config to validate
         '''
         for field in self._fields.values():
-            if isinstance(field, Field):
+            if isinstance(field, InstanceMethodField):
+                pass
+            elif isinstance(field, Field):
                 val = field.__getval__(config)
                 field.validate(config, val)
             elif isinstance(field, Schema):
