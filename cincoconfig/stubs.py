@@ -35,15 +35,16 @@ def generate_stub(schema: Union[Schema, Type[ConfigType]], type_name: str = None
     :param type_name: the configuration type name (class name)
     :returns: the stub PYI file
     '''
-    methods = {}
-    properties = {}
-    allprops = {}
+    methods = {}  # type: Dict[str, SchemaField]
+    properties = {}  # type: Dict[str, SchemaField]
+    allprops = {}  # type: Dict[str, SchemaField]
 
     if isinstance(schema, Schema):
         if not type_name:
             raise TypeError('type_name is required')
     elif issubclass(schema, ConfigType):
         type_name = type_name or schema.__name__
+        schema = schema.__schema__
     else:
         raise TypeError('schema must be a Schema instance or ConfigType subclass')
 

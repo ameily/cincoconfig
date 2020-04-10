@@ -206,7 +206,7 @@ class Schema(BaseSchema):
                 val = field.__getval__(config)
                 field.validate(config, val)
             elif isinstance(field, Schema):
-                field._validate(config[field._key])
+                field._validate(config[field._key])  # type: ignore
 
         for validator in self._validators:
             validator(config)
