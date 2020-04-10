@@ -10,7 +10,7 @@ from typing import Union, Any, Iterator, Tuple, Callable, List
 from argparse import Namespace
 from itertools import chain
 from .abc import Field, BaseConfig, BaseSchema, SchemaField, AnyField
-from .fields import IncludeField, InstanceMethodField
+from .fields import IncludeField, InstanceMethodField, VirtualField
 from .formats import FormatRegistry
 
 
@@ -138,12 +138,8 @@ class Schema(BaseSchema):
             for key, value in kwargs.items():
                 self.__setattr__(key, value)
 
-        annotations = {
-            key: getattr(field, 'storage_type', type(field)) for key, field in self._fields.items()
-        }
-        init_method.__annotations__ = annotations
         init_method.__name__ = '__init__'
-        result = type(name, (Config,), {
+        result = type(name, (ConfigType,), {
             '__init__': init_method,
             '__schema__': schema,
         })
@@ -557,3 +553,7 @@ class Config(BaseConfig):
         Perform validation on the entire config.
         '''
         self._schema._validate(self)  # type: ignore
+
+
+class ConfigType(Config):
+    pass
