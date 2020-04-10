@@ -4,7 +4,7 @@
 # This file is subject to the terms and conditions defined in the file 'LICENSE', which is part of
 # this source code package.
 #
-from typing import Type, Union
+from typing import Type, Union, Dict
 from cincoconfig.config import Schema, ConfigType
 from cincoconfig.abc import SchemaField
 from cincoconfig.fields import InstanceMethodField, VirtualField
