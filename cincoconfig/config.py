@@ -143,7 +143,10 @@ class Schema(BaseSchema):
         }
         init_method.__annotations__ = annotations
         init_method.__name__ = '__init__'
-        result = type(name, (Config,), {'__init__': init_method})
+        result = type(name, (Config,), {
+            '__init__': init_method,
+            '__schema__': schema,
+        })
         # This is copied from the namedtuple method. We try to set the module of the new
         # class to the calling module.
         if module is None:
