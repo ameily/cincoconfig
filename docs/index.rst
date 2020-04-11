@@ -15,6 +15,7 @@ Welcome to cincoconfig's documentation!
    fields
    formats
    encryption
+   stubs
 
 
 
