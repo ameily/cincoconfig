@@ -626,9 +626,9 @@ class ListField(Field):
 
         if field:
             if isinstance(field, Field):
-                self.storage_type = List[field.storage_type]
+                self.storage_type = List[field.storage_type]  # type: ignore
             elif isinstance(field, BaseSchema):
-                self.storage_type = List[type(field)]
+                self.storage_type = List[type(field)]  # type: ignore
 
     def _validate(self, cfg: BaseConfig, value: list) -> Union[list, ListProxy]:
         '''
