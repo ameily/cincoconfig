@@ -624,6 +624,12 @@ class ListField(Field):
         super().__init__(**kwargs)
         self.field = field
 
+        if field:
+            if isinstance(field, Field):
+                self.storage_type = List[field.storage_type]
+            elif isinstance(field, BaseSchema):
+                self.storage_type = List[type(field)]
+
     def _validate(self, cfg: BaseConfig, value: list) -> Union[list, ListProxy]:
         '''
         Validate the value.

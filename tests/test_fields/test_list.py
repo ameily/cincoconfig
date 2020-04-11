@@ -4,7 +4,7 @@
 # This file is subject to the terms and conditions defined in the file 'LICENSE', which is part of
 # this source code package.
 #
-
+from typing import List
 import pytest
 from cincoconfig.fields import ListField, ListProxy, IntField
 from cincoconfig.config import Schema, Config
@@ -185,6 +185,19 @@ class TestListProxy:
 
 
 class TestListField:
+
+    def test_storage_type_str(self):
+        field = ListField(IntField())
+        assert field.storage_type == List[int]
+
+    def test_storage_type_custom(self):
+        field = ListField(type)
+        assert field.storage_type is List
+
+    def test_storage_type_schema(self):
+        schema = Schema()
+        field = ListField(schema)
+        assert field.storage_type == List[Schema]
 
     def test_required_not_empty(self):
         field = ListField(IntField(), required=True)
