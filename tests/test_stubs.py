@@ -5,6 +5,7 @@ from cincoconfig.config import Schema
 from cincoconfig.stubs import (get_annotation_typestr, get_arg_annotation, get_method_annotation,
                                get_retval_annotation, generate_stub)
 
+
 class TestStubs:
 
     def test_get_annotation_typestr_field(self):
@@ -81,7 +82,7 @@ class TestStubs:
         schema.y = StringField()
 
         stub = generate_stub(schema, 'Thing').split('\n')
-        assert 'class Thing(cincoconfig.ConfigType):' in stub
+        assert 'class Thing(cincoconfig.config.ConfigType):' in stub
         assert '    x: typing.Any' in stub
         assert '    y: str' in stub
         assert '    def __init__(self, y: str): ...' in stub
@@ -93,7 +94,7 @@ class TestStubs:
         config = schema()
 
         stub = generate_stub(config, 'Thing').split('\n')
-        assert 'class Thing(cincoconfig.ConfigType):' in stub
+        assert 'class Thing(cincoconfig.config.ConfigType):' in stub
         assert '    x: typing.Any' in stub
         assert '    y: str' in stub
         assert '    def __init__(self, y: str): ...' in stub
@@ -105,7 +106,7 @@ class TestStubs:
         Thing = schema.make_type('Thing')
 
         stub = generate_stub(Thing).split('\n')
-        assert 'class Thing(cincoconfig.ConfigType):' in stub
+        assert 'class Thing(cincoconfig.config.ConfigType):' in stub
         assert '    x: typing.Any' in stub
         assert '    y: str' in stub
         assert '    def __init__(self, y: str): ...' in stub
