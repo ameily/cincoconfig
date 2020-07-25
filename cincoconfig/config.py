@@ -61,6 +61,63 @@ class Schema(BaseSchema):
         else:
             self._add_field(name, value)
 
+    def get_all_fields(self) -> List[Tuple[str, 'Schema', SchemaField]]:
+        '''
+        Get all the fields and nested fields of the schema, including the nested schemas.
+
+        .. code-block:: python
+
+            >>> schema = Schema()
+            >>> schema.x = IntField()
+            >>> schema.y.z = StringField()
+            >>> schema.z = StringField()
+            >>> schema.get_all_fields()
+            [
+                ('x', schema, schema.x),
+                ('y.z', schema.y, schema.y.z),
+                ('z', schema, schema.z)
+            ]
+
+        The returned list of tuples have three values:
+
+        1. `path` - the full path to the field.
+        2. `schema` - the schema that the field belongs to.
+        3. `field` - the field.
+
+        The order of the fields will be the same order in which the fields were added to the
+        schema.
+
+        :returns: all the fields as a list of tuples: ``(path, schema, field)``
+        '''
+        ret = []
+        prefix = self._key + '.' if self._key else ''
+        for key, field in self._fields.items():
+            ret.append((prefix + key, self, field))
+            if isinstance(field, Schema):
+                ret.extend([(prefix + subkey, schema, subfield)
+                            for subkey, schema, subfield in field.get_all_fields()])
+        return ret
+
+    def __getitem__(self, key: str) -> SchemaField:
+        '''
+        :returns: field, equivalent to ``getattr(schema, key)``, however his method handles
+            retrieving nested values. For example:
+
+            .. code-block:: python
+
+                >>> schema = Schema()
+                >>> schema.x.y = IntField(default=10)
+                >>> print(schema['x.y'])
+                IntField(key='y', ...)
+        '''
+        key, _, subkey = key.partition('.')
+        field = self._fields[key]
+        if subkey:
+            if isinstance(field, Schema):
+                return field[subkey]
+            raise KeyError(subkey)
+        return field
+
     def __getattr__(self, name: str) -> SchemaField:
         '''
         Retrieve a field by key or create a new ``Schema`` if the field doesn't exist.

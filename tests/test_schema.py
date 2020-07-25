@@ -1,10 +1,13 @@
 from unittest.mock import MagicMock
+
+import pytest
+
 from cincoconfig.abc import Field
 from cincoconfig.config import Schema, Config
 from cincoconfig.fields import InstanceMethodField
 
 
-class TestConfig:
+class TestSchema:
 
     def test_setattr_field(self):
         field = Field()
@@ -72,3 +75,43 @@ class TestConfig:
 
         schema._validate(config)
         assert not schema.x.__getval__.called
+
+    def test_get_all_fields(self):
+        schema = Schema()
+        schema.x = Field()
+        schema.sub1.y = Field()
+        schema.sub1.sub2.z = Field()
+        schema.sub1.a = Field()
+        schema.sub3.b = Field()
+
+        check = schema.get_all_fields()
+        assert check == [
+            ('x', schema, schema.x),
+            ('sub1', schema, schema.sub1),
+            ('sub1.y', schema.sub1, schema.sub1.y),
+            ('sub1.sub2', schema.sub1, schema.sub1.sub2),
+            ('sub1.sub2.z', schema.sub1.sub2, schema.sub1.sub2.z),
+            ('sub1.a', schema.sub1, schema.sub1.a),
+            ('sub3', schema, schema.sub3),
+            ('sub3.b', schema.sub3, schema.sub3.b)
+        ]
+
+    def test_getitem(self):
+        schema = Schema()
+        schema.x = Field()
+        schema.y.z = Field()
+
+        assert schema['x'] is schema.x
+        assert schema['y'] is schema.y
+        assert schema['y.z'] is schema.y.z
+
+    def test_getitem_keyerror(self):
+        schema = Schema()
+        with pytest.raises(KeyError):
+            x = schema['x']
+
+    def test_getitem_keyerror_not_schema(self):
+        schema = Schema()
+        schema.x = Field()
+        with pytest.raises(KeyError):
+            y = schema['x.y']
