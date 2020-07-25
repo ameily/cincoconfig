@@ -43,12 +43,18 @@ schema.db.user = StringField(default='admin')
 # saved to disk via the SecureField
 schema.db.password = SecureField()
 
+# get a field programmatically
+print(schema['db.host']) # >>> schema.db.host
+
 # once a schema is defined, build the actual configuration object
 # that can load config files from disk and interact with the values
 config = schema()
 
-# print the set http port
+# print the http port
 print(config.http.port) # >>> 8080
+
+# print the http port programmatically
+print(config['http.port']) # >>> 8080
 
 config.db.password = getpass.getpass("Enter Password: ") # < 'password'
 
