@@ -10,6 +10,7 @@ Abstract base classes.
 
 import os
 from typing import Any, Callable, Union, Optional, Dict
+from collections import OrderedDict
 
 from .encryption import KeyFile
 
@@ -234,7 +235,7 @@ class BaseSchema:
         '''
         self._key = key
         self._dynamic = dynamic
-        self._fields = dict()  # type: Dict[str, SchemaField]
+        self._fields = OrderedDict()  # type: Dict[str, SchemaField]
         self.__post_init__()
 
     def __post_init__(self) -> None:
