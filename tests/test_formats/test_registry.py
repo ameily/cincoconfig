@@ -54,3 +54,12 @@ class TestFormatRegistry:
             'pickle': PickleConfigFormat,
             'xml': XmlConfigFormat
         }
+
+    @patch.object(FormatRegistry, 'get')
+    def test_make_factory(self, mock_get):
+        token = object()
+        mock_get.return_value = token
+        factory = FormatRegistry.make_factory('format', x=1, y=2)
+        assert callable(factory)
+        assert factory() is token
+        mock_get.assert_called_once_with('format', x=1, y=2)

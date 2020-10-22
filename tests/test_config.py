@@ -203,10 +203,10 @@ class TestConfig:
         config['x.y'] = 10
         assert config['x.y'] == 10
 
-    @patch('cincoconfig.formats.registry.FormatRegistry.get')
-    def test_include_field(self, fr_get):
-        fmt = MockFormatInclude()
-        fr_get.return_value = fmt
+    def test_include_field(self):
+        fmt = MagicMock()
+        mock_factory = MagicMock()
+        mock_factory.return_value = fmt
 
         schema = Schema()
         field = IncludeField()
@@ -216,11 +216,28 @@ class TestConfig:
         schema.include3 = IncludeField()
         config = schema()
 
-        load_tree = MagicMock()
-        object.__setattr__(config, 'load_tree', load_tree)
-        config.loads('asdf', format='json')
+        result = config._process_includes(schema, {'include': 'blah.txt', 'include2': None}, mock_factory)
         field.include.assert_called_once_with(config, fmt, 'blah.txt', {'include': 'blah.txt', 'include2': None})
-        load_tree.assert_called_once_with({'x': 1, 'y': 2})
+        assert result == {'x': 1, 'y': 2}
+
+    def test_nested_include(self):
+        mock_factory = MagicMock()
+        schema = Schema()
+        schema.top.field = Field()
+        config = schema()
+
+        sub = {'asdf': 1}
+        process_includes = config._process_includes
+        mock_pi = MagicMock()
+        mock_pi.return_value = {'hello': 1}
+        object.__setattr__(config, '_process_includes', mock_pi)
+        result = process_includes(schema, {'top': sub}, mock_factory)
+        mock_pi.assert_called_once_with(schema.top, sub, mock_factory)
+
+        assert result == {'top': {'hello': 1}}
+
+
+
 
     def test_set_config(self):
         schema = Schema()
