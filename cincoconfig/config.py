@@ -11,7 +11,7 @@ from argparse import Namespace
 from itertools import chain
 from .abc import Field, BaseConfig, BaseSchema, SchemaField, AnyField
 from .fields import IncludeField, InstanceMethodField
-from .formats import FormatRegistry
+from .formats import FormatRegistry, TFormatFactory
 
 
 __all__ = ('Config', 'Schema')
@@ -486,6 +486,38 @@ class Config(BaseConfig):
         formatter = FormatRegistry.get(format, **kwargs)
         return formatter.dumps(self, self.to_tree())
 
+    def _process_includes(self, schema: BaseSchema, tree: dict,
+                          format_factory: TFormatFactory) -> dict:
+        '''
+        Process include fields when loading when a configuration file. This method will load
+        included fields for all ``IncludeField`` instances in the schema and all children schemas.
+
+        :param schema: schema to load from
+        :param tree: parsed tree
+        :param format: config format
+        '''
+        sub_schemas = [(key, field) for key, field in schema._fields.items()
+                       if isinstance(field, BaseSchema)]
+        includes = [(key, field) for key, field in schema._fields.items()
+                    if isinstance(field, IncludeField)]
+        for key, field in includes:
+            # For each of the included field names, check if it has a value in the parsed tree
+            # and, if it does, load the included file and combine it with the existing tree.
+            filename = tree.get(key)
+            if filename is None:
+                continue
+
+            # All included config files must have the same file format (you can't include XML from
+            # a JSON file, for example).
+            formatter = format_factory()
+            tree = field.include(self, formatter, filename, tree)
+
+        for key, sub_schema in sub_schemas:
+            if tree.get(key):
+                tree[key] = self._process_includes(sub_schema, tree[key], format_factory)
+
+        return tree
+
     def loads(self, content: Union[str, bytes], format: str, **kwargs):
         '''
         Load a configuration from a str or bytes and process any
@@ -498,25 +530,11 @@ class Config(BaseConfig):
         if isinstance(content, str):
             content = content.encode()
 
-        formatter = FormatRegistry.get(format, **kwargs)
+        format_factory = FormatRegistry.make_factory(format, **kwargs)
+        formatter = format_factory()
 
         tree = formatter.loads(self, content)
-
-        # Process includes
-        # Get the include fields in the backing schema
-        includes = [(key, field) for key, field in self._schema._fields.items()
-                    if isinstance(field, IncludeField)]
-        for key, field in includes:
-            # For each of the included field names, check if it has a value in the parsed tree
-            # and, if it does, load the included file and combine it with the existing tree.
-            filename = tree.get(key)
-            if filename is None:
-                continue
-
-            # All included config files must have the same file format (you can't include XML from
-            # a JSON file, for example).
-            formatter = FormatRegistry.get(format, **kwargs)
-            tree = field.include(self, formatter, filename, tree)
+        tree = self._process_includes(self._schema, tree, format_factory)
 
         self.load_tree(tree)
 

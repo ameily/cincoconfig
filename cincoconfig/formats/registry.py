@@ -5,13 +5,16 @@
 # this source code package.
 #
 
-from typing import Type, Dict
+from typing import Type, Dict, Callable
 from ..abc import ConfigFormat
 from .json import JsonConfigFormat
 from .pickle import PickleConfigFormat
 from .xml import XmlConfigFormat
 from .yaml import YamlConfigFormat, IS_AVAILABLE as YAML_IS_AVAILABLE
 from .bson import BsonConfigFormat, IS_AVAILABLE as BSON_IS_AVAILABLE
+
+
+TFormatFactory = Callable[[], ConfigFormat]
 
 
 class _FormatRegistrySingleton:
@@ -63,6 +66,11 @@ class _FormatRegistrySingleton:
         if not self._initialized:
             self._initialize()
         self._formats[name] = format_cls
+
+    def make_factory(self, name: str, **kwargs) -> TFormatFactory:
+        def factory():
+            return self.get(name, **kwargs)
+        return factory
 
     def _initialize(self) -> None:
         '''

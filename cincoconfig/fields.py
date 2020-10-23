@@ -14,6 +14,7 @@ import os
 import re
 import socket
 import base64
+import binascii
 from ipaddress import IPv4Address, IPv4Network
 from urllib.parse import urlparse
 from typing import Union, List, Any, Iterator, Callable, NamedTuple, Optional, Dict
@@ -198,8 +199,8 @@ class NumberField(Field):
         '''
         try:
             num = self.type_cls(value)  # type: Union[int, float]
-        except:
-            raise ValueError('%s is not a valid %s' % (self.name, self.type_cls.__name__))
+        except (ValueError, TypeError) as err:
+            raise ValueError('%s is not a valid %s' % (self.name, self.type_cls.__name__)) from err
 
         if self.min is not None and num < self.min:
             raise ValueError('%s must be >= %s' % (self.name, self.min))
@@ -257,8 +258,8 @@ class IPv4AddressField(StringField):
         '''
         try:
             addr = IPv4Address(value)
-        except:
-            raise ValueError('%s must be a valid IPv4 address' % self.name)
+        except ValueError as err:
+            raise ValueError('%s must be a valid IPv4 address' % self.name) from err
         return str(addr)
 
 
@@ -277,8 +278,8 @@ class IPv4NetworkField(StringField):
         '''
         try:
             net = IPv4Network(value)
-        except:
-            raise ValueError('%s must be a valid IPv4 Network (CIDR notation)' % self.name)
+        except ValueError as err:
+            raise ValueError('%s must be a valid IPv4 Network (CIDR)' % self.name) from err
         return str(net)
 
 
@@ -321,8 +322,8 @@ class HostnameField(StringField):
             # resolve hostname to IPv4 address
             try:
                 name = socket.gethostbyname(value)
-            except:
-                raise ValueError('%s DNS resolution failed' % self.name)
+            except OSError as err:
+                raise ValueError('%s DNS resolution failed: %s' % self.name) from err
             else:
                 return name
 
@@ -442,8 +443,8 @@ class UrlField(StringField):
             url = urlparse(value)
             if not url.scheme:
                 raise ValueError('no scheme url scheme')
-        except:
-            raise ValueError('%s is not a valid URL' % self.name)
+        except Exception as err:
+            raise ValueError('%s is not a valid URL' % self.name) from err
         return value
 
 
@@ -815,8 +816,8 @@ class DigestValue(TDigestValue):
             salt_b64, digest_b64 = value.split(':', 1)
             salt = base64.b64decode(salt_b64)
             digest = base64.b64decode(digest_b64)
-        except:
-            raise ValueError('invalid salt/digest tuple value')
+        except (ValueError, binascii.Error) as err:
+            raise ValueError('invalid salt/digest tuple value') from err
 
         return DigestValue(salt, digest, algorithm)
 
@@ -1029,15 +1030,15 @@ class ChallengeField(Field):
         if isinstance(value, dict):
             try:
                 salt = base64.b64decode(value['salt'])
-            except:
+            except (KeyError, binascii.Error) as err:
                 raise ValueError('%s has invalid salt: salt must be base64-encoded value' %
-                                 self.name)
+                                 self.name) from err
 
             try:
                 digest = base64.b64decode(value['digest'])
-            except:
+            except (KeyError, binascii.Error) as err:
                 raise ValueError('%s has invalid digest: digest must be base64-encoded value' %
-                                 self.name)
+                                 self.name) from err
 
             return DigestValue(salt, digest, self.algorithm)
 
@@ -1093,14 +1094,14 @@ class SecureField(Field):
 
             try:
                 ciphertext = base64.b64decode(ciphertext_b64)
-            except:
-                raise ValueError('%s has invalid ciphertext' % self.name)
+            except binascii.Error as err:
+                raise ValueError('%s has invalid ciphertext' % self.name) from err
 
             try:
                 with cfg._keyfile as ctx:
                     text = ctx.decrypt(SecureValue(method, ciphertext))
             except EncryptionError as err:
-                raise ValueError('failed to decrypt %s: %s' % (self.name, str(err)))
+                raise ValueError('failed to decrypt %s: %s' % (self.name, str(err))) from err
             else:
                 return text.decode()
 
@@ -1162,16 +1163,16 @@ class BytesField(Field):
         if self.encoding == 'base64':
             try:
                 ret = base64.b64decode(value)
-            except:
-                raise ValueError('%s has invalid base64 encoding' % self.name)
+            except binascii.Error as err:
+                raise ValueError('%s has invalid base64 encoding' % self.name) from err
             else:
                 return ret
 
         if self.encoding == 'hex':
             try:
                 ret = bytes.fromhex(value)
-            except:
-                raise ValueError('%s has invalid hex encoding' % self.name)
+            except ValueError as err:
+                raise ValueError('%s has invalid hex encoding' % self.name) from err
             else:
                 return ret
 

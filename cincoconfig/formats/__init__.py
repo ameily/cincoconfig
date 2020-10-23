@@ -5,7 +5,7 @@
 # this source code package.
 #
 
-from .registry import FormatRegistry
+from .registry import FormatRegistry, TFormatFactory
 from .json import JsonConfigFormat
 from .pickle import PickleConfigFormat
 from .yaml import YamlConfigFormat
