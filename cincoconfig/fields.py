@@ -323,7 +323,7 @@ class HostnameField(StringField):
             try:
                 name = socket.gethostbyname(value)
             except OSError as err:
-                raise ValueError('%s DNS resolution failed: %s' % self.name) from err
+                raise ValueError('%s DNS resolution failed' % self.name) from err
             else:
                 return name
 
