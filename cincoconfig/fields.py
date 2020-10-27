@@ -357,6 +357,10 @@ class FilenameField(StringField):
         filename's will be resolve relative to :meth:`os.getcwd` and the relative file path will
         be validated.
 
+        Specifying *required=True* will cause the field validation to validate that the filename
+        is not ``None`` and is not an empty string. When *required=False* the *exists* condition
+        is skipped if the value is ``None`` or an empty string.
+
         :param exists: validate the filename's existance on disk
         :param startdir: resolve relative paths to a start directory
         '''
@@ -371,6 +375,9 @@ class FilenameField(StringField):
         :param cfg: current config
         :param value: value to validate
         '''
+        if not self.required and not value:
+            return ''
+
         if not os.path.isabs(value) and self.startdir:
             value = os.path.abspath(os.path.join(self.startdir, value))
 
