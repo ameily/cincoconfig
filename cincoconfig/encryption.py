@@ -7,7 +7,7 @@
 
 import os
 from itertools import cycle
-from typing import NamedTuple, Optional, Union
+from typing import NamedTuple, Optional, Union, Tuple
 
 try:
     from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -154,7 +154,7 @@ class KeyFile:
 
         return False
 
-    def _get_provider(self, method: str) -> IEncryptionProvider:
+    def _get_provider(self, method: str) -> Tuple[IEncryptionProvider, str]:
         '''
         Get the encryption provider. ``method`` must be one of
 
@@ -170,9 +170,9 @@ class KeyFile:
             raise TypeError('keyfile is not open')
 
         if method == 'aes' or (method == 'best' and AES_AVAILABLE):
-            return AesProvider(self.__key)
+            return AesProvider(self.__key), 'aes'
         if method in ('xor', 'best'):
-            return XorProvider(self.__key)
+            return XorProvider(self.__key), 'xor'
         raise TypeError('invalid encryption method: %s' % method)
 
     def encrypt(self, text: Union[str, bytes], method: str = 'best') -> SecureValue:
@@ -186,7 +186,7 @@ class KeyFile:
 
         bindata = text.encode() if isinstance(text, str) else text
 
-        provider = self._get_provider(method)
+        provider, method = self._get_provider(method)
         ciphertext = provider.encrypt(bindata)
         return SecureValue(method, ciphertext)
 
@@ -198,7 +198,7 @@ class KeyFile:
         if not self.__key:
             raise TypeError('key file is not open')
 
-        provider = self._get_provider(secret.method)
+        provider, _ = self._get_provider(secret.method)
         return provider.decrypt(secret.ciphertext)
 
 
