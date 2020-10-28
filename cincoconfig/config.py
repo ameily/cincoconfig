@@ -450,6 +450,16 @@ class Config(BaseConfig):
         else:
             setattr(self, key, value)
 
+    def __contains__(self, key: str) -> bool:
+        if '.' in key:
+            key, remainder = key.split('.', 1)
+            cfg = self._data.get(key)
+            if isinstance(cfg, Config):
+                return cfg.__contains__(remainder)
+            return False
+
+        return key in self._data
+
     def save(self, filename: str, format: str):
         '''
         Save the configuration to a file.
