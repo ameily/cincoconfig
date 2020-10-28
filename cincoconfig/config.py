@@ -451,6 +451,18 @@ class Config(BaseConfig):
             setattr(self, key, value)
 
     def __contains__(self, key: str) -> bool:
+        '''
+        Check if key is in the configuration. This method handles checking nested values. For
+        example:
+
+        .. code-block:: python
+
+                >>> schema = Schema()
+                >>> schema.x.y = IntField(default=10)
+                >>> config = schema()
+                >>> 'x.y' in config
+                True
+        '''
         if '.' in key:
             key, remainder = key.split('.', 1)
             cfg = self._data.get(key)

@@ -164,7 +164,12 @@ class KeyFile:
           encryption is available (``cryptography`` is installed), :class:`XorProvider` if AES
           is not available
 
-        :returns: the encryption provide instance
+        The resolved method is returned. For example, if ``best`` if specified, the best encryption
+        method will be resolved and returned.
+
+        The return value is a tuple of enryption provider instance and the resolved method.
+
+        :returns: a tuple of ``(provider, method)``
         '''
         if not self.__key:
             raise TypeError('keyfile is not open')

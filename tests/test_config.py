@@ -236,9 +236,6 @@ class TestConfig:
 
         assert result == {'top': {'hello': 1}}
 
-
-
-
     def test_set_config(self):
         schema = Schema()
         schema.x.y = Field()
@@ -323,3 +320,35 @@ class TestConfig:
         assert config.x == '1'
         assert config.y.z == '2'
         assert config.w == 'w'
+
+    def test_in_flat(self):
+        schema = Schema()
+        schema.x = Field()
+        config = schema()
+        config.x = 2
+
+        assert 'x' in config
+
+    def test_in_nested(self):
+        schema = Schema()
+        schema.x.y = Field()
+        config = schema()
+        config.x.y = 2
+
+        assert 'x.y' in config
+
+    def test_not_in(self):
+        schema = Schema()
+        schema.x = Field()
+        config = schema()
+        config.x = 2
+
+        assert 'z' not in config
+
+    def test_in_not_config(self):
+        schema = Schema()
+        schema.x = Field()
+        config = schema()
+        config.x = 2
+
+        assert 'x.y' not in config
