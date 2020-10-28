@@ -167,7 +167,7 @@ class KeyFile:
         The resolved method is returned. For example, if ``best`` if specified, the best encryption
         method will be resolved and returned.
 
-        The return value is a tuple of enryption provider instance and the resolved method.
+        The return value is a tuple of encryption provider instance and the resolved method.
 
         :returns: a tuple of ``(provider, method)``
         '''
