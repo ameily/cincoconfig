@@ -107,6 +107,15 @@ class TestStringField:
         field = StringField()
         assert field.validate(self.cfg, 100) == '100'
 
+    def test_empty_string_requied(self):
+        field = StringField(required=True)
+        with pytest.raises(ValueError):
+            field.validate(self.cfg, '')
+
+    def test_empty_string_not_required(self):
+        field = StringField(required=False)
+        assert field.validate(self.cfg, '') == ''
+
 
 class TestLogLevelField:
 

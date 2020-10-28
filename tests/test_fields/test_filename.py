@@ -93,3 +93,11 @@ class TestFilenameField:
             field.validate(MockConfig(), 'some-file')
         isfile.assert_called_once_with('some-file')
 
+    def test_empty_not_required(self):
+        field = FilenameField(exists=True)
+        assert field.validate(MockConfig(), '') == ''
+
+    def test_empty_required(self):
+        field = FilenameField(required=True, exists=True)
+        with pytest.raises(ValueError):
+            field.validate(MockConfig(), '')

@@ -81,6 +81,9 @@ class StringField(Field):
             else:
                 value = value.strip()
 
+        if self.required and not value:
+            raise ValueError('%s is required' % self.name)
+
         if self.transform_case:
             value = value.lower() if self.transform_case == 'lower' else value.upper()
 
@@ -349,8 +352,8 @@ class FilenameField(StringField):
         - ``None`` - don't check file's existance
         - ``False`` - validate that the filename does not exist
         - ``True`` - validate that the filename does exist
-        - ``dir`` - validate that the filename is a directory that exists
-        - ``file`` - validate that the filename is a file that exists
+        - ``"dir"`` - validate that the filename is a directory that exists
+        - ``"file"`` - validate that the filename is a file that exists
 
         The *startdir* parameter, if specified, will resolve filenames starting from a directory
         and will cause all filenames to be validate to their abslute file path. If not specified,
@@ -371,6 +374,11 @@ class FilenameField(StringField):
         :param cfg: current config
         :param value: value to validate
         '''
+        value = super()._validate(cfg, value)
+
+        if not value:
+            return value
+
         if not os.path.isabs(value) and self.startdir:
             value = os.path.abspath(os.path.join(self.startdir, value))
 
