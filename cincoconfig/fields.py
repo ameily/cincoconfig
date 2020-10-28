@@ -1094,8 +1094,8 @@ class SecureField(Field):
             method = value.get('method')
             ciphertext_b64 = value.get('ciphertext')
 
-            if not method or method == 'best':
-                raise ValueError('%s has invalid encryption method: %s' % (self.name, method))
+            if not method:
+                raise ValueError('%s has no encryption method' % self.name)
 
             if not isinstance(ciphertext_b64, str):
                 raise ValueError('%s has invalid ciphertext' % self.name)
@@ -1108,7 +1108,7 @@ class SecureField(Field):
             try:
                 with cfg._keyfile as ctx:
                     text = ctx.decrypt(SecureValue(method, ciphertext))
-            except EncryptionError as err:
+            except (TypeError, EncryptionError) as err:
                 raise ValueError('failed to decrypt %s: %s' % (self.name, str(err))) from err
             else:
                 return text.decode()
