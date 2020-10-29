@@ -208,6 +208,18 @@ class Field:
         '''
         return value
 
+    def friendly_name(self, cfg: 'BaseConfig') -> str:
+        if self.name and self.key != self.name:
+            return self.name
+
+        path = [self.key]
+        while cfg._parent and cfg._key:
+            path.append(cfg._key)
+            cfg = cfg._parent
+
+        path.reverse()
+        return '.'.join(path)
+
 
 class AnyField(Field):
     '''
@@ -296,6 +308,7 @@ class BaseConfig(BaseSchema):
         :param key_filename: path to cinco key file
         '''
         super().__init__()
+        self._key = schema._key
         self._schema = schema
         self._parent = parent
         self._data = dict()  # type: Dict[str, Any]
