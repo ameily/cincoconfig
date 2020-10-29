@@ -33,6 +33,10 @@ class TestSecureField:
         field = SecureField()
         assert field.to_basic(None, None) is None
 
+    def test_to_basic_empty_string(self):
+        field = SecureField()
+        assert field.to_basic(None, "") is None
+
     def test_to_basic(self):
         cfg = StubConfig()
         field = SecureField(method='test')
@@ -47,6 +51,10 @@ class TestSecureField:
     def test_to_python_none(self):
         field = SecureField()
         assert field.to_python(None, None) is None
+
+    def test_to_python_empty_string(self):
+        field = SecureField()
+        assert field.to_python(None, "") == ""
 
     def test_to_python_str(self):
         field = SecureField()

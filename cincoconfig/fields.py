@@ -1071,8 +1071,8 @@ class SecureField(Field):
         super().__init__(**kwargs)
         self.method = method
 
-    def to_basic(self, cfg: BaseConfig, value: str) -> dict:
-        if value is None:
+    def to_basic(self, cfg: BaseConfig, value: str) -> Optional[dict]:
+        if not value:
             return None
 
         with cfg._keyfile as ctx:
