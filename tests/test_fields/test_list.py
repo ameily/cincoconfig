@@ -140,9 +140,8 @@ class TestListProxy:
         schema = Schema()
         schema.x = IntField(default=1)
         schema.y = IntField(default=2)
-        field = ListProxy(MockConfig(), schema)
-        field.append(schema())
-        assert field.to_basic() == [{'x': 1, 'y': 2}]
+        field = ListField(schema)
+        assert field.to_basic(MockConfig(), [schema()]) == [{'x': 1, 'y': 2}]
 
     def test_validate_schema_dict(self):
         schema = Schema()
@@ -252,3 +251,10 @@ class TestListField:
         assert check._items == orig
         assert check is not orig
         assert check._items is not orig._items
+
+    def test_default_list_wrap(self):
+        cfg = MockConfig()
+        field = ListField(IntField(), default=lambda: [1, 2, 3], key='asdf')
+        field.__setdefault__(cfg)
+        assert isinstance(cfg._data['asdf'], ListProxy)
+        assert cfg._data['asdf'] == ListProxy(cfg, field.field, [1, 2, 3])

@@ -610,14 +610,6 @@ class ListProxy:
 
         return self.field.validate(self.cfg, value)
 
-    def to_basic(self) -> list:
-        '''
-        :returns: the basic representation of the list items, suitable for saving to disk
-        '''
-        if isinstance(self.field, BaseSchema):
-            return [item.to_tree() for item in self._items]
-        return self._items
-
 
 class ListField(Field):
     '''
@@ -642,6 +634,13 @@ class ListField(Field):
                 self.storage_type = List[field.storage_type]  # type: ignore
             elif isinstance(field, BaseSchema):
                 self.storage_type = List[type(field)]  # type: ignore
+
+    def __setdefault__(self, cfg: BaseConfig) -> None:
+        default = self.default
+        if isinstance(default, list):
+            default = ListProxy(cfg, self.field, default)
+
+        cfg._data[self.key] = default
 
     def _validate(self, cfg: BaseConfig, value: list) -> Union[list, ListProxy]:
         '''
@@ -673,9 +672,11 @@ class ListField(Field):
         :param cfg: current config
         :param value: value to convert
         '''
-        if isinstance(value, ListProxy):
-            return value.to_basic()
-        return value
+        if isinstance(self.field, BaseSchema):
+            return [item.to_tree() for item in value]
+        if self.field:
+            return [self.field.to_basic(cfg, item) for item in value]
+        return list(value)
 
     def to_python(self, cfg: BaseConfig, value: list) -> Union[list, ListProxy]:
         '''
