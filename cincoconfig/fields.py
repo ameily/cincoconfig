@@ -637,7 +637,7 @@ class ListField(Field):
 
     def __setdefault__(self, cfg: BaseConfig) -> None:
         default = self.default
-        if isinstance(default, list):
+        if isinstance(default, list) and self.field:
             default = ListProxy(cfg, self.field, default)
 
         cfg._data[self.key] = default
