@@ -398,7 +398,7 @@ class Config(BaseConfig):
             try:
                 field.__setval__(self, value)
             except Exception as err:
-                raise ValidationError(self, field, err)
+                raise ValidationError(self, field, err) from err
 
     def __getattr__(self, name: str) -> Any:
         '''
