@@ -103,6 +103,20 @@ class TestStringField:
         field = StringField(choices=['a', 'b', 'c'], transform_case='lower')
         assert field.validate(self.cfg, 'A') == 'a'
 
+    def test_choice_error_message_list(self):
+        field = StringField(choices=['a', 'b', 'c'])
+        with pytest.raises(ValueError) as excinfo:
+            field.validate(self.cfg, 'qwer')
+
+        assert str(excinfo.value).endswith(' a, b, c')
+
+    def test_choice_error_message_too_many(self):
+        field = StringField(choices=['a', 'b', 'c', 'd', 'e', 'f', 'g'])
+        with pytest.raises(ValueError) as excinfo:
+            field.validate(self.cfg, 'qwer')
+
+        assert not str(excinfo.value).endswith(' a, b, c, d, e, f, g')
+
     def test_non_string(self):
         field = StringField()
         assert field.validate(self.cfg, 100) == '100'

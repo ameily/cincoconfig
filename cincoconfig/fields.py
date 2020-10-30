@@ -97,7 +97,11 @@ class StringField(Field):
             raise ValueError('value does not match pattern %s' % self.regex.pattern)
 
         if self.choices and value not in self.choices:
-            raise ValueError('value is not a valid choice')
+            if len(self.choices) < 6:
+                postfix = ': must be one of: ' + ', '.join(self.choices)
+            else:
+                postfix = ''
+            raise ValueError('value is not a valid choice' + postfix)
 
         return value
 
