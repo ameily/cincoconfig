@@ -9,7 +9,7 @@ import sys
 from typing import Union, Any, Iterator, Tuple, Callable, List
 from argparse import Namespace
 from itertools import chain
-from .abc import Field, BaseConfig, BaseSchema, SchemaField, AnyField
+from .abc import Field, BaseConfig, BaseSchema, SchemaField, AnyField, ValidationError
 from .fields import IncludeField, InstanceMethodField
 from .formats import FormatRegistry, TFormatFactory
 
@@ -365,8 +365,12 @@ class Config(BaseConfig):
         and then calls the target field's :meth:`~cincoconfig.abc.Field.__setval__` to actually
         set the value.
 
+        Any exception that is raised by the field validation will be wrapped in an
+        :class:`~cincoconfig.abc.ValidationError` and raised again.
+
         :param name: field key
         :param value: value to validate and set
+        :raises ValidationError: setting the value failed
         '''
         # if name[0] == '_':
         if not self.__initialized or name in self.__dict__:
@@ -391,7 +395,10 @@ class Config(BaseConfig):
 
             self._data[name] = cfg
         else:
-            field.__setval__(self, value)
+            try:
+                field.__setval__(self, value)
+            except Exception as err:
+                raise ValidationError(self, field, err)
 
     def __getattr__(self, name: str) -> Any:
         '''

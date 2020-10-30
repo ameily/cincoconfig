@@ -82,22 +82,22 @@ class StringField(Field):
                 value = value.strip()
 
         if self.required and not value:
-            raise ValueError('%s is required' % self.name)
+            raise ValueError('value is required')
 
         if self.transform_case:
             value = value.lower() if self.transform_case == 'lower' else value.upper()
 
         if self.min_len is not None and len(value) < self.min_len:
-            raise ValueError('%s must be at least %d characters' % (self.name, self.min_len))
+            raise ValueError('value must be at least %d characters' % self.min_len)
 
         if self.max_len is not None and len(value) > self.max_len:
-            raise ValueError('%s must not be more than %d chatacters' % (self.name, self.max_len))
+            raise ValueError('value must not be more than %d chatacters' % self.max_len)
 
         if self.regex and not self.regex.match(value):
-            raise ValueError('%s does not match pattern %s' % (self.name, self.regex.pattern))
+            raise ValueError('value does not match pattern %s' % self.regex.pattern)
 
         if self.choices and value not in self.choices:
-            raise ValueError('%s is not a valid choice' % self.name)
+            raise ValueError('value is not a valid choice')
 
         return value
 
@@ -203,13 +203,13 @@ class NumberField(Field):
         try:
             num = self.type_cls(value)  # type: Union[int, float]
         except (ValueError, TypeError) as err:
-            raise ValueError('%s is not a valid %s' % (self.name, self.type_cls.__name__)) from err
+            raise ValueError('value is not a valid %s' % self.type_cls.__name__) from err
 
         if self.min is not None and num < self.min:
-            raise ValueError('%s must be >= %s' % (self.name, self.min))
+            raise ValueError('value must be >= %s' % self.min)
 
         if self.max is not None and num > self.max:
-            raise ValueError('%s must be <= %s' % (self.name, self.max))
+            raise ValueError('value must be <= %s' % self.max)
 
         return num
 
@@ -262,7 +262,7 @@ class IPv4AddressField(StringField):
         try:
             addr = IPv4Address(value)
         except ValueError as err:
-            raise ValueError('%s must be a valid IPv4 address' % self.name) from err
+            raise ValueError('value is not a valid IPv4 address') from err
         return str(addr)
 
 
@@ -282,7 +282,7 @@ class IPv4NetworkField(StringField):
         try:
             net = IPv4Network(value)
         except ValueError as err:
-            raise ValueError('%s must be a valid IPv4 Network (CIDR)' % self.name) from err
+            raise ValueError('value is not a valid IPv4 Network (CIDR)') from err
         return str(net)
 
 
@@ -318,7 +318,7 @@ class HostnameField(StringField):
         else:
             if self.allow_ipv4:
                 return str(addr)
-            raise ValueError('%s is not a valid DNS hostname')
+            raise ValueError('value is not a valid DNS hostname')
 
         # value is a hostname
         if self.resolve:
@@ -326,7 +326,7 @@ class HostnameField(StringField):
             try:
                 name = socket.gethostbyname(value)
             except OSError as err:
-                raise ValueError('%s DNS resolution failed' % self.name) from err
+                raise ValueError('DNS resolution failed') from err
             else:
                 return name
 
@@ -334,7 +334,7 @@ class HostnameField(StringField):
         dns_match = self.HOSTNAME_REGEX.match(value)
         nb_match = self.NETBIOS_REGEX.match(value)
         if not dns_match and not nb_match:
-            raise ValueError('%s is not a valid hostname')
+            raise ValueError('value is not a valid hostname')
 
         return value
 
@@ -387,15 +387,15 @@ class FilenameField(StringField):
 
         value_exists = os.path.exists(value)
         if self.exists is True and not value_exists:
-            raise ValueError('%s file or directory does not exist' % self.name)
+            raise ValueError('file or directory does not exist: %s' % value)
         if self.exists is False and value_exists:
-            raise ValueError('%s file or directory already exists' % self.name)
+            raise ValueError('file or directory already exists: %s' % value)
         if self.exists == 'dir' and not os.path.isdir(value):
-            raise ValueError('%s directory %s' %
-                             (self.name, 'already exists' if value_exists else 'does not exist'))
+            raise ValueError('directory %s: %s' %
+                             ('already exists' if value_exists else 'does not exist', value))
         if self.exists == 'file' and not os.path.isfile(value):
-            raise ValueError('%s file %s' %
-                             (self.name, 'already exists' if value_exists else 'does not exist'))
+            raise ValueError('file %s: %s' %
+                             ('already exists' if value_exists else 'does not exist', value))
 
         return value
 
@@ -428,9 +428,9 @@ class BoolField(Field):
             elif value.lower() in self.FALSE_VALUES:
                 bval = False
             else:
-                raise ValueError('%s is not a valid boolean' % self.name)
+                raise ValueError('value is not a valid boolean')
         else:
-            raise ValueError('%s is not a valid boolean' % self.name)
+            raise ValueError('value is not a valid boolean')
         return bval
 
 
@@ -452,7 +452,7 @@ class UrlField(StringField):
             if not url.scheme:
                 raise ValueError('no scheme url scheme')
         except Exception as err:
-            raise ValueError('%s is not a valid URL' % self.name) from err
+            raise ValueError('value is not a valid URL') from err
         return value
 
 
@@ -651,10 +651,10 @@ class ListField(Field):
             return ListProxy(cfg, self.field, value._items)
 
         if not isinstance(value, (list, tuple)):
-            raise ValueError('%s is not a list object' % self.name)
+            raise ValueError('value is not a list')
 
         if self.required and not value:
-            raise ValueError('%s is required' % self.name)
+            raise ValueError('value is required')
 
         if not self.field or isinstance(self.field, AnyField):
             return value
@@ -714,7 +714,7 @@ class VirtualField(Field):
 
     def __setval__(self, cfg: BaseConfig, value: Any) -> None:
         if not self.setter:
-            raise TypeError('%s is readonly' % self.key)
+            raise TypeError('field is readonly')
         self.setter(cfg, value)
 
 
@@ -763,7 +763,7 @@ class InstanceMethodField(Field):
         return self._bind(cfg)
 
     def __setval__(self, cfg: BaseConfig, value: Any) -> None:
-        raise TypeError('%s is readonly' % self.key)
+        raise TypeError('field is readonly')
 
 
 class DictField(Field):
@@ -784,10 +784,10 @@ class DictField(Field):
         :param value: value to validate
         '''
         if not isinstance(value, dict):
-            raise ValueError('%s is not a dict object' % self.name)
+            raise ValueError('value is not a dict object')
 
         if self.required and not value:
-            raise ValueError('%s is required' % self.name)
+            raise ValueError('value is required')
 
         return value
 
@@ -990,7 +990,7 @@ class ChallengeField(Field):
         elif isinstance(value, DigestValue):
             val = value
         else:
-            raise TypeError('%s must be a string' % self.name)
+            raise TypeError('value must be a string')
         return val
 
     def _hash(self, plaintext: Union[str, bytes], salt: bytes = None) -> DigestValue:
@@ -1039,21 +1039,21 @@ class ChallengeField(Field):
             try:
                 salt = base64.b64decode(value['salt'])
             except (KeyError, binascii.Error) as err:
-                raise ValueError('%s has invalid salt: salt must be base64-encoded value' %
-                                 self.name) from err
+                raise ValueError('%s: invalid salt: salt must be base64-encoded value' %
+                                 self.friendly_name(cfg)) from err
 
             try:
                 digest = base64.b64decode(value['digest'])
             except (KeyError, binascii.Error) as err:
-                raise ValueError('%s has invalid digest: digest must be base64-encoded value' %
-                                 self.name) from err
+                raise ValueError('%s: invalid digest: digest must be base64-encoded value' %
+                                 self.friendly_name(cfg)) from err
 
             return DigestValue(salt, digest, self.algorithm)
 
         if isinstance(value, str):
             return self._hash(value)
 
-        raise ValueError('invalid salt-digest tuple')
+        raise ValueError('%s: invalid salt-digest tuple' % self.friendly_name(cfg))
 
 
 class SecureField(Field):
@@ -1095,25 +1095,26 @@ class SecureField(Field):
             ciphertext_b64 = value.get('ciphertext')
 
             if not method:
-                raise ValueError('%s has no encryption method' % self.name)
+                raise ValueError('%s: no encryption method specified' % self.friendly_name(cfg))
 
             if not isinstance(ciphertext_b64, str):
-                raise ValueError('%s has invalid ciphertext' % self.name)
+                raise ValueError('%s: invalid ciphertext' % self.friendly_name(cfg))
 
             try:
                 ciphertext = base64.b64decode(ciphertext_b64)
             except binascii.Error as err:
-                raise ValueError('%s has invalid ciphertext' % self.name) from err
+                raise ValueError('%s: invalid ciphertext' % self.friendly_name(cfg)) from err
 
             try:
                 with cfg._keyfile as ctx:
                     text = ctx.decrypt(SecureValue(method, ciphertext))
             except (TypeError, EncryptionError) as err:
-                raise ValueError('failed to decrypt %s: %s' % (self.name, str(err))) from err
+                raise ValueError('%s: decryption failed: %s' %
+                                 (self.friendly_name(cfg), str(err))) from err
             else:
                 return text.decode()
 
-        raise ValueError('invalid encrypted value %s' % self.name)
+        raise ValueError('%s: invalid encrypted value' % self.friendly_name(cfg))
 
 
 class BytesField(Field):
@@ -1141,7 +1142,7 @@ class BytesField(Field):
         if isinstance(value, bytes):
             return value
 
-        raise ValueError('%s must be bytes' % self.name)
+        raise ValueError('value is not bytes')
 
     def to_basic(self, cfg: BaseConfig, value: bytes) -> str:
         '''
@@ -1156,7 +1157,7 @@ class BytesField(Field):
         if self.encoding == 'hex':
             return value.hex()
 
-        raise TypeError('invalid encoding: %s' % self.encoding)
+        raise TypeError('%s: invalid encoding: %s' % (self.friendly_name(cfg), self.encoding))
 
     def to_python(self, cfg: BaseConfig, value: Any) -> Optional[bytes]:
         '''
@@ -1166,13 +1167,13 @@ class BytesField(Field):
             return value
 
         if not isinstance(value, str):
-            raise ValueError('%s must be a string' % self.name)
+            raise ValueError('%s: value is not a string' % self.friendly_name(cfg))
 
         if self.encoding == 'base64':
             try:
                 ret = base64.b64decode(value)
             except binascii.Error as err:
-                raise ValueError('%s has invalid base64 encoding' % self.name) from err
+                raise ValueError('%s: invalid base64 encoding' % self.friendly_name(cfg)) from err
             else:
                 return ret
 
@@ -1180,11 +1181,11 @@ class BytesField(Field):
             try:
                 ret = bytes.fromhex(value)
             except ValueError as err:
-                raise ValueError('%s has invalid hex encoding' % self.name) from err
+                raise ValueError('%s: invalid hex encoding' % self.friendly_name(cfg)) from err
             else:
                 return ret
 
-        raise TypeError('%s has invalid encoding: %s' % (self.name, self.encoding))
+        raise TypeError('%s: invalid encoding: %s' % (self.friendly_name(cfg), self.encoding))
 
 
 class IncludeField(FilenameField):
@@ -1207,7 +1208,7 @@ class IncludeField(FilenameField):
         mode: "production"
         ssl: true
 
-    The final parsed configuration would be eqivlanent to:
+    The final parsed configuration would be equivalent to:
 
     .. code-block:: yaml
 
@@ -1221,7 +1222,7 @@ class IncludeField(FilenameField):
     Included files must be in the same configuration file format as their parent file. So,
     if the base configuration file is stored in JSON then every included file must also be in JSON.
 
-    Cincoconfig dpes not track which configuration file set which field(s). When a config file is
+    Cincoconfig does not track which configuration file set which field(s). When a config file is
     saved back to disk, it will be the entire configuration, even if it was originally defined
     across multiple included files.
     '''

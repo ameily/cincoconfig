@@ -6,6 +6,12 @@ import pytest
 
 from cincoconfig.fields import ChallengeField, DigestValue, BaseConfig, BaseSchema
 
+class MockConfig:
+
+    def __init__(self):
+        self._parent = None
+        self._key = None
+
 
 class TestDigestValue:
 
@@ -78,18 +84,18 @@ class TestChallengeField:
 
     def test_validate_str(self):
         field = ChallengeField('md5')
-        val = field._validate(None, b'digest')
+        val = field._validate(MockConfig(), b'digest')
         assert val.digest == hashlib.md5(val.salt + b'digest').digest()
 
     def test_validate_tuple(self):
         val = DigestValue(b'salt', b'digest', hashlib.md5)
         field = ChallengeField('md5')
-        assert field._validate(None, val) is val
+        assert field._validate(MockConfig(), val) is val
 
     def test_validate_error(self):
         field = ChallengeField('md5', name='asdf')
         with pytest.raises(TypeError):
-            field._validate(None, 100)
+            field._validate(MockConfig(), 100)
 
     @patch.object(DigestValue, 'create')
     def test_hash(self, create_mock):
@@ -99,20 +105,20 @@ class TestChallengeField:
 
     def test_to_basic(self):
         field = ChallengeField('md5')
-        assert field.to_basic(None, DigestValue(b'salt', b'digest', hashlib.md5)) == {
+        assert field.to_basic(MockConfig(), DigestValue(b'salt', b'digest', hashlib.md5)) == {
             'salt': base64.b64encode(b'salt').decode(),
             'digest': base64.b64encode(b'digest').decode(),
         }
 
     def test_to_basic_none(self):
         field = ChallengeField('md5')
-        assert field.to_basic(None, None) is None
+        assert field.to_basic(MockConfig(), None) is None
 
     def test_to_python_dict(self):
         field = ChallengeField('md5')
         salt = base64.b64encode(b'salt').decode()
         digest = base64.b64encode(b'digest').decode()
-        val = field.to_python(None, {
+        val = field.to_python(MockConfig(), {
             'salt': salt,
             'digest': digest
         })
@@ -123,18 +129,18 @@ class TestChallengeField:
     def test_to_python_str(self):
         field = ChallengeField('md5')
         field._hash = MagicMock()
-        field.to_python(None, 'message')
+        field.to_python(MockConfig(), 'message')
         field._hash.assert_called_with('message')
 
     def test_to_python_error(self):
         field = ChallengeField('md5')
         with pytest.raises(ValueError):
-            field.to_python(None, 100)
+            field.to_python(MockConfig(), 100)
 
     def test_to_python_invalid_salt(self):
         field = ChallengeField('md5')
         with pytest.raises(ValueError):
-            field.to_python(None, {
+            field.to_python(MockConfig(), {
                 'salt': '==Zaa',
                 'digest': base64.b64encode(b'digest').decode()
             })
@@ -142,7 +148,7 @@ class TestChallengeField:
     def test_to_python_invalid_digest(self):
         field = ChallengeField('md5')
         with pytest.raises(ValueError):
-            field.to_python(None, {
+            field.to_python(MockConfig(), {
                 'salt': base64.b64encode(b'salt').decode(),
                 'digest': '==Za'
             })
@@ -176,5 +182,4 @@ class TestChallengeField:
 
     def test_to_python_none(self):
         field = ChallengeField('md5', key='test')
-        assert field.to_python(None, None) is None
-
+        assert field.to_python(MockConfig(), None) is None
