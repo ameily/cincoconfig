@@ -85,16 +85,18 @@ class TestKeyFile:
     def test_get_provider_aes(self):
         kf = KeyFile('asdf.txt')
         kf._KeyFile__key = b'x' * 32
-        p = kf._get_provider('aes')
-        assert isinstance(p, AesProvider)
-        assert p._AesProvider__key == b'x' * 32
+        provider, method = kf._get_provider('aes')
+        assert isinstance(provider, AesProvider)
+        assert provider._AesProvider__key == b'x' * 32
+        assert method == 'aes'
 
     def test_get_provider_xor(self):
         kf = KeyFile('asdf.txt')
         kf._KeyFile__key = b'x' * 32
-        p = kf._get_provider('xor')
-        assert isinstance(p, XorProvider)
-        assert p._XorProvider__key == b'x' * 32
+        provider, method = kf._get_provider('xor')
+        assert isinstance(provider, XorProvider)
+        assert provider._XorProvider__key == b'x' * 32
+        assert method == 'xor'
 
     def test_get_provider_unknown(self):
         kf = KeyFile('asdf.txt')
@@ -111,7 +113,7 @@ class TestKeyFile:
         provider = StubProvider()
         kf = KeyFile('asdf.txt')
         kf._KeyFile__key = b'x' * 32
-        kf._get_provider = MagicMock(return_value=provider)
+        kf._get_provider = MagicMock(return_value=(provider, 'test'))
 
         secret = kf.encrypt('hello', 'test')
         provider.encrypt.assert_called_once_with(b'hello')
@@ -122,7 +124,7 @@ class TestKeyFile:
         provider = StubProvider()
         kf = KeyFile('asdf.txt')
         kf._KeyFile__key = b'x' * 32
-        kf._get_provider = MagicMock(return_value=provider)
+        kf._get_provider = MagicMock(return_value=(provider, 'test'))
 
         text = kf.decrypt(SecureValue('test', b'hello'))
         provider.decrypt.assert_called_once_with(b'hello')
@@ -142,13 +144,17 @@ class TestKeyFile:
     def test_encrypt_best_aes(self):
         kf = KeyFile('asdf.txt')
         kf._KeyFile__key = b'x' * 32
-        assert isinstance(kf._get_provider(method='best'), AesProvider)
+        provider, method = kf._get_provider(method='best')
+        assert isinstance(provider, AesProvider)
+        assert method == 'aes'
 
     @patch('cincoconfig.encryption.AES_AVAILABLE', False)
     def test_encrypt_best_xor(self):
         kf = KeyFile('asdf.txt')
         kf._KeyFile__key = b'x' * 32
-        assert isinstance(kf._get_provider(method='best'), XorProvider)
+        provider, method = kf._get_provider(method='best')
+        assert isinstance(provider, XorProvider)
+        assert method == 'xor'
 
 
 class TestAesProvider:

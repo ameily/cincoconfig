@@ -17,6 +17,31 @@ from .encryption import KeyFile
 SchemaField = Union['BaseSchema', 'Field']
 
 
+class ValidationError(ValueError):
+    '''
+    Exception raised when setting configuration value failed.
+    '''
+
+    def __init__(self, config: 'BaseConfig', field: 'Field', exc: Exception):
+        '''
+        :param config: configuration
+        :param field: field
+        :param exc: original exception
+        '''
+        super().__init__()
+        self.config = config
+        self.field = field
+        self.exc = exc
+
+    def __str__(self) -> str:
+        if isinstance(self.exc, OSError):
+            msg = self.exc.strerror
+        else:
+            msg = str(self.exc)
+
+        return '%s: %s' % (self.field.friendly_name(self.config), msg)
+
+
 class Field:
     '''
     The base configuration field. Fields provide validation and the mechanisms to retrieve and set
@@ -208,6 +233,41 @@ class Field:
         '''
         return value
 
+    def friendly_name(self, cfg: 'BaseConfig') -> str:
+        '''
+        Get the field's friendly name, which is either ``self.name`` or the full path to the field.
+
+        :param cfg: configuration
+        :returns: field friendly name
+        '''
+        if self.name and self.key != self.name:
+            return self.name
+
+        return self.full_path(cfg)
+
+    def full_path(self, cfg: 'BaseConfig') -> str:
+        '''
+        Get the field's full path in the configuration. For example:
+
+        .. code-block:: python
+
+            >>> schema = Schema()
+            >>> schema.x.y.z = Field()
+            >>> config = schema()
+            >>> schema.x.y.z.path(config)
+            'x.y.z'
+
+        :param cfg: configuration
+        :returns: the full path to the field
+        '''
+        path = [self.key]
+        while cfg._parent and cfg._key:
+            path.append(cfg._key)
+            cfg = cfg._parent
+
+        path.reverse()
+        return '.'.join(path)
+
 
 class AnyField(Field):
     '''
@@ -296,6 +356,7 @@ class BaseConfig(BaseSchema):
         :param key_filename: path to cinco key file
         '''
         super().__init__()
+        self._key = schema._key
         self._schema = schema
         self._parent = parent
         self._data = dict()  # type: Dict[str, Any]

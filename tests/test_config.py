@@ -1,10 +1,13 @@
 import argparse
 from unittest.mock import MagicMock, patch, mock_open
+
 import pytest
+
 from cincoconfig.formats.registry import FormatRegistry
 from cincoconfig.config import Config, Schema, Field, AnyField
 from cincoconfig.fields import IncludeField
 from cincoconfig.version import __version__
+from cincoconfig.abc import ValidationError
 
 
 class MockFormatter:
@@ -236,9 +239,6 @@ class TestConfig:
 
         assert result == {'top': {'hello': 1}}
 
-
-
-
     def test_set_config(self):
         schema = Schema()
         schema.x.y = Field()
@@ -323,3 +323,64 @@ class TestConfig:
         assert config.x == '1'
         assert config.y.z == '2'
         assert config.w == 'w'
+
+    def test_in_flat(self):
+        schema = Schema()
+        schema.x = Field()
+        config = schema()
+        config.x = 2
+
+        assert 'x' in config
+
+    def test_in_nested(self):
+        schema = Schema()
+        schema.x.y = Field()
+        config = schema()
+        config.x.y = 2
+
+        assert 'x.y' in config
+
+    def test_not_in(self):
+        schema = Schema()
+        schema.x = Field()
+        config = schema()
+        config.x = 2
+
+        assert 'z' not in config
+
+    def test_in_not_config(self):
+        schema = Schema()
+        schema.x = Field()
+        config = schema()
+        config.x = 2
+
+        assert 'x.y' not in config
+
+    def test_wrap_validation_error(self):
+        schema = Schema()
+        field = schema.x = Field()
+        config = schema()
+        orig_exc = ValueError('asdf')
+
+        with patch.object(field, 'validate') as mock_validate:
+            mock_validate.side_effect = orig_exc
+            with pytest.raises(ValidationError) as excinfo:
+                config.__setattr__('x', 2)
+
+            mock_validate.assert_called_once_with(config, 2)
+            assert excinfo.value.config is config
+            assert excinfo.value.field is field
+            assert excinfo.value.exc is orig_exc
+
+    def test_validation_error_str(self):
+        schema = Schema()
+        field = schema.x.y.z = Field()
+        config = schema()
+        orig_exc = ValueError('asdf')
+
+        with patch.object(field, 'validate') as mock_validate:
+            mock_validate.side_effect = orig_exc
+            with pytest.raises(ValidationError) as excinfo:
+                config.x.y.__setattr__('z', 2)
+
+            assert str(excinfo.value) == 'x.y.z: asdf'
