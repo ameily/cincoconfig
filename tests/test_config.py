@@ -5,7 +5,7 @@ import pytest
 
 from cincoconfig.formats.registry import FormatRegistry
 from cincoconfig.config import Config, Schema, Field, AnyField
-from cincoconfig.fields import IncludeField
+from cincoconfig.fields import IncludeField, VirtualField, SecureField
 from cincoconfig.version import __version__
 from cincoconfig.abc import ValidationError
 
@@ -110,6 +110,54 @@ class TestConfig:
         config = schema()
         config.z = 4
         assert config.to_tree() == {'x': 2, 'blah': {'y': 3}, 'z': 4}
+
+    def test_to_tree_include_virtual(self):
+        sentinel = object()
+        schema = Schema()
+        schema.v = VirtualField(getter=lambda config: sentinel)
+        config = schema()
+        assert config.to_tree(virtual=True) == {'v': sentinel}
+
+    def test_to_tree_exclude_virtual(self):
+        sentinel = object()
+        schema = Schema()
+        schema.v = VirtualField(getter=lambda config: sentinel)
+        config = schema()
+        assert config.to_tree(virtual=False) == {}
+
+    def test_to_tree_secure_mask_single(self):
+        schema = Schema()
+        schema.v = SecureField(method='xor', default='asdf')
+        config = schema()
+        assert config.to_tree(secure_mask='*') == {'v': '****'}
+
+    def test_to_tree_secure_mask_multi(self):
+        schema = Schema()
+        schema.v = SecureField(method='xor', default='asdf')
+        config = schema()
+        assert config.to_tree(secure_mask='<secret>') == {'v': '<secret>'}
+
+    def test_to_tree_secure_mask_empty(self):
+        schema = Schema()
+        schema.v = SecureField(method='xor', default='asdf')
+        config = schema()
+        assert config.to_tree(secure_mask='') == {'v': ''}
+
+    @patch('cincoconfig.formats.registry.FormatRegistry.get')
+    def test_dumps_to_tree_args(self, fr_get):
+        fmt = MockFormatter()
+        fr_get.return_value = fmt
+        schema = Schema()
+        schema.x = Field(default=2)
+        config = schema()
+
+        virtual = object()
+        secure_mask = object()
+
+        mock_to_tree = MagicMock(returnvalue={})
+        object.__setattr__(config, 'to_tree', mock_to_tree)
+        config.dumps(format='blah', virtual=virtual, secure_mask=secure_mask)
+        mock_to_tree.assert_called_once_with(virtual=virtual, secure_mask=secure_mask)
 
     def test_iter(self):
         schema = Schema(dynamic=True)

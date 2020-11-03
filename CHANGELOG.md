@@ -7,6 +7,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 ### Added
+- `Config.to_tree()` now supports masking secure values (`secure_mask` parameter) and including
+  virtual fields in the tree (`virtual` parameter).
+
+## [v0.5.0] - 2020-10-31
+### Added
 - `StringField`: Provide available choices in the raised exception when value is not valid.
 - `Field.friendly_name()` to retrieve the friendly name of the field, either the `Field.name` or
   the full path to the field in the configuration, `Field.full_path()`
