@@ -129,25 +129,25 @@ class TestConfig:
         schema = Schema()
         schema.v = SecureField(method='xor', default=None)
         config = schema()
-        assert config.to_tree(secure_mask='*') == {'v': None}
+        assert config.to_tree(sensitive_mask='*') == {'v': None}
 
-    def test_to_tree_secure_mask_single(self):
+    def test_to_tree_sensitive_mask_single(self):
         schema = Schema()
         schema.v = SecureField(method='xor', default='asdf')
         config = schema()
-        assert config.to_tree(secure_mask='*') == {'v': '****'}
+        assert config.to_tree(sensitive_mask='*') == {'v': '****'}
 
-    def test_to_tree_secure_mask_multi(self):
+    def test_to_tree_sensitive_mask_multi(self):
         schema = Schema()
         schema.v = SecureField(method='xor', default='asdf')
         config = schema()
-        assert config.to_tree(secure_mask='<secret>') == {'v': '<secret>'}
+        assert config.to_tree(sensitive_mask='<secret>') == {'v': '<secret>'}
 
-    def test_to_tree_secure_mask_empty(self):
+    def test_to_tree_sensitive_mask_empty(self):
         schema = Schema()
         schema.v = SecureField(method='xor', default='asdf')
         config = schema()
-        assert config.to_tree(secure_mask='') == {'v': ''}
+        assert config.to_tree(sensitive_mask='') == {'v': ''}
 
     @patch('cincoconfig.formats.registry.FormatRegistry.get')
     def test_dumps_to_tree_args(self, fr_get):
@@ -158,12 +158,12 @@ class TestConfig:
         config = schema()
 
         virtual = object()
-        secure_mask = object()
+        sensitive_mask = object()
 
         mock_to_tree = MagicMock(returnvalue={})
         object.__setattr__(config, 'to_tree', mock_to_tree)
-        config.dumps(format='blah', virtual=virtual, secure_mask=secure_mask)
-        mock_to_tree.assert_called_once_with(virtual=virtual, secure_mask=secure_mask)
+        config.dumps(format='blah', virtual=virtual, sensitive_mask=sensitive_mask)
+        mock_to_tree.assert_called_once_with(virtual=virtual, sensitive_mask=sensitive_mask)
 
     def test_iter(self):
         schema = Schema(dynamic=True)
