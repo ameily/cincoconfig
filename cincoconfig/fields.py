@@ -17,7 +17,8 @@ import base64
 import binascii
 from ipaddress import IPv4Address, IPv4Network
 from urllib.parse import urlparse
-from typing import Union, List, Any, Iterator, Callable, NamedTuple, Optional, Dict
+from typing import (Union, List, Any, Iterator, Callable, NamedTuple, Optional, Dict, Iterable,
+                    TypeVar)
 import hashlib
 
 from .abc import Field, AnyField, BaseConfig, BaseSchema, ConfigFormat, SchemaField
@@ -29,6 +30,8 @@ __all__ = ('StringField', 'IntField', 'FloatField', 'PortField', 'IPv4AddressFie
            'HostnameField', 'DictField', 'ListProxy', 'VirtualField', 'ApplicationModeField',
            'LogLevelField', 'NumberField', 'ChallengeField', 'DigestValue', 'SecureField',
            'BytesField', 'IncludeField', 'InstanceMethodField')
+
+_T = TypeVar('_T')
 
 
 class StringField(Field):
@@ -460,132 +463,48 @@ class UrlField(StringField):
         return value
 
 
-class ListProxy:
+class ListProxy(list):
     '''
     A Field-validated :class:`list` proxy. This proxy supports all methods that the builtin
     ``list`` supports with the added ability to validate items against a :class:`Field`. This is
     the field returned by the :class:`ListField` validation chain.
     '''
 
-    def __init__(self, cfg: BaseConfig, field: SchemaField, items: list = None):
-        '''
-        :param cfg: current config
-        :param field: field to validate against
-        :param items: initial list items
-        '''
+    def __init__(self, cfg: BaseConfig, field: SchemaField, iterable: Iterable[_T] = None):
+        iterable = iterable or []
         self.cfg = cfg
         self.field = field
-        self._items = []  # type: List[Any]
+        if isinstance(iterable, ListProxy) and iterable.field is field:
+            super().__init__(iterable)
+        else:
+            super().__init__(self._validate(item) for item in iterable)
 
-        if items:
-            for item in items:
-                self.append(item)
+    def append(self, item: _T) -> None:
+        super().append(self._validate(item))
 
-    def __len__(self) -> int:
-        return len(self._items)
+    def extend(self, iterable: Iterable[_T]) -> None:
+        if isinstance(iterable, ListProxy) and iterable.field is self.field:
+            super().extend(iterable)
+        else:
+            super().extend(self._validate(item) for item in iterable)
 
-    def __eq__(self, other: object) -> bool:
-        '''
-        :returns: this list content is equal to other list content
-        '''
-        if isinstance(other, ListProxy):
-            other = other._items
-        if isinstance(other, list):
-            return self._items == other
-        return False
+    def insert(self, index: int, item: _T) -> None:
+        super().insert(index, self._validate(item))
 
-    def __iter__(self) -> Iterator[Any]:
-        '''
-        :returns: iterator over items
-        '''
-        return iter(self._items)
+    def copy(self) -> List[_T]:
+        return ListProxy(self.cfg, self.field, self)
 
-    def append(self, item: Any):
-        '''
-        Validate a new item and then append it to the list if validation succeededs.
-        '''
-        value = self._validate(item)
-        self._items.append(value)
-
-    def __add__(self, other: Union[list, 'ListProxy']) -> 'ListProxy':
-        '''
-        Create a new ListProxy containing items from this list and another list.
-
-        :param other: other list to combine
-        :returns: new ListProxy that targets the same ``cfg`` and the same ``field`` with a
-            concatenation of items from this list and ``other``
-        '''
-        if isinstance(other, ListProxy):
-            other = other._items
-
-        return ListProxy(self.cfg, self.field, self._items + other)
-
-    def __iadd__(self, other: Union[list, 'ListProxy']) -> 'ListProxy':
-        '''
-        Extend list by appending elements from the iterable.
-
-        :param other: other list
-        :returns: ``self``
-        '''
-        self.extend(other)
+    def __iadd__(self, iterable: Iterable[_T]) -> 'ListProxy':
+        self.extend(iterable)
         return self
 
-    def __getitem__(self, index: int) -> Any:
-        return self._items[index]
+    def __add__(self, iterable: Iterable[_T]) -> 'ListProxy':
+        ret = self.copy()
+        ret.extend(iterable)
+        return ret
 
-    def __delitem__(self, index: int) -> None:
-        del self._items[index]
-
-    def __setitem__(self, index: int, value: Any) -> None:
-        self._items[index] = self._validate(value)
-
-    def clear(self) -> None:
-        '''
-        Clear the list.
-        '''
-        self._items = []
-
-    def copy(self) -> 'ListProxy':
-        '''
-        Create a copy of this list.
-        '''
-        return ListProxy(self.cfg, self.field, self._items)
-
-    def count(self, value: Any) -> int:
-        '''
-        :returns: count of ``value`` occurrences
-        '''
-        return self._items.count(value)
-
-    def extend(self, other: Union[list, 'ListProxy']) -> None:
-        '''
-        Extend list by appending elements from the iterable.
-        '''
-        for item in other:
-            self.append(item)
-
-    def index(self, value: Any) -> int:
-        '''
-        :returns: first index of ``value``
-        '''
-        return self._items.index(value)
-
-    def insert(self, index, value: Any) -> None:
-        value = self._validate(value)
-        self._items.insert(index, value)
-
-    def pop(self, index: int = None) -> Any:
-        return self._items.pop() if index is None else self._items.pop(index)
-
-    def remove(self, value: Any) -> None:
-        value = self._validate(value)
-        self._items.remove(value)
-
-    def reverse(self) -> None:
-        self._items.reverse()
-
-    def sort(self, key=None, reverse=False) -> None:
-        self._items.sort(key=key, reverse=reverse)
+    def __setitem__(self, index: int, item: _T) -> None:
+        super().__setitem__(index, self._validate(item))
 
     def _validate(self, value: Any) -> Any:
         '''
@@ -651,7 +570,7 @@ class ListField(Field):
         :returns: a :class:`list` if not field is specified, a :class:`ListProxy` otherwise
         '''
         if isinstance(value, ListProxy):
-            return ListProxy(cfg, self.field, value._items)
+            return ListProxy(cfg, self.field, value)
 
         if not isinstance(value, (list, tuple)):
             raise ValueError('value is not a list')
@@ -672,6 +591,11 @@ class ListField(Field):
         :param cfg: current config
         :param value: value to convert
         '''
+        if value is None:
+            return value
+        if not value:
+            return []
+
         if isinstance(self.field, BaseSchema):
             return [item.to_tree() for item in value]
         if self.field:
