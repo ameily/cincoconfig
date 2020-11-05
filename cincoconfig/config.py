@@ -10,7 +10,7 @@ from typing import Union, Any, Iterator, Tuple, Callable, List
 from argparse import Namespace
 from itertools import chain
 from .abc import Field, BaseConfig, BaseSchema, SchemaField, AnyField, ValidationError
-from .fields import IncludeField, InstanceMethodField, SecureField, VirtualField
+from .fields import IncludeField, InstanceMethodField, VirtualField
 from .formats import FormatRegistry, TFormatFactory
 
 
@@ -643,8 +643,7 @@ class Config(BaseConfig):
         The *sensitive_mask* parameter is an optional string that will repalce sensitive values in
         the tree.
 
-        - ``None`` (default) - call the field's :meth:`~cincoconfig.fields.SecureField.to_basic`
-          method.
+        - ``None`` (default) - include the value as-is in the tree
         - ``len(sensitive_mask) == 1`` (single character) - replace every character with the
           ``sensitive_mask`` character. ``value = sensitive_mask * len(value)``
         - ``len(sensitive_mask) != 1`` (empty or multicharacter string) - replace the entire value

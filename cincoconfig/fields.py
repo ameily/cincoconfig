@@ -502,7 +502,7 @@ class ListProxy(list):
     def insert(self, index: int, item: _T) -> None:
         super().insert(index, self._validate(item))
 
-    def copy(self) -> List[_T]:
+    def copy(self) -> 'ListProxy':
         return ListProxy(self.cfg, self.field, self)
 
     def __iadd__(self, iterable: Iterable[_T]) -> 'ListProxy':
@@ -514,8 +514,11 @@ class ListProxy(list):
         ret.extend(iterable)
         return ret
 
-    def __setitem__(self, index: int, item: _T) -> None:
-        super().__setitem__(index, self._validate(item))
+    def __setitem__(self, index: Union[int, slice], item: Union[_T, Iterable[_T]]) -> None:
+        if isinstance(index, slice) and isinstance(item, (list, tuple)):
+            super().__setitem__(index, (self._validate(i) for i in item))
+        else:
+            super().__setitem__(index, self._validate(item))
 
     def _validate(self, value: Any) -> Any:
         '''
@@ -580,9 +583,6 @@ class ListField(Field):
         :param value: value to validate
         :returns: a :class:`list` if not field is specified, a :class:`ListProxy` otherwise
         '''
-        if isinstance(value, ListProxy):
-            return ListProxy(cfg, self.field, value)
-
         if not isinstance(value, (list, tuple)):
             raise ValueError('value is not a list')
 
