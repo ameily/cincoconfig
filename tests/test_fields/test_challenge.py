@@ -94,7 +94,7 @@ class TestChallengeField:
 
     def test_validate_error(self):
         field = ChallengeField('md5', name='asdf')
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             field._validate(MockConfig(), 100)
 
     @patch.object(DigestValue, 'create')

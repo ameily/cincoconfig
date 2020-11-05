@@ -75,7 +75,7 @@ class StringField(Field):
         :param value: value to validate
         '''
         if not isinstance(value, str):
-            value = str(value) if value is not None else ''
+            raise ValueError('value must be a string, not a %s' % type(value).__name__)
 
         if self.transform_strip:
             if isinstance(self.transform_strip, str):
@@ -206,6 +206,10 @@ class NumberField(Field):
         :param cfg: current Config
         :param value: value to validate
         '''
+        if not isinstance(value, (str, int, float, self.type_cls)) or isinstance(value, bool):
+            raise ValueError('value type %s cannot be converted to %s' %
+                             (type(value).__name__, self.type_cls.__name__))
+
         try:
             num = self.type_cls(value)  # type: Union[int, float]
         except (ValueError, TypeError) as err:
@@ -265,6 +269,8 @@ class IPv4AddressField(StringField):
         :param cfg: current Config
         :param value: value to validate
         '''
+        value = super()._validate(cfg, value)
+
         try:
             addr = IPv4Address(value)
         except ValueError as err:
@@ -285,6 +291,8 @@ class IPv4NetworkField(StringField):
         :param cfg: current Config
         :param value: value to validate
         '''
+        value = super()._validate(cfg, value)
+
         try:
             net = IPv4Network(value)
         except ValueError as err:
@@ -317,6 +325,8 @@ class HostnameField(StringField):
         :param cfg: current config
         :param value: value to valdiate
         '''
+        value = super()._validate(cfg, value)
+
         try:
             addr = IPv4Address(value)
         except:
@@ -453,6 +463,8 @@ class UrlField(StringField):
         :param cfg: current config
         :param value: value to validate
         '''
+        value = super()._validate(cfg, value)
+
         try:
             url = urlparse(value)
             if not url.scheme:
@@ -918,7 +930,7 @@ class ChallengeField(Field):
         elif isinstance(value, DigestValue):
             val = value
         else:
-            raise TypeError('value must be a string')
+            raise ValueError('value must be a string, not a %s' % type(value).__name__)
         return val
 
     def _hash(self, plaintext: Union[str, bytes], salt: bytes = None) -> DigestValue:
@@ -1070,7 +1082,7 @@ class BytesField(Field):
         if isinstance(value, bytes):
             return value
 
-        raise ValueError('value is not bytes')
+        raise ValueError('value must be bytes, not %s' % type(value).__name__)
 
     def to_basic(self, cfg: BaseConfig, value: bytes) -> str:
         '''

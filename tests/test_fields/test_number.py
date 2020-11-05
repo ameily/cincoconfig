@@ -44,6 +44,11 @@ class TestIntField:
         with pytest.raises(ValueError):
             field.validate(MockConfig(), '11')
 
+    def test_non_int_convertable(self):
+        field = IntField()
+        with pytest.raises(ValueError):
+            field.validate(MockConfig(), [])
+
 
 class TestFloatField:
 
