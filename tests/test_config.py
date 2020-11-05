@@ -125,6 +125,12 @@ class TestConfig:
         config = schema()
         assert config.to_tree(virtual=False) == {}
 
+    def test_to_tree_empty_mask_secure(self):
+        schema = Schema()
+        schema.v = SecureField(method='xor', default=None)
+        config = schema()
+        assert config.to_tree(secure_mask='*') == {'v': None}
+
     def test_to_tree_secure_mask_single(self):
         schema = Schema()
         schema.v = SecureField(method='xor', default='asdf')

@@ -667,7 +667,9 @@ class Config(BaseConfig):
                 value = self._data[key].to_tree(virtual=virtual, secure_mask=secure_mask)
             elif isinstance(field, SecureField) and secure_mask is not None:
                 value = self._data[key]
-                if len(secure_mask) == 1:
+                if not value:
+                    pass
+                elif len(secure_mask) == 1:
                     value = secure_mask * len(value)
                 else:
                     value = secure_mask
