@@ -503,19 +503,19 @@ class Config(BaseConfig):
 
         return self.loads(content, format)
 
-    def dumps(self, format: str, virtual: bool = False, secure_mask: str = None,
+    def dumps(self, format: str, virtual: bool = False, sensitive_mask: str = None,
               **kwargs) -> bytes:
         '''
         Serialize the configuration to a string with the specified format.
 
         :param format: output format
         :param virtual: include virtual fields in the output
-        :param secure_mask: replace secure values, see :meth:`to_tree`
+        :param sensitive_mask: replace secure values, see :meth:`to_tree`
         :param kwargs: additional keyword arguments to pass to the formatter's ``__init__()``
         :returns: serialized configuration file content
         '''
         formatter = FormatRegistry.get(format, **kwargs)
-        return formatter.dumps(self, self.to_tree(virtual=virtual, secure_mask=secure_mask))
+        return formatter.dumps(self, self.to_tree(virtual=virtual, sensitive_mask=sensitive_mask))
 
     def _process_includes(self, schema: BaseSchema, tree: dict,
                           format_factory: TFormatFactory) -> dict:
@@ -636,22 +636,22 @@ class Config(BaseConfig):
                 value = self._data[key]
             yield key, value
 
-    def to_tree(self, virtual: bool = False, secure_mask: str = None) -> dict:
+    def to_tree(self, virtual: bool = False, sensitive_mask: str = None) -> dict:
         '''
         Convert the configuration values to a tree.
 
-        The *secure_mask* parameter is an optional string that will repalce
-        :class:`~cincoconfig.fields.SecureField` values in the tree.
+        The *sensitive_mask* parameter is an optional string that will repalce sensitive values in
+        the tree.
 
         - ``None`` (default) - call the field's :meth:`~cincoconfig.fields.SecureField.to_basic`
           method.
-        - ``len(secure_mask) == 1`` (single character) - replace every character with the
-          ``secure_mask`` character. ``value = secure_mask * len(value)``
-        - ``len(secure_mask) != 1`` (empty or multicharacter string) - replace the entire value
-          with the ``secure_mask``.
+        - ``len(sensitive_mask) == 1`` (single character) - replace every character with the
+          ``sensitive_mask`` character. ``value = sensitive_mask * len(value)``
+        - ``len(sensitive_mask) != 1`` (empty or multicharacter string) - replace the entire value
+          with the ``sensitive_mask``.
 
         :param virtual: include virtual field values in the tree
-        :param secure_mask: mask secure values with a string
+        :param sensitive_mask: mask secure values with a string
         :returns: the basic tree containing all set values
         '''
         tree = {}
@@ -664,15 +664,15 @@ class Config(BaseConfig):
                 continue
 
             if isinstance(field, BaseSchema):
-                value = self._data[key].to_tree(virtual=virtual, secure_mask=secure_mask)
-            elif isinstance(field, SecureField) and secure_mask is not None:
+                value = self._data[key].to_tree(virtual=virtual, sensitive_mask=sensitive_mask)
+            elif field.sensitive and sensitive_mask is not None:
                 value = self._data[key]
                 if not value:
                     pass
-                elif len(secure_mask) == 1:
-                    value = secure_mask * len(value)
+                elif len(sensitive_mask) == 1:
+                    value = sensitive_mask * len(value)
                 else:
-                    value = secure_mask
+                    value = sensitive_mask
             else:
                 value = field.to_basic(self, field.__getval__(self))
 
