@@ -17,8 +17,7 @@ import base64
 import binascii
 from ipaddress import IPv4Address, IPv4Network
 from urllib.parse import urlparse
-from typing import (Union, List, Any, Iterator, Callable, NamedTuple, Optional, Dict, Iterable,
-                    TypeVar)
+from typing import (Union, List, Any, Callable, NamedTuple, Optional, Dict, Iterable, TypeVar)
 import hashlib
 
 from .abc import Field, AnyField, BaseConfig, BaseSchema, ConfigFormat, SchemaField
