@@ -20,6 +20,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Fixed
 - `ListField` now handles empty or `None` values.
 
+
 ## [v0.5.0] - 2020-10-31
 ### Added
 - `StringField`: Provide available choices in the raised exception when value is not valid.
