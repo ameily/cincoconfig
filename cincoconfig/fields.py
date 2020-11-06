@@ -516,7 +516,7 @@ class ListProxy(list):
 
     def __setitem__(self, index: Union[int, slice], item: Union[_T, Iterable[_T]]) -> None:
         if isinstance(index, slice) and isinstance(item, (list, tuple)):
-            super().__setitem__(index, (self._validate(i) for i in item))
+            super().__setitem__(index, [self._validate(i) for i in item])
         else:
             super().__setitem__(index, self._validate(item))
 

@@ -62,6 +62,11 @@ class TestListProxy:
         wrap[1] = '5'
         assert wrap == [1, 5, 3]
 
+    def test_setitem_slice(self):
+        wrap = ListProxy(MockConfig(), IntField(), [1, 2, '3'])
+        wrap[1:3] = ['4', '5']
+        assert wrap == [1, 4, 5]
+
     def test_copy(self):
         wrap = ListProxy(MockConfig(), IntField(), [1, 2, '3'])
         wrap2 = wrap.copy()
