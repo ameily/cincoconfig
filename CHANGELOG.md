@@ -5,10 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v0.6.0] - 2020-11-05
 ### Added
-- `Config.to_tree()` now supports masking secure values (`secure_mask` parameter) and including
-  virtual fields in the tree (`virtual` parameter).
+- `Field.sensitive` property to mark a value as sensitive.
+- `Config.to_tree()` now supports masking sensitive values (`sensitive_mask` parameter) and
+  including virtual fields in the tree (`virtual` parameter).
+
+### Changed
+- `StringField` now only accepts string values. Prior to this release, all input values were
+  coerced to a string, via `str(value)`. This was causing inconsistencies and non-intuitive
+  behavior for fields that inherited from `StringField`.
+- Refactor `ListProxy` to inherit from `list`.
+
+### Fixed
+- `ListField` now handles empty or `None` values.
 
 ## [v0.5.0] - 2020-10-31
 ### Added
