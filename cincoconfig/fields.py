@@ -17,7 +17,7 @@ import base64
 import binascii
 from ipaddress import IPv4Address, IPv4Network
 from urllib.parse import urlparse
-from typing import Union, List, Any, Iterator, Callable, NamedTuple, Optional, Dict
+from typing import Union, List, Any, Callable, NamedTuple, Optional, Dict, Iterable, TypeVar
 import hashlib
 
 from .abc import Field, AnyField, BaseConfig, BaseSchema, ConfigFormat, SchemaField
@@ -29,6 +29,8 @@ __all__ = ('StringField', 'IntField', 'FloatField', 'PortField', 'IPv4AddressFie
            'HostnameField', 'DictField', 'ListProxy', 'VirtualField', 'ApplicationModeField',
            'LogLevelField', 'NumberField', 'ChallengeField', 'DigestValue', 'SecureField',
            'BytesField', 'IncludeField', 'InstanceMethodField')
+
+_T = TypeVar('_T')
 
 
 class StringField(Field):
@@ -73,7 +75,7 @@ class StringField(Field):
         :param value: value to validate
         '''
         if not isinstance(value, str):
-            value = str(value) if value is not None else ''
+            raise ValueError('value must be a string, not a %s' % type(value).__name__)
 
         if self.transform_strip:
             if isinstance(self.transform_strip, str):
@@ -204,6 +206,10 @@ class NumberField(Field):
         :param cfg: current Config
         :param value: value to validate
         '''
+        if not isinstance(value, (str, int, float, self.type_cls)) or isinstance(value, bool):
+            raise ValueError('value type %s cannot be converted to %s' %
+                             (type(value).__name__, self.type_cls.__name__))
+
         try:
             num = self.type_cls(value)  # type: Union[int, float]
         except (ValueError, TypeError) as err:
@@ -263,6 +269,8 @@ class IPv4AddressField(StringField):
         :param cfg: current Config
         :param value: value to validate
         '''
+        value = super()._validate(cfg, value)
+
         try:
             addr = IPv4Address(value)
         except ValueError as err:
@@ -283,6 +291,8 @@ class IPv4NetworkField(StringField):
         :param cfg: current Config
         :param value: value to validate
         '''
+        value = super()._validate(cfg, value)
+
         try:
             net = IPv4Network(value)
         except ValueError as err:
@@ -315,6 +325,8 @@ class HostnameField(StringField):
         :param cfg: current config
         :param value: value to valdiate
         '''
+        value = super()._validate(cfg, value)
+
         try:
             addr = IPv4Address(value)
         except:
@@ -451,6 +463,8 @@ class UrlField(StringField):
         :param cfg: current config
         :param value: value to validate
         '''
+        value = super()._validate(cfg, value)
+
         try:
             url = urlparse(value)
             if not url.scheme:
@@ -460,132 +474,51 @@ class UrlField(StringField):
         return value
 
 
-class ListProxy:
+class ListProxy(list):
     '''
     A Field-validated :class:`list` proxy. This proxy supports all methods that the builtin
     ``list`` supports with the added ability to validate items against a :class:`Field`. This is
     the field returned by the :class:`ListField` validation chain.
     '''
 
-    def __init__(self, cfg: BaseConfig, field: SchemaField, items: list = None):
-        '''
-        :param cfg: current config
-        :param field: field to validate against
-        :param items: initial list items
-        '''
+    def __init__(self, cfg: BaseConfig, field: SchemaField, iterable: Iterable[_T] = None):
+        iterable = iterable or []
         self.cfg = cfg
         self.field = field
-        self._items = []  # type: List[Any]
+        if isinstance(iterable, ListProxy) and iterable.field is field:
+            super().__init__(iterable)
+        else:
+            super().__init__(self._validate(item) for item in iterable)
 
-        if items:
-            for item in items:
-                self.append(item)
+    def append(self, item: _T) -> None:
+        super().append(self._validate(item))
 
-    def __len__(self) -> int:
-        return len(self._items)
+    def extend(self, iterable: Iterable[_T]) -> None:
+        if isinstance(iterable, ListProxy) and iterable.field is self.field:
+            super().extend(iterable)
+        else:
+            super().extend(self._validate(item) for item in iterable)
 
-    def __eq__(self, other: object) -> bool:
-        '''
-        :returns: this list content is equal to other list content
-        '''
-        if isinstance(other, ListProxy):
-            other = other._items
-        if isinstance(other, list):
-            return self._items == other
-        return False
-
-    def __iter__(self) -> Iterator[Any]:
-        '''
-        :returns: iterator over items
-        '''
-        return iter(self._items)
-
-    def append(self, item: Any):
-        '''
-        Validate a new item and then append it to the list if validation succeededs.
-        '''
-        value = self._validate(item)
-        self._items.append(value)
-
-    def __add__(self, other: Union[list, 'ListProxy']) -> 'ListProxy':
-        '''
-        Create a new ListProxy containing items from this list and another list.
-
-        :param other: other list to combine
-        :returns: new ListProxy that targets the same ``cfg`` and the same ``field`` with a
-            concatenation of items from this list and ``other``
-        '''
-        if isinstance(other, ListProxy):
-            other = other._items
-
-        return ListProxy(self.cfg, self.field, self._items + other)
-
-    def __iadd__(self, other: Union[list, 'ListProxy']) -> 'ListProxy':
-        '''
-        Extend list by appending elements from the iterable.
-
-        :param other: other list
-        :returns: ``self``
-        '''
-        self.extend(other)
-        return self
-
-    def __getitem__(self, index: int) -> Any:
-        return self._items[index]
-
-    def __delitem__(self, index: int) -> None:
-        del self._items[index]
-
-    def __setitem__(self, index: int, value: Any) -> None:
-        self._items[index] = self._validate(value)
-
-    def clear(self) -> None:
-        '''
-        Clear the list.
-        '''
-        self._items = []
+    def insert(self, index: int, item: _T) -> None:
+        super().insert(index, self._validate(item))
 
     def copy(self) -> 'ListProxy':
-        '''
-        Create a copy of this list.
-        '''
-        return ListProxy(self.cfg, self.field, self._items)
+        return ListProxy(self.cfg, self.field, self)
 
-    def count(self, value: Any) -> int:
-        '''
-        :returns: count of ``value`` occurrences
-        '''
-        return self._items.count(value)
+    def __iadd__(self, iterable: Iterable[_T]) -> 'ListProxy':
+        self.extend(iterable)
+        return self
 
-    def extend(self, other: Union[list, 'ListProxy']) -> None:
-        '''
-        Extend list by appending elements from the iterable.
-        '''
-        for item in other:
-            self.append(item)
+    def __add__(self, iterable: Iterable[_T]) -> 'ListProxy':
+        ret = self.copy()
+        ret.extend(iterable)
+        return ret
 
-    def index(self, value: Any) -> int:
-        '''
-        :returns: first index of ``value``
-        '''
-        return self._items.index(value)
-
-    def insert(self, index, value: Any) -> None:
-        value = self._validate(value)
-        self._items.insert(index, value)
-
-    def pop(self, index: int = None) -> Any:
-        return self._items.pop() if index is None else self._items.pop(index)
-
-    def remove(self, value: Any) -> None:
-        value = self._validate(value)
-        self._items.remove(value)
-
-    def reverse(self) -> None:
-        self._items.reverse()
-
-    def sort(self, key=None, reverse=False) -> None:
-        self._items.sort(key=key, reverse=reverse)
+    def __setitem__(self, index: Union[int, slice], item: Union[_T, Iterable[_T]]) -> None:
+        if isinstance(index, slice) and isinstance(item, (list, tuple)):
+            super().__setitem__(index, [self._validate(i) for i in item])
+        else:
+            super().__setitem__(index, self._validate(item))
 
     def _validate(self, value: Any) -> Any:
         '''
@@ -650,9 +583,6 @@ class ListField(Field):
         :param value: value to validate
         :returns: a :class:`list` if not field is specified, a :class:`ListProxy` otherwise
         '''
-        if isinstance(value, ListProxy):
-            return ListProxy(cfg, self.field, value._items)
-
         if not isinstance(value, (list, tuple)):
             raise ValueError('value is not a list')
 
@@ -672,6 +602,11 @@ class ListField(Field):
         :param cfg: current config
         :param value: value to convert
         '''
+        if value is None:
+            return value
+        if not value:
+            return []
+
         if isinstance(self.field, BaseSchema):
             return [item.to_tree() for item in value]
         if self.field:
@@ -995,7 +930,7 @@ class ChallengeField(Field):
         elif isinstance(value, DigestValue):
             val = value
         else:
-            raise TypeError('value must be a string')
+            raise ValueError('value must be a string, not a %s' % type(value).__name__)
         return val
 
     def _hash(self, plaintext: Union[str, bytes], salt: bytes = None) -> DigestValue:
@@ -1068,12 +1003,12 @@ class SecureField(Field):
     '''
     storage_type = str
 
-    def __init__(self, method: str = 'best', **kwargs):
+    def __init__(self, method: str = 'best', sensitive: bool = True, **kwargs):
         '''
         :param method: encryption method, see
             :meth:`~cincoconfig.KeyFile._get_provider`
         '''
-        super().__init__(**kwargs)
+        super().__init__(sensitive=sensitive, **kwargs)
         self.method = method
 
     def to_basic(self, cfg: BaseConfig, value: str) -> Optional[dict]:
@@ -1147,7 +1082,7 @@ class BytesField(Field):
         if isinstance(value, bytes):
             return value
 
-        raise ValueError('value is not bytes')
+        raise ValueError('value must be bytes, not %s' % type(value).__name__)
 
     def to_basic(self, cfg: BaseConfig, value: bytes) -> str:
         '''

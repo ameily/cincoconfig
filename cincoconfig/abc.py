@@ -101,7 +101,7 @@ class Field:
 
     def __init__(self, *, name: str = None, key: str = None, required: bool = False,
                  default: Union[Callable, Any] = None,
-                 validator: Callable[['BaseConfig', Any], Any] = None):
+                 validator: Callable[['BaseConfig', Any], Any] = None, sensitive: bool = False):
         '''
         All builtin Fields accept the following keyword parameters.
 
@@ -113,12 +113,14 @@ class Field:
         :param default: the default value, which can be a called that is invoke with no arguments
             and should return the default value
         :param validator: an additional validator function that is invoked during validation
+        :param sensitive: the field stores a senstive value
         '''
         self._name = name or None
         self.key = key or ''
         self.required = required
         self._default = default
         self.validator = validator
+        self.sensitive = sensitive
 
     @property
     def default(self) -> Any:
