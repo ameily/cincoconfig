@@ -22,16 +22,19 @@ class ValidationError(ValueError):
     Exception raised when setting configuration value failed.
     '''
 
-    def __init__(self, config: 'BaseConfig', field: 'Field', exc: Exception):
+    def __init__(self, config: 'BaseConfig', field: 'Field', exc: Exception,
+                 friendly_name: str = None):
         '''
         :param config: configuration
         :param field: field
         :param exc: original exception
+        :param friendly_name: override field friendly name
         '''
         super().__init__()
         self.config = config
         self.field = field
         self.exc = exc
+        self.friendly_name = friendly_name
 
     def __str__(self) -> str:
         if isinstance(self.exc, OSError):
@@ -39,7 +42,8 @@ class ValidationError(ValueError):
         else:
             msg = str(self.exc)
 
-        return '%s: %s' % (self.field.friendly_name(self.config), msg)
+        friendly_name = self.friendly_name or self.field.friendly_name(self.config)
+        return '%s: %s' % (friendly_name, msg)
 
 
 class Field:
@@ -151,7 +155,7 @@ class Field:
         :returns: the validated value
         '''
         if self.required and value is None:
-            raise ValueError('%s is required' % self.name)
+            raise ValueError('value is required')
 
         if value is None:
             return value
