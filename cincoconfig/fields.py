@@ -494,6 +494,9 @@ class ListProxy(list):
 
     @property
     def item_field(self) -> SchemaField:
+        '''
+        :returns: the field for each item stored in the list.
+        '''
         return self.list_field.field
 
     def append(self, item: _T) -> None:
@@ -531,12 +534,17 @@ class ListProxy(list):
             super().__setitem__(index, self._validate_item(index, item))
 
     def _validate_item(self, index: int, value: Any) -> Any:
+        '''
+        Validate an value before insertion.
+
+        :param index: insertion index, may be greater than ``len(self)`` for items that are being
+            appended
+        :param value: value to validate
+        :returns: the validated value
+        :raises ValidationError: validation error
+        '''
         try:
             retval = self._validate(value)
-        except ValidationError as err:
-            base_friendly_name = err.friendly_name or self.list_field.friendly_name(self.cfg)
-            friendly_name = '%s (item #%d)' % (base_friendly_name, index)
-            raise ValidationError(self.cfg, self.list_field, err, friendly_name) from err
         except Exception as err:
             friendly_name = '%s (item #%d)' % (self.list_field.friendly_name(self.cfg), index)
             raise ValidationError(self.cfg, self.list_field, err, friendly_name) from err
