@@ -197,6 +197,14 @@ class TestListProxy:
             assert exc.value.exc is orig_exc
             assert '(item #0)' in exc.value.friendly_name
 
+    def test_listfield_no_field(self):
+        schema = Schema()
+        list_field = schema.lst = ListField()
+        config = schema()
+
+        with pytest.raises(TypeError):
+            ListProxy(config, list_field)
+
 
 class TestListField:
 

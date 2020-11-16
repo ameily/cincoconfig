@@ -262,12 +262,12 @@ class Schema(BaseSchema):
             except ValidationError:
                 raise
             except Exception as err:
-                raise ValidationError(config, field, err) from err
+                raise ValidationError(config, field, err) from err  # type: ignore
 
         for validator in self._validators:
             validator(config)
 
-    def _validate_field(self, config: 'Config', field: Union[Field, 'Schema']) -> None:
+    def _validate_field(self, config: 'Config', field: SchemaField) -> None:
         if isinstance(field, InstanceMethodField):
             return
 

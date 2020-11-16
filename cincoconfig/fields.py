@@ -486,6 +486,9 @@ class ListProxy(list):
         iterable = iterable or []
         self.cfg = cfg
         self.list_field = list_field
+        if not self.list_field.field:
+            raise TypeError('ListProxy requires a parent ListField.field attribute')
+
         if isinstance(iterable, ListProxy) and iterable.item_field is list_field.field:
             super().__init__(iterable)
         else:
@@ -497,7 +500,7 @@ class ListProxy(list):
         '''
         :returns: the field for each item stored in the list.
         '''
-        return self.list_field.field
+        return self.list_field.field  # type: ignore
 
     def append(self, item: _T) -> None:
         super().append(self._validate_item(len(self), item))
@@ -528,9 +531,10 @@ class ListProxy(list):
     def __setitem__(self, index: Union[int, slice], item: Union[_T, Iterable[_T]]) -> None:
         if isinstance(index, slice) and isinstance(item, (list, tuple)):
             step = index.step or 1
-            super().__setitem__(index, [self._validate_item(index.start + (step * offset), i)
+            start = index.start or 0
+            super().__setitem__(index, [self._validate_item(start + (step * offset), i)
                                         for offset, i in enumerate(item)])
-        else:
+        elif isinstance(index, int):
             super().__setitem__(index, self._validate_item(index, item))
 
     def _validate_item(self, index: int, value: Any) -> Any:
