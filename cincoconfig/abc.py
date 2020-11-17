@@ -361,12 +361,12 @@ class BaseConfig(BaseSchema):
         :param parent: parent configuration, when this object is a sub configuration
         :param key_filename: path to cinco key file
         '''
-        super().__init__()
         self._key = schema._key
         self._schema = schema
         self._parent = parent
         self._data = dict()  # type: Dict[str, Any]
         self.__keyfile = None  # type: Optional[KeyFile]
+        self._fields = OrderedDict()  # type: Dict[str, SchemaField]
 
         if key_filename:
             self._key_filename = key_filename
@@ -420,13 +420,17 @@ class BaseConfig(BaseSchema):
         '''
         if not self._schema._dynamic:
             raise TypeError('unrecgonized configuration field: %s' % key)
-        return super()._add_field(key, field)
+
+        self._fields[key] = field
+        if isinstance(field, (Field, BaseSchema)):
+            field.__setkey__(self._schema, key)
+        return field
 
     def _get_field(self, key: str) -> Optional[SchemaField]:
         '''
         :returns: the field identified by *key*
         '''
-        return self._schema._get_field(key) or super()._get_field(key)
+        return self._schema._get_field(key) or self._fields.get(key)
 
     def validate(self) -> None:
         '''
