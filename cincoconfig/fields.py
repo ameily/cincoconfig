@@ -15,6 +15,7 @@ import re
 import socket
 import base64
 import binascii
+import inspect
 from ipaddress import IPv4Address, IPv4Network
 from urllib.parse import urlparse
 from typing import Union, List, Any, Callable, NamedTuple, Optional, Dict, Iterable, TypeVar, Type
@@ -539,7 +540,6 @@ class ListProxy(list, ContainerValue):
         :param value: value to validate
         :returns: the validated value
         '''
-        # is_cfg_class = isconfigtype(self.item_field)
         if isinstance(self.item_field, BaseSchema) or isconfigtype(self.item_field):
             if isinstance(value, dict):
                 cfg = self.item_field()  # type: ignore
@@ -593,8 +593,10 @@ class ListField(Field):
         if field:
             if isinstance(field, Field):
                 self.storage_type = List[field.storage_type]  # type: ignore
-            elif isinstance(field, BaseSchema) or isconfigtype(field):
-                self.storage_type = List[BaseConfig]  # type: ignore
+            elif inspect.isclass(field):
+                self.storage_type = List[field]  # type: ignore
+            else:
+                self.storage_type = List[type(field)]  # type: ignore
 
     def __setdefault__(self, cfg: BaseConfig) -> None:
         default = self.default

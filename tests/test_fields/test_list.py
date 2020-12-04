@@ -233,7 +233,7 @@ class TestListField:
 
     def test_storage_type_custom(self):
         field = ListField(type)
-        assert field.storage_type is List
+        assert field.storage_type == List[type]
 
     def test_storage_type_schema(self):
         schema = Schema()
