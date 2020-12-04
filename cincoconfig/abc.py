@@ -349,7 +349,7 @@ class BaseSchema:
         return self._fields.get(key)
 
 
-class BaseConfig:
+class BaseConfig:  # pylint: disable=too-many-instance-attributes
     '''
     Base configuration that holds configuration values in the *_data* attribute. Each base config
     object can have an associated :class:`cincoconfig.KeyFile`, passed in the
