@@ -16,6 +16,9 @@ class MockConfig:
         self._parent = None
         self._key = None
 
+    def _full_path(self):
+        return ''
+
 
 class TestBytesField:
 

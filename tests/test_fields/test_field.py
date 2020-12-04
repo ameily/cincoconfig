@@ -4,7 +4,7 @@
 # This file is subject to the terms and conditions defined in the file 'LICENSE', which is part of
 # this source code package.
 #
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 import pytest
 
 from cincoconfig.abc import Field
@@ -16,6 +16,9 @@ class MockConfig:
         self._data = data or {}
         self._parent = parent
         self._key = key
+
+    def _full_path(self):
+        return ''
 
 
 class TestBaseField:
@@ -129,9 +132,15 @@ class TestBaseField:
         assert field.full_path(cfg) == 'asdf'
 
     def test_full_path_nested(self):
+        # root = MockConfig()
+        # level1 = MockConfig(key='level1', parent=root)
+        # level2 = MockConfig(key='level2', parent=level1)
+        # field = Field(key='value')
+        # assert field.full_path(level2) == 'level1.level2.value'
         root = MockConfig()
-        level1 = MockConfig(key='level1', parent=root)
-        level2 = MockConfig(key='level2', parent=level1)
+        root._full_path = MagicMock()
+        root._full_path.return_value = 'asdf'
         field = Field(key='value')
-        assert field.full_path(level2) == 'level1.level2.value'
+        assert field.full_path(root) == 'asdf.value'
+        root._full_path.assert_called_once()
 

@@ -153,7 +153,7 @@ class TestListProxy:
         proxy = ListProxy(config, list_field)
         with patch.object(field, 'validate') as mock_validate:
             retval = mock_validate.return_value = object()
-            assert proxy._validate_item(0, 2) is retval
+            assert proxy._validate(2) is retval
             mock_validate.assert_called_once_with(config, 2)
 
     def test_validate_item_error(self):
@@ -165,9 +165,8 @@ class TestListProxy:
         orig_exc = ValueError('asdf')
         with patch.object(field, 'validate') as mock_validate:
             mock_validate.side_effect = orig_exc
-            with pytest.raises(ValidationError) as exc:
-                proxy._validate_item(0, 2)
-            assert exc.value.exc is orig_exc
+            with pytest.raises(ValueError):
+                proxy._validate(2)
 
     def test_validate_item_error_friendly_name(self):
         schema = Schema()
@@ -178,10 +177,8 @@ class TestListProxy:
         orig_exc = ValueError('asdf')
         with patch.object(field, 'validate') as mock_validate:
             mock_validate.side_effect = orig_exc
-            with pytest.raises(ValidationError) as exc:
-                proxy._validate_item(1, 2)
-            assert exc.value.exc is orig_exc
-            assert '(item #1)' in exc.value.friendly_name
+            with pytest.raises(ValueError):
+                proxy._validate(2)
 
     def test_validate_item_validation_error(self):
         schema = Schema()
@@ -192,10 +189,8 @@ class TestListProxy:
         orig_exc = ValidationError(config, list_field, ValueError('asdf'))
         with patch.object(field, 'validate') as mock_validate:
             mock_validate.side_effect = orig_exc
-            with pytest.raises(ValidationError) as exc:
-                proxy._validate_item(0, 2)
-            assert exc.value.exc is orig_exc
-            assert '(item #0)' in exc.value.friendly_name
+            with pytest.raises(ValueError):
+                proxy._validate(2)
 
     def test_listfield_no_field(self):
         schema = Schema()
@@ -204,6 +199,30 @@ class TestListProxy:
 
         with pytest.raises(TypeError):
             ListProxy(config, list_field)
+
+    def test_get_item_position_exists(self):
+        schema = Schema()
+        schema.lst = ListField(IntField())
+        config = schema()
+        proxy = ListProxy(config, schema.lst)
+        proxy.extend([1, 2, 3])
+        assert proxy._get_item_position(2) == '1'
+
+    def test_get_item_position_not_exists(self):
+        schema = Schema()
+        schema.lst = ListField(IntField())
+        config = schema()
+        proxy = ListProxy(config, schema.lst)
+        proxy.extend([1, 2, 3])
+        assert proxy._get_item_position(10) == '3'
+
+    def test_validate_not_field(self):
+        schema = Schema()
+        schema.lst = ListField(int)
+        config = schema()
+        proxy = ListProxy(config, schema.lst)
+        with pytest.raises(TypeError):
+            proxy._validate(10)
 
 
 class TestListField:

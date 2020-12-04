@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 import pytest
 from cincoconfig.abc import BaseConfig, BaseSchema, Field
 from cincoconfig.encryption import KeyFile
@@ -76,3 +76,17 @@ class TestBaseConfig:
         child = BaseConfig(BaseSchema(), parent)
         assert child._keyfile is parent._keyfile
         assert child._keyfile.filename == '/path/to/cincokey'
+
+    def test_full_path(self):
+        parent = BaseConfig(BaseSchema(key='root'))
+        child = BaseConfig(BaseSchema(key='child'), parent=parent)
+        assert child._full_path() == 'root.child'
+
+    def test_full_path_container(self):
+        parent = BaseConfig(BaseSchema(key='root'))
+        child = BaseConfig(BaseSchema(key='child'), parent=parent)
+        child._container = MagicMock()
+        child._container._get_item_position = MagicMock()
+        child._container._get_item_position.return_value = '1'
+        assert child._full_path() == 'root.child[1]'
+        child._container._get_item_position.assert_called_once_with(child)

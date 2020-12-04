@@ -9,6 +9,7 @@ Abstract base classes.
 '''
 
 import os
+import inspect
 from typing import Any, Callable, Union, Optional, Dict
 from collections import OrderedDict
 
@@ -260,19 +261,32 @@ class Field:
             >>> schema = Schema()
             >>> schema.x.y.z = Field()
             >>> config = schema()
-            >>> schema.x.y.z.path(config)
+            >>> schema.x.y.z.full_path(config.x.y)
             'x.y.z'
 
         :param cfg: configuration
         :returns: the full path to the field
         '''
-        path = [self.key]
-        while cfg._parent and cfg._key:
-            path.append(cfg._key)
-            cfg = cfg._parent
+        base = cfg._full_path()
+        if self.key:
+            return '.'.join([base, self.key]) if base else self.key
+        return base
 
-        path.reverse()
-        return '.'.join(path)
+
+class ContainerValue:
+    '''
+    An abstract base class for container value (list, dict, etc.)
+    '''
+
+    def _get_item_position(self, item: Any) -> str:
+        '''
+        Return the position for a given item. This method is called when generate the full path to
+        a configuration item.
+
+        :param item: container item
+        :returns: the position of the item
+        '''
+        raise NotImplementedError()
 
 
 class AnyField(Field):
@@ -335,7 +349,7 @@ class BaseSchema:
         return self._fields.get(key)
 
 
-class BaseConfig(BaseSchema):
+class BaseConfig:
     '''
     Base configuration that holds configuration values in the *_data* attribute. Each base config
     object can have an associated :class:`cincoconfig.KeyFile`, passed in the
@@ -367,6 +381,7 @@ class BaseConfig(BaseSchema):
         self._data = dict()  # type: Dict[str, Any]
         self.__keyfile = None  # type: Optional[KeyFile]
         self._fields = OrderedDict()  # type: Dict[str, SchemaField]
+        self._container = None  # type: Optional[ContainerValue]
 
         if key_filename:
             self._key_filename = key_filename
@@ -432,6 +447,33 @@ class BaseConfig(BaseSchema):
         '''
         return self._schema._get_field(key) or self._fields.get(key)
 
+    def _full_path(self) -> str:
+        '''
+        Get the config's full path in the configuration. For example:
+
+        .. code-block:: python
+
+            >>> schema = Schema()
+            >>> schema.x.y.z = Field()
+            >>> config = schema()
+            >>> config.x.y._full_path()
+            'x.y'
+
+        :returns: the full path to the configuration
+        '''
+        path = []
+        cfg = self  # type: Optional[BaseConfig]
+        while cfg and cfg._key:
+            key = cfg._key
+            if cfg._container:
+                pos = cfg._container._get_item_position(cfg)
+                key = '%s[%s]' % (key, pos)
+            path.append(key)
+            cfg = cfg._parent
+
+        path.reverse()
+        return '.'.join(path)
+
     def validate(self) -> None:
         '''
         Validate the configuration. The default implementation does nothing.
@@ -465,3 +507,13 @@ class ConfigFormat:
         :returns: the parsed basic value tree
         '''
         raise NotImplementedError()
+
+
+def isconfigtype(obj: Any) -> bool:
+    '''
+    Check if an object is configuration type (is class and is subclass of :class:`BaseConfig`).
+
+    :param obj: object to check
+    :returns: the object is a configuration type
+    '''
+    return inspect.isclass(obj) and issubclass(obj, BaseConfig)

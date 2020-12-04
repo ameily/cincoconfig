@@ -17,11 +17,11 @@ import base64
 import binascii
 from ipaddress import IPv4Address, IPv4Network
 from urllib.parse import urlparse
-from typing import Union, List, Any, Callable, NamedTuple, Optional, Dict, Iterable, TypeVar
+from typing import Union, List, Any, Callable, NamedTuple, Optional, Dict, Iterable, TypeVar, Type
 import hashlib
 
 from .abc import (Field, AnyField, BaseConfig, BaseSchema, ConfigFormat, SchemaField,
-                  ValidationError)
+                  ContainerValue, isconfigtype)
 from .encryption import EncryptionError, SecureValue
 
 
@@ -475,7 +475,7 @@ class UrlField(StringField):
         return value
 
 
-class ListProxy(list):
+class ListProxy(list, ContainerValue):
     '''
     A Field-validated :class:`list` proxy. This proxy supports all methods that the builtin
     ``list`` supports with the added ability to validate items against a :class:`Field`. This is
@@ -492,29 +492,27 @@ class ListProxy(list):
         if isinstance(iterable, ListProxy) and iterable.item_field is list_field.field:
             super().__init__(iterable)
         else:
-            super().__init__(self._validate_item(index, item)
+            super().__init__(self._validate(item)
                              for index, item in enumerate(iterable))
 
     @property
-    def item_field(self) -> SchemaField:
+    def item_field(self) -> Union[SchemaField, Type[BaseConfig]]:
         '''
         :returns: the field for each item stored in the list.
         '''
         return self.list_field.field  # type: ignore
 
     def append(self, item: _T) -> None:
-        super().append(self._validate_item(len(self), item))
+        super().append(self._validate(item))
 
     def extend(self, iterable: Iterable[_T]) -> None:
-        start = len(self)
         if isinstance(iterable, ListProxy) and iterable.item_field is self.item_field:
             super().extend(iterable)
         else:
-            super().extend(self._validate_item(start + index, item)
-                           for index, item in enumerate(iterable))
+            super().extend(self._validate(item) for item in iterable)
 
     def insert(self, index: int, item: _T) -> None:
-        super().insert(index, self._validate_item(index, item))
+        super().insert(index, self._validate(item))
 
     def copy(self) -> 'ListProxy':
         return ListProxy(self.cfg, self.list_field, self)
@@ -530,30 +528,9 @@ class ListProxy(list):
 
     def __setitem__(self, index: Union[int, slice], item: Union[_T, Iterable[_T]]) -> None:
         if isinstance(index, slice) and isinstance(item, (list, tuple)):
-            step = index.step or 1
-            start = index.start or 0
-            super().__setitem__(index, [self._validate_item(start + (step * offset), i)
-                                        for offset, i in enumerate(item)])
+            super().__setitem__(index, [self._validate(i) for i in item])
         elif isinstance(index, int):
-            super().__setitem__(index, self._validate_item(index, item))
-
-    def _validate_item(self, index: int, value: Any) -> Any:
-        '''
-        Validate an value before insertion.
-
-        :param index: insertion index, may be greater than ``len(self)`` for items that are being
-            appended
-        :param value: value to validate
-        :returns: the validated value
-        :raises ValidationError: validation error
-        '''
-        try:
-            retval = self._validate(value)
-        except Exception as err:
-            friendly_name = '%s (item #%d)' % (self.list_field.friendly_name(self.cfg), index)
-            raise ValidationError(self.cfg, self.list_field, err, friendly_name) from err
-        else:
-            return retval
+            super().__setitem__(index, self._validate(item))
 
     def _validate(self, value: Any) -> Any:
         '''
@@ -562,13 +539,17 @@ class ListProxy(list):
         :param value: value to validate
         :returns: the validated value
         '''
-        if isinstance(self.item_field, BaseSchema):
+        # is_cfg_class = isconfigtype(self.item_field)
+        if isinstance(self.item_field, BaseSchema) or isconfigtype(self.item_field):
             if isinstance(value, dict):
                 cfg = self.item_field()  # type: ignore
+                cfg._key = self.list_field.key
                 cfg._parent = self.cfg
-                cfg.load_tree(value)
+                cfg.load_tree(value)  # type: ignore
             elif isinstance(value, BaseConfig):
                 value._parent = self.cfg
+                value._key = self.list_field.key
+                value._container = self
                 value.validate()
                 cfg = value
             else:
@@ -576,7 +557,19 @@ class ListProxy(list):
 
             return cfg
 
-        return self.item_field.validate(self.cfg, value)
+        if isinstance(self.item_field, Field):
+            return self.item_field.validate(self.cfg, value)
+
+        # we should only hit this when item_field is not a field, schema, or ConfigType subclass
+        # (which shouldn't happen)
+        raise TypeError('item field must be a Field, Schema, or ConfigType subclass: %s' %
+                        self.item_field)
+
+    def _get_item_position(self, item: Any) -> str:
+        try:
+            return str(self.index(item))
+        except:
+            return str(len(self))
 
 
 class ListField(Field):
@@ -590,7 +583,7 @@ class ListField(Field):
     '''
     storage_type = List
 
-    def __init__(self, field: SchemaField = None, **kwargs):
+    def __init__(self, field: Union[SchemaField, Type[BaseConfig]] = None, **kwargs):
         '''
         :param field: Field to validate values against
         '''
@@ -642,9 +635,9 @@ class ListField(Field):
         if not value:
             return []
 
-        if isinstance(self.field, BaseSchema):
+        if isinstance(self.field, BaseSchema) or isconfigtype(self.field):
             return [item.to_tree() for item in value]
-        if self.field:
+        if isinstance(self.field, Field):
             return [self.field.to_basic(cfg, item) for item in value]
         return list(value)
 
