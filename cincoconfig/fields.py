@@ -593,8 +593,8 @@ class ListField(Field):
         if field:
             if isinstance(field, Field):
                 self.storage_type = List[field.storage_type]  # type: ignore
-            elif isinstance(field, BaseSchema):
-                self.storage_type = List[type(field)]  # type: ignore
+            elif isinstance(field, BaseSchema) or isconfigtype(field):
+                self.storage_type = List[BaseConfig]  # type: ignore
 
     def __setdefault__(self, cfg: BaseConfig) -> None:
         default = self.default
