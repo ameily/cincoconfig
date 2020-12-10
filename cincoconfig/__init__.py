@@ -7,7 +7,7 @@
 
 # Public API
 from .config import Config, Schema, ConfigType
-from .abc import Field, AnyField
+from .abc import Field, AnyField, ValidationError
 from .formats import FormatRegistry
 from .fields import *
 from .encryption import KeyFile

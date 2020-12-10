@@ -543,6 +543,7 @@ class ListProxy(list, ContainerValue):
         if isinstance(self.item_field, BaseSchema) or isconfigtype(self.item_field):
             if isinstance(value, dict):
                 cfg = self.item_field()  # type: ignore
+                cfg._container = self
                 cfg._key = self.list_field.key
                 cfg._parent = self.cfg
                 cfg.load_tree(value)  # type: ignore

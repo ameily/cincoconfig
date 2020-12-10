@@ -465,9 +465,10 @@ class BaseConfig:  # pylint: disable=too-many-instance-attributes
         cfg = self  # type: Optional[BaseConfig]
         while cfg and cfg._key:
             key = cfg._key
-            if cfg._container:
+            if cfg._container is not None:
                 pos = cfg._container._get_item_position(cfg)
                 key = '%s[%s]' % (key, pos)
+
             path.append(key)
             cfg = cfg._parent
 
