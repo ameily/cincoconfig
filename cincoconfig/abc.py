@@ -35,7 +35,7 @@ class ValidationError(ValueError):
         self.config = config
         self.field = field
         self.exc = exc
-        self.friendly_name = friendly_name
+        self._friendly_name = friendly_name
 
     def __str__(self) -> str:
         if isinstance(self.exc, OSError):
@@ -43,8 +43,15 @@ class ValidationError(ValueError):
         else:
             msg = str(self.exc)
 
-        friendly_name = self.friendly_name or self.field.friendly_name(self.config)
-        return '%s: %s' % (friendly_name, msg)
+        return '%s: %s' % (self.friendly_name, msg)
+
+    @property
+    def friendly_name(self) -> str:
+        return self._friendly_name or self.field.friendly_name(self.config)
+
+    @friendly_name.setter
+    def friendly_name(self, value: str) -> None:
+        self._friendly_name = value
 
 
 class Field:
