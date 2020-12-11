@@ -1,3 +1,5 @@
+- [ ] Update changelog
+- [ ] Bump `version.py`
 - [ ] Run tox
   ```
   tox -e py37
