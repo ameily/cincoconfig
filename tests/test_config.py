@@ -438,3 +438,48 @@ class TestConfig:
                 config.x.y.__setattr__('z', 2)
 
             assert str(excinfo.value) == 'x.y.z: asdf'
+
+    def test_setattr_validation_error_reraise(self):
+        schema = Schema()
+        field = schema.x = Field()
+        config = schema()
+        orig_exc = ValidationError(config, field, ValueError('asdf'))
+
+        with patch.object(field, 'validate') as mock_validate:
+            mock_validate.side_effect = orig_exc
+            with pytest.raises(ValidationError) as excinfo:
+                config.__setattr__('x', 2)
+
+            assert excinfo.value is orig_exc
+
+    def test_valdiate_wrap_validation_error(self):
+        schema = Schema()
+        field = schema.x = Field()
+        config = schema()
+        config.x = 2
+        orig_exc = ValueError('asdf')
+
+        with patch.object(field, 'validate') as mock_validate:
+            mock_validate.side_effect = orig_exc
+            with pytest.raises(ValidationError) as excinfo:
+                config.validate()
+
+            mock_validate.assert_called_once_with(config, 2)
+            assert excinfo.value.config is config
+            assert excinfo.value.field is field
+            assert excinfo.value.exc is orig_exc
+
+    def test_validate_reraise_validation_error(self):
+        schema = Schema()
+        field = schema.x = Field()
+        config = schema()
+        config.x = 2
+        orig_exc = ValidationError(config, field, ValueError('asdf'))
+
+        with patch.object(field, 'validate') as mock_validate:
+            mock_validate.side_effect = orig_exc
+            with pytest.raises(ValidationError) as excinfo:
+                config.validate()
+
+            mock_validate.assert_called_once_with(config, 2)
+            assert excinfo.value is orig_exc

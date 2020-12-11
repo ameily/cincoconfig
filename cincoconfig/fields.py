@@ -15,12 +15,14 @@ import re
 import socket
 import base64
 import binascii
+import inspect
 from ipaddress import IPv4Address, IPv4Network
 from urllib.parse import urlparse
-from typing import Union, List, Any, Callable, NamedTuple, Optional, Dict, Iterable, TypeVar
+from typing import Union, List, Any, Callable, NamedTuple, Optional, Dict, Iterable, TypeVar, Type
 import hashlib
 
-from .abc import Field, AnyField, BaseConfig, BaseSchema, ConfigFormat, SchemaField
+from .abc import (Field, AnyField, BaseConfig, BaseSchema, ConfigFormat, SchemaField,
+                  ContainerValue, isconfigtype)
 from .encryption import EncryptionError, SecureValue
 
 
@@ -474,27 +476,38 @@ class UrlField(StringField):
         return value
 
 
-class ListProxy(list):
+class ListProxy(list, ContainerValue):
     '''
     A Field-validated :class:`list` proxy. This proxy supports all methods that the builtin
     ``list`` supports with the added ability to validate items against a :class:`Field`. This is
     the field returned by the :class:`ListField` validation chain.
     '''
 
-    def __init__(self, cfg: BaseConfig, field: SchemaField, iterable: Iterable[_T] = None):
+    def __init__(self, cfg: BaseConfig, list_field: 'ListField', iterable: Iterable[_T] = None):
         iterable = iterable or []
         self.cfg = cfg
-        self.field = field
-        if isinstance(iterable, ListProxy) and iterable.field is field:
+        self.list_field = list_field
+        if not self.list_field.field:
+            raise TypeError('ListProxy requires a parent ListField.field attribute')
+
+        if isinstance(iterable, ListProxy) and iterable.item_field is list_field.field:
             super().__init__(iterable)
         else:
-            super().__init__(self._validate(item) for item in iterable)
+            super().__init__(self._validate(item)
+                             for index, item in enumerate(iterable))
+
+    @property
+    def item_field(self) -> Union[SchemaField, Type[BaseConfig]]:
+        '''
+        :returns: the field for each item stored in the list.
+        '''
+        return self.list_field.field  # type: ignore
 
     def append(self, item: _T) -> None:
         super().append(self._validate(item))
 
     def extend(self, iterable: Iterable[_T]) -> None:
-        if isinstance(iterable, ListProxy) and iterable.field is self.field:
+        if isinstance(iterable, ListProxy) and iterable.item_field is self.item_field:
             super().extend(iterable)
         else:
             super().extend(self._validate(item) for item in iterable)
@@ -503,7 +516,7 @@ class ListProxy(list):
         super().insert(index, self._validate(item))
 
     def copy(self) -> 'ListProxy':
-        return ListProxy(self.cfg, self.field, self)
+        return ListProxy(self.cfg, self.list_field, self)
 
     def __iadd__(self, iterable: Iterable[_T]) -> 'ListProxy':
         self.extend(iterable)
@@ -517,7 +530,7 @@ class ListProxy(list):
     def __setitem__(self, index: Union[int, slice], item: Union[_T, Iterable[_T]]) -> None:
         if isinstance(index, slice) and isinstance(item, (list, tuple)):
             super().__setitem__(index, [self._validate(i) for i in item])
-        else:
+        elif isinstance(index, int):
             super().__setitem__(index, self._validate(item))
 
     def _validate(self, value: Any) -> Any:
@@ -527,13 +540,17 @@ class ListProxy(list):
         :param value: value to validate
         :returns: the validated value
         '''
-        if isinstance(self.field, BaseSchema):
+        if isinstance(self.item_field, BaseSchema) or isconfigtype(self.item_field):
             if isinstance(value, dict):
-                cfg = self.field()  # type: ignore
+                cfg = self.item_field()  # type: ignore
+                cfg._container = self
+                cfg._key = self.list_field.key
                 cfg._parent = self.cfg
-                cfg.load_tree(value)
+                cfg.load_tree(value)  # type: ignore
             elif isinstance(value, BaseConfig):
                 value._parent = self.cfg
+                value._key = self.list_field.key
+                value._container = self
                 value.validate()
                 cfg = value
             else:
@@ -541,7 +558,19 @@ class ListProxy(list):
 
             return cfg
 
-        return self.field.validate(self.cfg, value)
+        if isinstance(self.item_field, Field):
+            return self.item_field.validate(self.cfg, value)
+
+        # we should only hit this when item_field is not a field, schema, or ConfigType subclass
+        # (which shouldn't happen)
+        raise TypeError('item field must be a Field, Schema, or ConfigType subclass: %s' %
+                        self.item_field)
+
+    def _get_item_position(self, item: Any) -> str:
+        try:
+            return str(self.index(item))
+        except:
+            return str(len(self))
 
 
 class ListField(Field):
@@ -555,7 +584,7 @@ class ListField(Field):
     '''
     storage_type = List
 
-    def __init__(self, field: SchemaField = None, **kwargs):
+    def __init__(self, field: Union[SchemaField, Type[BaseConfig]] = None, **kwargs):
         '''
         :param field: Field to validate values against
         '''
@@ -565,13 +594,15 @@ class ListField(Field):
         if field:
             if isinstance(field, Field):
                 self.storage_type = List[field.storage_type]  # type: ignore
-            elif isinstance(field, BaseSchema):
+            elif inspect.isclass(field):
+                self.storage_type = List[field]  # type: ignore
+            else:
                 self.storage_type = List[type(field)]  # type: ignore
 
     def __setdefault__(self, cfg: BaseConfig) -> None:
         default = self.default
         if isinstance(default, list) and self.field:
-            default = ListProxy(cfg, self.field, default)
+            default = ListProxy(cfg, self, default)
 
         cfg._data[self.key] = default
 
@@ -592,7 +623,7 @@ class ListField(Field):
         if not self.field or isinstance(self.field, AnyField):
             return value
 
-        proxy = ListProxy(cfg, self.field, value)
+        proxy = ListProxy(cfg, self, value)
         return proxy
 
     def to_basic(self, cfg: BaseConfig, value: Union[list, ListProxy]) -> list:
@@ -607,9 +638,9 @@ class ListField(Field):
         if not value:
             return []
 
-        if isinstance(self.field, BaseSchema):
+        if isinstance(self.field, BaseSchema) or isconfigtype(self.field):
             return [item.to_tree() for item in value]
-        if self.field:
+        if isinstance(self.field, Field):
             return [self.field.to_basic(cfg, item) for item in value]
         return list(value)
 
@@ -622,7 +653,7 @@ class ListField(Field):
         '''
         if self.field is None or isinstance(self.field, AnyField):
             return value
-        return ListProxy(cfg, self.field, value)
+        return ListProxy(cfg, self, value)
 
 
 class VirtualField(Field):

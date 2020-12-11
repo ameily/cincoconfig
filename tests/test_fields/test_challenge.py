@@ -6,11 +6,15 @@ import pytest
 
 from cincoconfig.fields import ChallengeField, DigestValue, BaseConfig, BaseSchema
 
+
 class MockConfig:
 
     def __init__(self):
         self._parent = None
         self._key = None
+
+    def _full_path(self):
+        return ''
 
 
 class TestDigestValue:

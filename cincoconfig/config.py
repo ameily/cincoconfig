@@ -257,16 +257,25 @@ class Schema(BaseSchema):
         :param config: config to validate
         '''
         for field in self._fields.values():
-            if isinstance(field, InstanceMethodField):
-                pass
-            elif isinstance(field, Field):
-                val = field.__getval__(config)
-                field.validate(config, val)
-            elif isinstance(field, Schema):
-                field._validate(config[field._key])  # type: ignore
+            try:
+                self._validate_field(config, field)
+            except ValidationError:
+                raise
+            except Exception as err:
+                raise ValidationError(config, field, err) from err  # type: ignore
 
         for validator in self._validators:
             validator(config)
+
+    def _validate_field(self, config: 'Config', field: SchemaField) -> None:
+        if isinstance(field, InstanceMethodField):
+            return
+
+        if isinstance(field, Field):
+            val = field.__getval__(config)
+            field.validate(config, val)
+        elif isinstance(field, Schema):
+            field._validate(config[field._key])  # type: ignore
 
     def instance_method(self, key: str) -> Callable:
         '''
@@ -397,6 +406,8 @@ class Config(BaseConfig):
         else:
             try:
                 field.__setval__(self, value)
+            except ValidationError:
+                raise
             except Exception as err:
                 raise ValidationError(self, field, err) from err
 
