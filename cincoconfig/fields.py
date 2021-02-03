@@ -313,7 +313,7 @@ class IPv4NetworkField(StringField):
             raise ValueError('value must be at least a /%d subnet' % self.min_prefix_len)
 
         if self.max_prefix_len and net.prefixlen > self.max_prefix_len:
-            raise ValueError('value must be smaller than a /%d' subnet % self.max_prefix_len)
+            raise ValueError('value must be smaller than a /%d subnet' % self.max_prefix_len)
 
         return str(net)
 
