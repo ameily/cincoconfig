@@ -54,7 +54,7 @@ class ValidationError(ValueError):
         self._friendly_name = value
 
 
-class Field:
+class Field:  # pylint: disable=too-many-instance-attributes
     '''
     The base configuration field. Fields provide validation and the mechanisms to retrieve and set
     values from a :class:`Config`. Field's are composable and reusable so they should not store
