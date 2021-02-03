@@ -49,7 +49,17 @@ class TestIncludeField:
         field.combine_trees.assert_called_once_with(base, fmt.retval)
         fmt.loads.assert_called_once_with(cfg, b'hello')
 
+    @patch('cincoconfig.fields.open', new_callable=mock_open, read_data=b'{}')
+    @patch('cincoconfig.config.os.path.expanduser')
+    def test_include_expanduser(self, expanduser, mop):
+        field = IncludeField()
+        fmt = MockConfigFormat()
+        cfg = MockConfig()
+        expanduser.return_value = '/home/asdf/blah.txt'
+        base = {'b': 2}
 
-
-
-
+        field.combine_trees = MagicMock(return_value={'a': 1})
+        field.validate = MagicMock(return_value='blah.txt')
+        field.include(cfg, fmt, 'blah.txt', base)
+        mop.assert_called_once_with('/home/asdf/blah.txt', 'rb')
+        expanduser.assert_called_once_with('blah.txt')

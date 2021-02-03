@@ -5,6 +5,7 @@
 # this source code package.
 #
 
+import os
 import sys
 from typing import Union, Any, Iterator, Tuple, Callable, List
 from argparse import Namespace
@@ -498,6 +499,7 @@ class Config(BaseConfig):
         :param format: output format
         '''
         content = self.dumps(format)
+        filename = os.path.expanduser(filename)
         with open(filename, 'wb') as file:
             file.write(content)
 
@@ -508,7 +510,7 @@ class Config(BaseConfig):
         :param filename: source filename
         :param format: source format
         '''
-
+        filename = os.path.expanduser(filename)
         with open(filename, 'rb') as file:
             content = file.read()
 

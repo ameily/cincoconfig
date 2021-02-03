@@ -398,7 +398,7 @@ class FilenameField(StringField):
             return value
 
         if not os.path.isabs(value) and self.startdir:
-            value = os.path.abspath(os.path.join(self.startdir, value))
+            value = os.path.abspath(os.path.expanduser(os.path.join(self.startdir, value)))
 
         if os.path.sep == '\\':
             value = value.replace('/', '\\')
@@ -1217,7 +1217,7 @@ class IncludeField(FilenameField):
         :returns: the new basic value tree containing the base tree and the included tree
         '''
         filename = self.validate(config, filename)
-        with open(filename, 'rb') as fp:
+        with open(os.path.expanduser(filename), 'rb') as fp:
             content = fp.read()
 
         child = fmt.loads(config, content)

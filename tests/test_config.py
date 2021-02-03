@@ -483,3 +483,23 @@ class TestConfig:
 
             mock_validate.assert_called_once_with(config, 2)
             assert excinfo.value is orig_exc
+
+    @patch('cincoconfig.config.open', new_callable=mock_open)
+    @patch('cincoconfig.config.os.path.expanduser')
+    def test_save_expanduser(self, expanduser, mop):
+        expanduser.return_value = 'path/to/blah.txt'
+        config = Config(Schema())
+        config.save('~/blah.txt', format='json')
+
+        expanduser.assert_called_once_with('~/blah.txt')
+        mop.assert_called_once_with('path/to/blah.txt', 'wb')
+
+    @patch('cincoconfig.config.open', new_callable=mock_open, read_data=b'{}')
+    @patch('cincoconfig.config.os.path.expanduser')
+    def test_load_expanduser(self, expanduser, mop):
+        expanduser.return_value = 'path/to/blah.txt'
+        config = Config(Schema())
+
+        config.load('~/blah.txt', format='json')
+        expanduser.assert_called_once_with('~/blah.txt')
+        mop.assert_called_once_with('path/to/blah.txt', 'rb')

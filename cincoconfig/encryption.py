@@ -104,8 +104,9 @@ class KeyFile:
         '''
         INTERNAL METHOD. Load configuration key.
         '''
+        filename = os.path.expanduser(self.filename)
         try:
-            with open(self.filename, 'rb') as fp:
+            with open(filename, 'rb') as fp:
                 self.__key = fp.read()
         except OSError:
             self.__key = self.__generate_key()
@@ -119,7 +120,8 @@ class KeyFile:
         :returns: the generated key
         '''
         key = os.urandom(32)
-        with open(self.filename, 'wb') as fp:
+        filename = os.path.expanduser(self.filename)
+        with open(filename, 'wb') as fp:
             fp.write(key)
         return key
 
