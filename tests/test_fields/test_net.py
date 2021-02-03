@@ -41,6 +41,24 @@ class TestIPv4NetworkField:
         with pytest.raises(ValueError):
             field.validate(MockConfig(), '300.1.2.a/42')
 
+    def test_min_prefix_good(self):
+        field = IPv4NetworkField(min_prefix_len=8)
+        assert field._validate(MockConfig(), '192.168.0.0/16') == '192.168.0.0/16'
+
+    def test_min_prefix_bad(self):
+        field = IPv4NetworkField(min_prefix_len=16)
+        with pytest.raises(ValueError):
+            field._validate(MockConfig(), '10.0.0.0/8')
+
+    def test_max_prefix_good(self):
+        field = IPv4NetworkField(max_prefix_len=16)
+        assert field._validate(MockConfig(), '10.0.0.0/8') == '10.0.0.0/8'
+
+    def test_max_prefix_bad(self):
+        field = IPv4NetworkField(max_prefix_len=31)
+        with pytest.raises(ValueError):
+            field._validate(MockConfig(), '10.10.10.1/32')
+
 
 class TestHostnameField:
 

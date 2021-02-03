@@ -286,6 +286,15 @@ class IPv4NetworkField(StringField):
     '''
     storage_type = str
 
+    def __init__(self, min_prefix_len: int = None, max_prefix_len: int = None, **kwargs):
+        '''
+        :param min_prefix_len: minimum subnet prefix length (/X), in bits
+        :param max_prefix_len: maximum subnet prefix length (/X), in bits
+        '''
+        super().__init__(**kwargs)
+        self.min_prefix_len = min_prefix_len
+        self.max_prefix_len = max_prefix_len
+
     def _validate(self, cfg: BaseConfig, value: str) -> str:
         '''
         Validate a value.
@@ -299,6 +308,13 @@ class IPv4NetworkField(StringField):
             net = IPv4Network(value)
         except ValueError as err:
             raise ValueError('value is not a valid IPv4 Network (CIDR)') from err
+
+        if self.min_prefix_len and net.prefixlen < self.min_prefix_len:
+            raise ValueError('value must be at least a /%d subnet' % self.min_prefix_len)
+
+        if self.max_prefix_len and net.prefixlen > self.max_prefix_len:
+            raise ValueError('value must be smaller than a /%d subnet' % self.max_prefix_len)
+
         return str(net)
 
 
