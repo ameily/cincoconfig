@@ -1,6 +1,6 @@
 # Cinco Config
 
-[![Build Status](https://travis-ci.org/ameily/cincoconfig.svg?branch=master)](https://travis-ci.org/ameily/cincoconfig)
+[![Build Status](https://travis-ci.com/ameily/cincoconfig.svg?branch=master)](https://travis-ci.org/ameily/cincoconfig)
 [![Coverage Status](https://coveralls.io/repos/github/ameily/cincoconfig/badge.svg?branch=master)](https://coveralls.io/github/ameily/cincoconfig?branch=master)
 [![Docs Status](https://readthedocs.org/projects/cincoconfig/badge/)](https://cincoconfig.readthedocs.io/en/latest/)
 
