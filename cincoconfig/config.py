@@ -7,7 +7,7 @@
 
 import sys
 from typing import Union, Any, Iterator, Tuple, Callable, List
-from argparse import Namespace
+from argparse import Namespace, ArgumentParser
 from itertools import chain
 from .abc import Field, BaseConfig, BaseSchema, SchemaField, AnyField, ValidationError
 from .fields import IncludeField, InstanceMethodField, VirtualField
@@ -308,6 +308,30 @@ class Schema(BaseSchema):
             self._add_field(key, InstanceMethodField(meth))
             return meth
         return wrapper
+
+    def generate_argparse_parser(self, **kwargs) -> ArgumentParser:
+        '''
+        Generate a :class:`argparse.ArgumentParser` based on the schema. This method generates
+        ``--long-arguments`` for each field that stores a string, integer, float, or bool (based
+        on the field's ``storage_type``). Boolean fields have two long arguments created, one to
+        store a ``True`` value and another, ``--no-[x]``, to disable it.
+
+        :param kwargs: keyword arguments to pass to the generated ``ArgumentParser`` constructor
+        :returns: the generated argument parser
+        '''
+        parser = ArgumentParser(**kwargs)
+        for name, _, field in self.get_all_fields():
+            arg = '--' + name.replace('.', '-').replace('_', '-').lower()
+            metavar = name.replace('.', '_').upper()
+            if field.storage_type in (str, float, int):
+                parser.add_argument(arg, action='store', dest=name, help=field.help,
+                                    metavar=metavar)
+            elif field.storage_type is bool:
+                off_arg = '--no-' + name.replace('.', '-').replace('_', '-').lower()
+                parser.add_argument(arg, dest=name, action='store_true', help=field.help)
+                parser.add_argument(off_arg, dest=name, action='store_false')
+
+        return parser
 
 
 class Config(BaseConfig):
