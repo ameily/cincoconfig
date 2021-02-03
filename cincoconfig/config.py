@@ -324,11 +324,11 @@ class Schema(BaseSchema):
             arg = '--' + name.replace('.', '-').replace('_', '-').lower()
             metavar = name.replace('.', '_').upper()
             if field.storage_type in (str, float, int):
-                parser.add_argument(arg, action='store', dest=name, help=field.help,
+                parser.add_argument(arg, action='store', dest=name, help=field.short_help,
                                     metavar=metavar)
             elif field.storage_type is bool:
                 off_arg = '--no-' + name.replace('.', '-').replace('_', '-').lower()
-                parser.add_argument(arg, dest=name, action='store_true', help=field.help)
+                parser.add_argument(arg, dest=name, action='store_true', help=field.short_help)
                 parser.add_argument(off_arg, dest=name, action='store_false')
 
         return parser
