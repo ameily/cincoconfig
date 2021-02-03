@@ -321,6 +321,9 @@ class Schema(BaseSchema):
         '''
         parser = ArgumentParser(**kwargs)
         for name, _, field in self.get_all_fields():
+            if not isinstance(field, Field):
+                continue
+
             arg = '--' + name.replace('.', '-').replace('_', '-').lower()
             metavar = name.replace('.', '_').upper()
             if field.storage_type in (str, float, int):
