@@ -132,11 +132,6 @@ class TestBaseField:
         assert field.full_path(cfg) == 'asdf'
 
     def test_full_path_nested(self):
-        # root = MockConfig()
-        # level1 = MockConfig(key='level1', parent=root)
-        # level2 = MockConfig(key='level2', parent=level1)
-        # field = Field(key='value')
-        # assert field.full_path(level2) == 'level1.level2.value'
         root = MockConfig()
         root._full_path = MagicMock()
         root._full_path.return_value = 'asdf'
@@ -144,3 +139,16 @@ class TestBaseField:
         assert field.full_path(root) == 'asdf.value'
         root._full_path.assert_called_once()
 
+    def test_short_help_none(self):
+        field = Field()
+        assert field.help is None
+        assert field.short_help is None
+
+    def test_short_help_everything(self):
+        field = Field(help='blah')
+        assert field.short_help == 'blah'
+
+    def test_short_help_paragraph(self):
+        field = Field(help='\n\nfirst\nsecond\nthird.\n\nmore\n\n')
+        assert field.short_help == 'first\nsecond\nthird.'
+        assert field.help == 'first\nsecond\nthird.\n\nmore'

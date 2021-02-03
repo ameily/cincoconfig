@@ -113,7 +113,8 @@ class Field:
 
     def __init__(self, *, name: str = None, key: str = None, required: bool = False,
                  default: Union[Callable, Any] = None,
-                 validator: Callable[['BaseConfig', Any], Any] = None, sensitive: bool = False):
+                 validator: Callable[['BaseConfig', Any], Any] = None, sensitive: bool = False,
+                 description: str = None, help: str = None):
         '''
         All builtin Fields accept the following keyword parameters.
 
@@ -126,6 +127,7 @@ class Field:
             and should return the default value
         :param validator: an additional validator function that is invoked during validation
         :param sensitive: the field stores a senstive value
+        :param help: the field documentation
         '''
         self._name = name or None
         self.key = key or ''
@@ -133,6 +135,33 @@ class Field:
         self._default = default
         self.validator = validator
         self.sensitive = sensitive
+        self.description = description
+        self.help = help.strip() if help else None
+
+    @property
+    def short_help(self) -> Optional[str]:
+        '''
+        A short help description of the field. This is derived from the ``help`` attribute and is
+        the first paragraph of text in ``help``. The intention is that ``short_help`` can be used
+        for the field description and ``help`` will have the full documentation. For example:
+
+        .. code-block:: python
+
+            >>> field = Field(help="""
+            ... This is a short description
+            ... that can span multiple lines.
+            ...
+            ... This is more information.
+            ... """)
+            >>> print(field.short_help)
+            this is a short description
+            that can span multiple lines.
+
+        :returns: the first paragraph of ``help``
+        '''
+        if self.help:
+            return self.help.split('\n\n', 1)[0]
+        return None
 
     @property
     def default(self) -> Any:
