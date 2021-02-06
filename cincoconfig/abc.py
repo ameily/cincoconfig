@@ -47,6 +47,9 @@ class ValidationError(ValueError):
 
     @property
     def friendly_name(self) -> str:
+        '''
+        :returns: the field friendly name
+        '''
         return self._friendly_name or self.field.friendly_name(self.config)
 
     @friendly_name.setter

@@ -1,10 +1,10 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch, call
 
 import pytest
 
 from cincoconfig.abc import Field
 from cincoconfig.config import Schema, Config
-from cincoconfig.fields import InstanceMethodField
+from cincoconfig.fields import InstanceMethodField, BoolField, StringField, IntField, FloatField
 
 
 class TestSchema:
@@ -115,3 +115,27 @@ class TestSchema:
         schema.x = Field()
         with pytest.raises(KeyError):
             y = schema['x.y']
+
+    @patch('cincoconfig.config.ArgumentParser')
+    def test_generate_argparse_parser(self, mock_argparse):
+        parser = MagicMock()
+        mock_argparse.return_value = parser
+        schema = Schema()
+        schema.long_name = StringField(help='asdf')
+        schema.sub.short_name = IntField()
+        schema.enable = BoolField()
+        schema.runtime = FloatField()
+        schema.ignore_me2 = Field()  # no storage_type
+
+        retval = schema.generate_argparse_parser(x=1, y=2)
+        assert retval is parser
+        mock_argparse.assert_called_once_with(x=1, y=2)
+        parser.add_argument.call_args_list == [
+            call('--long-name', action='store', dest='long_name', help='asdf',
+                 metavar='LONG_NAME'),
+            call('--sub-short-name', action='store', dest='sub.short_name', help=None,
+                 metavar='SUB_SHORT_NAME'),
+            call('--enable', action='store_true', help=None, dest='enable'),
+            call('--no-enable', action='store_false', help=None, dest='enable'),
+            call('--runtime', action='store', dest='runtime', help=None)
+        ]
