@@ -1,6 +1,6 @@
 # Cinco Config
 
-[![Build Status](https://travis-ci.org/ameily/cincoconfig.svg?branch=master)](https://travis-ci.org/ameily/cincoconfig)
+[![Build Status](https://travis-ci.com/ameily/cincoconfig.svg?branch=master)](https://travis-ci.org/ameily/cincoconfig)
 [![Coverage Status](https://coveralls.io/repos/github/ameily/cincoconfig/badge.svg?branch=master)](https://coveralls.io/github/ameily/cincoconfig?branch=master)
 [![Docs Status](https://readthedocs.org/projects/cincoconfig/badge/)](https://cincoconfig.readthedocs.io/en/latest/)
 
@@ -99,18 +99,26 @@ config = schema()
 
 # __main__.py
 import argparse
-from .config import config
+from .config import config, schema
 
-parser = argparse.ArgumentParser()
+parser = schema.generate_argparse_parser()
+#
+# The generate_argparse_parser() method auto generates the parser using --long-opts. For this
+# configuration, the returned parser is equivalent to:
+#
+# parser = argparse.ArgumentParser()
+#
+# parser.add_argument('--http-address', action='store', dest='http.address')
+# parser.add_argument('--http-port', action='store', dest='http.port')
+# parser.add_argument('--mode', action='store', dest='mode')
+#
 
-parser.add_argument('-H', '--host', action='store', dest='http.address')
-parser.add_argument('-p', '--port', action='store', type=int, dest='http.port')
-parser.add_argument('-d', '--debug', action='store_const', const='debug', dest='mode')
+# new args can be added to the parser
 parser.add_argument('-c', '--config', action='store')
-
 args = parser.parse_args()
 if args.config:
     config.load(args.config, format='json')
 
+# update the configuration with arguments specified via the command line
 config.cmdline_args_override(args, ignore=['config'])
 ```
