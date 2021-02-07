@@ -4,10 +4,11 @@
 # This file is subject to the terms and conditions defined in the file 'LICENSE', which is part of
 # this source code package.
 #
+import os
 from unittest.mock import patch, MagicMock
 import pytest
 
-from cincoconfig.abc import Field
+from cincoconfig.abc import Field, BaseSchema, BaseConfig
 
 
 class MockConfig:
@@ -16,6 +17,7 @@ class MockConfig:
         self._data = data or {}
         self._parent = parent
         self._key = key
+        self._schema = BaseSchema()
 
     def _full_path(self):
         return ''
@@ -54,7 +56,7 @@ class TestBaseField:
 
     def test_setkey(self):
         field = Field()
-        field.__setkey__(self.cfg, 'key')
+        field.__setkey__(self.cfg._schema, 'key')
         assert field.key == 'key'
 
     def test_setdefault(self):
@@ -152,3 +154,70 @@ class TestBaseField:
         field = Field(help='\n\nfirst\nsecond\nthird.\n\nmore\n\n')
         assert field.short_help == 'first\nsecond\nthird.'
         assert field.help == 'first\nsecond\nthird.\n\nmore'
+
+    def test_env_true(self):
+        schema = BaseSchema()
+        field = Field(env=True)
+        field.__setkey__(schema, 'field')
+        assert field.env == 'FIELD'
+
+    def test_setkey_inherit_env(self):
+        schema = BaseSchema(env=True)
+        field = Field()
+        field.__setkey__(schema, 'field')
+        assert field.env == 'FIELD'
+
+    def test_setkey_inherit_env_append(self):
+        schema = BaseSchema(env='APP')
+        field = Field()
+        field.__setkey__(schema, 'field')
+        assert field.env == 'APP_FIELD'
+
+    def test_setkey_env_false(self):
+        schema = BaseSchema(env=True)
+        field = Field(env=False)
+        field.__setkey__(schema, 'field')
+        assert field.env is False
+
+    @patch.object(os.environ, 'get')
+    def test_setdefault_env_exists(self, mock_environ_get):
+        retval = mock_environ_get.return_value = object()
+        cfg = BaseConfig(schema=BaseSchema())
+        field = Field(env='ASDF', key='field')
+        field.__setdefault__(cfg)
+        assert cfg._data == {'field': retval}
+        mock_environ_get.assert_called_once_with('ASDF')
+
+    @patch.object(os.environ, 'get')
+    def test_setdefault_env_exists_valid(self, mock_environ_get):
+        env = mock_environ_get.return_value = object()
+        retval = object()
+        cfg = BaseConfig(schema=BaseSchema())
+        field = Field(env='ASDF', key='field')
+        field.validate = MagicMock(return_value=retval)
+        field.__setdefault__(cfg)
+        field.validate.assert_called_once_with(cfg, env)
+        assert cfg._data == {'field': retval}
+
+    @patch.object(os.environ, 'get')
+    def test_setdefault_env_exists_invalid(self, mock_environ_get):
+        env = mock_environ_get.return_value = object()
+        retval = object()
+        cfg = BaseConfig(schema=BaseSchema())
+        field = Field(env='ASDF', key='field')
+        field.validate = MagicMock(side_effect=ValueError())
+        field._default = retval
+        field.__setdefault__(cfg)
+        field.validate.assert_called_once_with(cfg, env)
+        assert cfg._data == {'field': retval}
+
+    @patch.object(os.environ, 'get')
+    def test_setdefault_env_not_exists(self, mock_environ_get):
+        mock_environ_get.return_value = None
+        retval = object()
+        cfg = BaseConfig(schema=BaseSchema())
+        field = Field(env='ASDF', key='field')
+        field._default = retval
+        field.__setdefault__(cfg)
+        assert cfg._data == {'field': retval}
+        mock_environ_get.assert_called_once_with('ASDF')

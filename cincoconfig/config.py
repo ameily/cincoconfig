@@ -127,7 +127,7 @@ class Schema(BaseSchema):
         '''
         field = self._fields.get(name)
         if field is None:
-            field = self._fields[name] = Schema(name)
+            field = self._add_field(name, Schema())
         return field
 
     def __iter__(self) -> Iterator[Tuple[str, SchemaField]]:
@@ -662,6 +662,9 @@ class Config(BaseConfig):
         for key, value in tree.items():
             field = self._get_field(key)
             if isinstance(field, Field):
+                if isinstance(field.env, str) and field.env and os.environ.get(field.env):
+                    continue
+
                 value = field.to_python(self, value)
 
             self.__setattr__(key, value)

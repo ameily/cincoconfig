@@ -24,6 +24,7 @@ class MockSchema:
 
     def __init__(self):
         self._fields = {}
+        self._env_prefix = False
 
     def _add_field(self, name, field):
         self._fields[name] = field

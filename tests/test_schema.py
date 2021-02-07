@@ -116,6 +116,13 @@ class TestSchema:
         with pytest.raises(KeyError):
             y = schema['x.y']
 
+    def test_getattr_add_field(self):
+        schema = Schema()
+        mock_add_field = MagicMock(return_value=Schema())
+        object.__setattr__(schema, '_add_field', mock_add_field)
+        schema.x.y = 2
+        mock_add_field.assert_called_once()
+
     @patch('cincoconfig.config.ArgumentParser')
     def test_generate_argparse_parser(self, mock_argparse):
         parser = MagicMock()

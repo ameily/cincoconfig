@@ -111,13 +111,16 @@ class Field:  # pylint: disable=too-many-instance-attributes
 
     Each Field subclass can define a class or instance level ``storage_type`` which holds the
     annotation of the value being stored in memory.
+
+    The ``env`` attribute is used to override the default value based on an environmental variable.
+    ``env`` is, by default, inherited from the parent schema.
     '''
     storage_type = Any
 
     def __init__(self, *, name: str = None, key: str = None, required: bool = False,
                  default: Union[Callable, Any] = None,
                  validator: Callable[['BaseConfig', Any], Any] = None, sensitive: bool = False,
-                 description: str = None, help: str = None):
+                 description: str = None, help: str = None, env: Union[bool, str] = None):
         '''
         All builtin Fields accept the following keyword parameters.
 
@@ -140,6 +143,7 @@ class Field:  # pylint: disable=too-many-instance-attributes
         self.sensitive = sensitive
         self.description = description
         self.help = help.strip() if help else None
+        self.env = env
 
     @property
     def short_help(self) -> Optional[str]:
@@ -236,14 +240,40 @@ class Field:  # pylint: disable=too-many-instance-attributes
         '''
         self.key = key
 
-    def __setdefault__(self, cfg: 'BaseConfig'):
+        if self.env is False:
+            return
+
+        if self.env is True or (self.env is None and isinstance(schema._env_prefix, str)):
+            if isinstance(schema._env_prefix, str) and schema._env_prefix:
+                prefix = schema._env_prefix + '_'
+            else:
+                prefix = ''
+
+            self.env = prefix + self.key.upper()
+
+    def __setdefault__(self, cfg: 'BaseConfig') -> None:
         '''
         Set the default value of the field in the config. This is called when the config is first
         created.
 
         :param cfg: current config
         '''
-        cfg._data[self.key] = self.default
+        value = None
+
+        if isinstance(self.env, str) and self.env:
+            env_value = os.environ.get(self.env)
+            if env_value:
+                try:
+                    env_value = self.validate(cfg, env_value)
+                except:
+                    pass
+                else:
+                    value = env_value
+
+        if value is None:
+            value = self.default
+
+        cfg._data[self.key] = value
 
     def to_python(self, cfg: 'BaseConfig', value: Any) -> Any:
         '''
@@ -345,15 +375,18 @@ class BaseSchema:
     '''
     storage_type = 'BaseSchema'
 
-    def __init__(self, key: str = None, dynamic: bool = False):
+    def __init__(self, key: str = None, dynamic: bool = False, env: Union[str, bool] = None):
         '''
         :param key: the schema key, only used for sub-schemas, and stored in the instance as
             *_key*
         :param dynamic: the schema is dynamic and can contain fields not originally specified in
             the schema and stored in the instance as *_dynamic*
+        :param env: the environment variable prefix for this schema and all children schemas
         '''
         self._key = key
         self._dynamic = dynamic
+        self._env_prefix = '' if env is True else env
+
         self._fields = OrderedDict()  # type: Dict[str, SchemaField]
         self.__post_init__()
 
@@ -370,6 +403,13 @@ class BaseSchema:
         '''
         self._key = key
 
+        if self._env_prefix is False:
+            return
+
+        if self._env_prefix is None and isinstance(parent._env_prefix, str):
+            prefix = (parent._env_prefix + '_') if parent._env_prefix else ''
+            self._env_prefix = prefix + self._key.upper()
+
     def _add_field(self, key: str, field: SchemaField) -> SchemaField:
         '''
         Add a field to the schema. This method will call ``field.__setkey__(self, key)``.
@@ -379,6 +419,7 @@ class BaseSchema:
         self._fields[key] = field
         if isinstance(field, (Field, BaseSchema)):
             field.__setkey__(self, key)
+
         return field
 
     def _get_field(self, key: str) -> Optional[SchemaField]:
