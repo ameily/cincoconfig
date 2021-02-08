@@ -8,7 +8,7 @@ import os
 from unittest.mock import patch, MagicMock
 import pytest
 
-from cincoconfig.abc import Field, BaseSchema, BaseConfig
+from cincoconfig.abc import Field, BaseSchema, BaseConfig, ValidationError
 
 
 class MockConfig:
@@ -207,9 +207,10 @@ class TestBaseField:
         field = Field(env='ASDF', key='field')
         field.validate = MagicMock(side_effect=ValueError())
         field._default = retval
-        field.__setdefault__(cfg)
+        with pytest.raises(ValidationError):
+            field.__setdefault__(cfg)
+
         field.validate.assert_called_once_with(cfg, env)
-        assert cfg._data == {'field': retval}
 
     @patch.object(os.environ, 'get')
     def test_setdefault_env_not_exists(self, mock_environ_get):

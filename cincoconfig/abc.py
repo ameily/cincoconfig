@@ -244,6 +244,7 @@ class Field:  # pylint: disable=too-many-instance-attributes
             return
 
         if self.env is True or (self.env is None and isinstance(schema._env_prefix, str)):
+            # Set our environment variable name based on the schema's prefix and our key
             if isinstance(schema._env_prefix, str) and schema._env_prefix:
                 prefix = schema._env_prefix + '_'
             else:
@@ -265,8 +266,8 @@ class Field:  # pylint: disable=too-many-instance-attributes
             if env_value:
                 try:
                     env_value = self.validate(cfg, env_value)
-                except:
-                    pass
+                except Exception as exc:
+                    raise ValidationError(cfg, self, exc) from exc
                 else:
                     value = env_value
 
@@ -407,6 +408,7 @@ class BaseSchema:
             return
 
         if self._env_prefix is None and isinstance(parent._env_prefix, str):
+            # Set our environment variable prefix to be "{parent}_{key}"
             prefix = (parent._env_prefix + '_') if parent._env_prefix else ''
             self._env_prefix = prefix + self._key.upper()
 
