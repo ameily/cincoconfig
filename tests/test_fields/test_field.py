@@ -213,6 +213,20 @@ class TestBaseField:
         field.validate.assert_called_once_with(cfg, env)
 
     @patch.object(os.environ, 'get')
+    def test_setdefault_env_exists_invalid_validationerror(self, mock_environ_get):
+        env = mock_environ_get.return_value = object()
+        retval = object()
+        cfg = BaseConfig(schema=BaseSchema())
+        field = Field(env='ASDF', key='field')
+        err = ValidationError(cfg, field, ValueError('asdf'))
+        field.validate = MagicMock(side_effect=err)
+        field._default = retval
+        with pytest.raises(ValidationError) as exc:
+            field.__setdefault__(cfg)
+
+        assert exc.value is err
+
+    @patch.object(os.environ, 'get')
     def test_setdefault_env_not_exists(self, mock_environ_get):
         mock_environ_get.return_value = None
         retval = object()
