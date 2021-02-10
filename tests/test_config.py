@@ -1,4 +1,5 @@
 import argparse
+import os
 from unittest.mock import MagicMock, patch, mock_open
 
 import pytest
@@ -324,6 +325,17 @@ class TestConfig:
         object.__setattr__(config, 'validate', mock_validate)
         config.load_tree({'x': 1})
         mock_validate.assert_called_once_with()
+
+    @patch('cincoconfig.config.os')
+    def test_load_tree_ignore_env(self, mock_os):
+        env = mock_os.environ.get.return_value = object()
+        schema = Schema()
+        schema.x = Field(env='ASDF')
+        cfg = schema()
+        cfg._data = {'x': 'qwer'}
+        cfg.load_tree({'x': 'asdf'})
+        assert cfg._data == {'x': 'qwer'}
+        mock_os.environ.get.assert_called_once_with('ASDF')
 
     def test_validator(self):
         validator = MagicMock()
