@@ -6,12 +6,11 @@
 #
 import inspect
 from typing import Type, Union, Any, Dict
-from cincoconfig.abc import Field, BaseSchema
-from cincoconfig.config import Config, ConfigType, Schema
-from cincoconfig.fields import InstanceMethodField, VirtualField
+from .core import Config, Schema, ConfigType, VirtualFieldMixin, Field, BaseField
+from .fields import InstanceMethodField
 
 
-def get_annotation_typestr(field: Union[Field, BaseSchema, Type, str]) -> str:
+def get_annotation_typestr(field: Union[BaseField, Type, str]) -> str:
     '''
     Get the annotation type string for the provided argument. This method accepts a
     :class:`cincoconfig.Field` and returns the ``storage_type`` annotation.
@@ -21,7 +20,7 @@ def get_annotation_typestr(field: Union[Field, BaseSchema, Type, str]) -> str:
     '''
     if isinstance(field, Field):
         storage_type = field.storage_type
-    elif isinstance(field, BaseSchema):
+    elif isinstance(field, Schema):
         storage_type = Schema
     elif isinstance(field, type):
         storage_type = field
@@ -44,7 +43,7 @@ def get_annotation_typestr(field: Union[Field, BaseSchema, Type, str]) -> str:
     return retval or 'typing.Any'
 
 
-def get_arg_annotation(key: str, field: Union[Field, BaseSchema, Type, str]) -> str:
+def get_arg_annotation(key: str, field: Union[BaseField, Type, str]) -> str:
     '''
     Get the argument annotation, ``arg: typestr``, for an argument.
 
@@ -155,7 +154,7 @@ def generate_stub(config: Union[Schema, ConfigType, Config], class_name: str = N
     attrs = {}  # type: Dict[str, str]
 
     for key, field in schema._fields.items():
-        if isinstance(field, VirtualField):
+        if isinstance(field, VirtualFieldMixin):
             properties[key] = get_arg_annotation(key, field)
         elif isinstance(field, InstanceMethodField):
             methods[key] = field
