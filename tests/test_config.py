@@ -4,11 +4,9 @@ from unittest.mock import MagicMock, patch, mock_open
 
 import pytest
 
-from cincoconfig.formats.registry import FormatRegistry
-from cincoconfig.config import Config, Schema, Field, AnyField
+from cincoconfig.core import Config, Schema, Field, AnyField, ConfigType, ValidationError, ConfigFormat
 from cincoconfig.fields import IncludeField, VirtualField, SecureField
 from cincoconfig.version import __version__
-from cincoconfig.abc import ValidationError
 
 
 class MockFormatter:
@@ -94,7 +92,7 @@ class TestConfig:
         schema.blah.x = Field()
         config = schema()
 
-        with pytest.raises(TypeError):
+        with pytest.raises(ValidationError):
             config.blah = 2
 
     def test_getitem(self):
@@ -110,6 +108,8 @@ class TestConfig:
 
         config = schema()
         config.z = 4
+        print(config._fields)
+        print(config._data)
         assert config.to_tree() == {'x': 2, 'blah': {'y': 3}, 'z': 4}
 
     def test_to_tree_include_virtual(self):
@@ -150,7 +150,7 @@ class TestConfig:
         config = schema()
         assert config.to_tree(sensitive_mask='') == {'v': ''}
 
-    @patch('cincoconfig.formats.registry.FormatRegistry.get')
+    @patch.object(ConfigFormat, 'get')
     def test_dumps_to_tree_args(self, fr_get):
         fmt = MockFormatter()
         fr_get.return_value = fmt
@@ -195,7 +195,7 @@ class TestConfig:
         config['x'] = 2
         assert config._data['x'] == 2
 
-    @patch('cincoconfig.formats.registry.FormatRegistry.get')
+    @patch.object(ConfigFormat, 'get')
     def test_dumps(self, fr_get):
         fmt = MockFormatter()
         fr_get.return_value = fmt
@@ -208,7 +208,7 @@ class TestConfig:
         fmt.dumps.assert_called_once_with(config, {'x': 2})
         fr_get.assert_called_once_with('blah')
 
-    @patch('cincoconfig.formats.registry.FormatRegistry.get')
+    @patch.object(ConfigFormat, 'get')
     def test_loads(self, fr_get):
         fmt = MockFormatter()
         load_tree = MagicMock()
@@ -221,8 +221,8 @@ class TestConfig:
         fmt.loads.assert_called_once_with(config, b'hello')
         fr_get.assert_called_once_with('blah')
 
-    @patch('cincoconfig.config.open', new_callable=mock_open, read_data=b'hello')
-    @patch('cincoconfig.config.Config.loads')
+    @patch('cincoconfig.core.open', new_callable=mock_open, read_data=b'hello')
+    @patch('cincoconfig.core.Config.loads')
     def test_load(self, loads, mop):
         loads.return_value = {'x': 1}
         config = Config(Schema())
@@ -232,8 +232,8 @@ class TestConfig:
         loads.assert_called_once_with(b'hello', 'blah')
         mop.assert_called_once_with('blah.txt', 'rb')
 
-    @patch('cincoconfig.config.open', new_callable=mock_open)
-    @patch('cincoconfig.config.Config.dumps')
+    @patch('cincoconfig.core.open', new_callable=mock_open)
+    @patch('cincoconfig.core.Config.dumps')
     def test_save(self, dumps, mop):
         dumps.return_value = b'hello'
         config = Config(Schema())
@@ -326,11 +326,12 @@ class TestConfig:
         config.load_tree({'x': 1})
         mock_validate.assert_called_once_with()
 
-    @patch('cincoconfig.config.os')
+    @patch('cincoconfig.core.os')
     def test_load_tree_ignore_env(self, mock_os):
         env = mock_os.environ.get.return_value = object()
         schema = Schema()
         schema.x = Field(env='ASDF')
+        schema.x.__setdefault__ = MagicMock()
         cfg = schema()
         cfg._data = {'x': 'qwer'}
         cfg.load_tree({'x': 'asdf'})
@@ -496,8 +497,8 @@ class TestConfig:
             mock_validate.assert_called_once_with(config, 2)
             assert excinfo.value is orig_exc
 
-    @patch('cincoconfig.config.open', new_callable=mock_open)
-    @patch('cincoconfig.config.os.path.expanduser')
+    @patch('cincoconfig.core.open', new_callable=mock_open)
+    @patch('cincoconfig.core.os.path.expanduser')
     def test_save_expanduser(self, expanduser, mop):
         expanduser.return_value = 'path/to/blah.txt'
         config = Config(Schema())
@@ -506,8 +507,8 @@ class TestConfig:
         expanduser.assert_called_once_with('~/blah.txt')
         mop.assert_called_once_with('path/to/blah.txt', 'wb')
 
-    @patch('cincoconfig.config.open', new_callable=mock_open, read_data=b'{}')
-    @patch('cincoconfig.config.os.path.expanduser')
+    @patch('cincoconfig.core.open', new_callable=mock_open, read_data=b'{}')
+    @patch('cincoconfig.core.os.path.expanduser')
     def test_load_expanduser(self, expanduser, mop):
         expanduser.return_value = 'path/to/blah.txt'
         config = Config(Schema())
@@ -515,3 +516,47 @@ class TestConfig:
         config.load('~/blah.txt', format='json')
         expanduser.assert_called_once_with('~/blah.txt')
         mop.assert_called_once_with('path/to/blah.txt', 'rb')
+
+    def test_configtype_eq(self):
+        class Cfg(ConfigType):
+            __schema__ = Schema()
+            __key_filename__ = None
+
+        cfg = Cfg()
+        cfg._data = {'x': 1, 'y': 2}
+        cfg2 = Cfg()
+        cfg2._data = {'x': 1, 'y': 2}
+
+        assert cfg.__eq__(cfg2)
+
+    def test_configtype_eq_none(self):
+        class Cfg(ConfigType):
+            __schema__ = Schema()
+            __key_filename__ = None
+
+        cfg = Cfg()
+        assert not cfg.__eq__(None)
+
+    def test_configtype_eq_diff_class(self):
+        class Cfg(ConfigType):
+            __schema__ = Schema()
+            __key_filename__ = None
+
+        class Cfg2(ConfigType):
+            __schema__ = Schema()
+            __key_filename__ = None
+
+        cfg = Cfg()
+        cfg2 = Cfg2()
+        assert not cfg.__eq__(cfg2)
+
+    def test_configtype_ne(self):
+        class Cfg(ConfigType):
+            __schema__ = Schema()
+            __key_filename__ = None
+
+        cfg = Cfg()
+        cfg._data = {'x': 1, 'y': 2}
+        cfg2 = Cfg()
+        cfg2._data = {'x': 1, 'y': 3}
+        assert not cfg.__eq__(cfg2)

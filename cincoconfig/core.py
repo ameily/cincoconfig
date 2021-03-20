@@ -48,8 +48,8 @@ class ValidationError(ValueError):
             msg = str(self.exc)
 
         path = self.ref_path
-        if self.field and self.field.name:
-            path = "%s (%s)" % (self.field.name, path)
+        if isinstance(self.field, Field) and self.field._name:
+            path = "%s (%s)" % (self.field._name, path)
 
         return '%s: %s' % (path, msg)
 
@@ -182,7 +182,9 @@ class BaseField:
         path = [self._key]
         curr = self._schema
         while curr:
-            path.append(curr._key)
+            if curr._key:
+                path.append(curr._key)
+            curr = curr._schema
 
         path.reverse()
         return '.'.join(path)
@@ -364,7 +366,7 @@ class Field(BaseField):
         :param cfg: current config
         :param value: value to validated
         '''
-        cfg._data[self._key] = self.validate(cfg, value)
+        cfg._data[self._key] = value
 
     def validate(self, cfg: 'Config', value: Any) -> Any:
         '''
@@ -492,7 +494,7 @@ class ConfigTypeField(BaseField):
     def __setdefault__(self, cfg: 'Config') -> None:
         cfg._data[self._key] = self.config_type(cfg)
 
-    def __call__(self, cfg: 'Config') -> 'ConfigType':
+    def __call__(self, cfg: 'Config' = None) -> 'ConfigType':
         '''
         Create an instance of the wrapped ``ConfigType``.
 
@@ -583,7 +585,7 @@ class Schema(BaseField):
         if isconfigtype(field):
             field = ConfigTypeField(field)  # type: ignore
         elif not isinstance(field, BaseField):
-            raise TypeError("TODO")
+            raise TypeError("Schema fields must inherit from BaseField")
 
         self._fields[name] = field  # type: ignore
         field.__setkey__(self, name)
@@ -597,7 +599,7 @@ class Schema(BaseField):
         '''
         return self._fields.get(name) or self._add_field(name, Schema())
 
-    def __call__(self, parent: 'Config', **data):
+    def __call__(self, parent: 'Config' = None, **data):
         '''
         Compile the schema into an initial config with default values set.
         '''
@@ -679,9 +681,9 @@ class Schema(BaseField):
         if isinstance(field, Field):
             field.validate(config, val)
         elif isinstance(val, Config):
-            val._validate()
+            val.validate()
 
-    def get_all_fields(self) -> List[Tuple[str, Schema, BaseField]]:
+    def get_all_fields(self) -> List[Tuple[str, BaseField]]:
         '''
         **(Deprecated)** get all the fields in the configuration. Use
         :meth:`~cincoconfig.get_all_fields`.
@@ -703,7 +705,7 @@ class Schema(BaseField):
         '''
         # pylint: disable=import-outside-toplevel, cyclic-import
         from .support import generate_argparse_parser
-        warnings.warn("Config.generate_argparse_parser() is deprecated, use "
+        warnings.warn("Schema.generate_argparse_parser() is deprecated, use "
                       "cincoconfig.generate_argparse_parser instead.", DeprecationWarning)
         return generate_argparse_parser(**parser_kwargs)
 
@@ -714,9 +716,15 @@ class Schema(BaseField):
         '''
         # pylint: disable=import-outside-toplevel, cyclic-import
         from .fields import instance_method
-        warnings.warn("Config.instance_method() is deprecated, use "
+        warnings.warn("Schema.instance_method() is deprecated, use "
                       "cincoconfig.instance_method() instead.", DeprecationWarning)
         return instance_method(self, key)
+
+    def validator(self, func: ConfigValidator) -> ConfigValidator:
+        warnings.warn("Schema.validator() is deprecated, use "
+                      "cincoconfig.validator() instead.", DeprecationWarning)
+        self._validators.append(func)
+        return func
 
 
 class Config:
@@ -803,16 +811,20 @@ class Config:
         field = self._get_field(key)
         if not field:
             if not self._schema._dynamic:
-                raise ValueError("ferp")
+                raise TypeError("")
             field = self._fields[key] = AnyField()
+            field.__setkey__(self._schema, key)
 
         if isinstance(field, Field):
             try:
                 value = field.validate(self, value)
+            except ValidationError:
+                raise
             except Exception as err:
                 raise ValidationError(self, field, err) from err
             else:
-                self._data[key] = value
+                # self._data[key] = value
+                field.__setval__(self, value)
                 return value
         elif isinstance(value, Config):
             value._parent = self
@@ -829,7 +841,8 @@ class Config:
             else:
                 value = cfg
         else:
-            raise ValidationError(self, field, ValueError("TODO"))
+            raise ValidationError(self, field,
+                                  "Unable to coerce %s to Config" % type(value).__name__)
 
         self._data[key] = value
         return value
@@ -857,7 +870,7 @@ class Config:
     def _get_value(self, key: str) -> Any:
         field = self._get_field(key)
         if not field and not self._schema._dynamic:
-            raise AttributeError("TODO")
+            raise AttributeError(key)
 
         return field.__getval__(self) if field else None
 
@@ -877,6 +890,9 @@ class Config:
         key, _, subkey = key.partition('.')
         value = self._get_value(key)
         return value.__getitem__(subkey) if subkey else value
+
+    def __iter__(self) -> Iterator[Tuple[str, Any]]:
+        return ((key, self._get_value(key)) for key in self._data)
 
     def __setitem__(self, key: str, value: Any) -> Any:
         '''

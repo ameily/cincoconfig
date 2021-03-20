@@ -111,12 +111,12 @@ def validator(field: BaseField) -> Callable:
         schema.db.username = StringField()
         schema.db.password = StringField()
 
-        @schema.validator
+        @validator(schema)
         def validate_x_lt_y(cfg):
             if cfg.x and cfg.y and cfg.x >= cfg.y:
                 raise ValueError('x must be less-than y')
 
-        @schema.db.validator
+        @validator(schema.db)
         def validate_db_creds(cfg):
             if cfg.username and not db.password:
                 raise ValueError('db.password is required when username is specified')
