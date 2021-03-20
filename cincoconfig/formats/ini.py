@@ -5,7 +5,7 @@
 # this source code package.
 #
 
-from cincoconfig.abc import ConfigFormat, BaseConfig
+from ..core import ConfigFormat, Config
 
 
 class IniConfigFormat(ConfigFormat):
@@ -13,8 +13,8 @@ class IniConfigFormat(ConfigFormat):
     def __init__(self):
         raise NotImplementedError()
 
-    def dumps(self, config: BaseConfig, tree: dict) -> bytes:
+    def dumps(self, config: Config, tree: dict) -> bytes:
         raise NotImplementedError()
 
-    def loads(self, config: BaseConfig, content: bytes) -> dict:
+    def loads(self, config: Config, content: bytes) -> dict:
         raise NotImplementedError()

@@ -12,7 +12,7 @@ except ImportError:  # pragma: no cover
 else:
     IS_AVAILABLE = True
 
-from cincoconfig.abc import ConfigFormat, BaseConfig
+from ..core import ConfigFormat, Config
 
 
 class BsonConfigFormat(ConfigFormat):
@@ -35,7 +35,7 @@ class BsonConfigFormat(ConfigFormat):
         if not IS_AVAILABLE:
             raise TypeError('BSON format is not available; please install "bson"')
 
-    def dumps(self, config: BaseConfig, tree: dict) -> bytes:
+    def dumps(self, config: Config, tree: dict) -> bytes:
         '''
         Serialize the basic value ``tree`` to BSON :class:`bytes` document.
 
@@ -44,7 +44,7 @@ class BsonConfigFormat(ConfigFormat):
         '''
         return bson.dumps(tree)
 
-    def loads(self, config: BaseConfig, content: bytes) -> dict:
+    def loads(self, config: Config, content: bytes) -> dict:
         '''
         Deserialize the ``content`` (a :class:`bytes` instance containing a BSON document) to a
         Python basic value tree.

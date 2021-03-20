@@ -6,7 +6,7 @@
 #
 
 import pickle
-from cincoconfig.abc import ConfigFormat, BaseConfig
+from ..core import ConfigFormat, Config
 
 
 class PickleConfigFormat(ConfigFormat):
@@ -25,7 +25,7 @@ class PickleConfigFormat(ConfigFormat):
         config.load('filename.cfg', format='pickle')
     '''
 
-    def dumps(self, config: BaseConfig, tree: dict) -> bytes:
+    def dumps(self, config: Config, tree: dict) -> bytes:
         '''
         Deserialize the ``content`` (a :class:`bytes` instance containing a Pickled object) to a
         Python basic value tree.
@@ -36,7 +36,7 @@ class PickleConfigFormat(ConfigFormat):
         '''
         return pickle.dumps(tree)
 
-    def loads(self, config: BaseConfig, content: bytes) -> dict:
+    def loads(self, config: Config, content: bytes) -> dict:
         '''
         Serialize the basic value ``tree`` to PIckle :class:`bytes` document.
 

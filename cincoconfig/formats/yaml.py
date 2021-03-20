@@ -12,7 +12,7 @@ except ImportError:  # pragma: no cover
 else:
     IS_AVAILABLE = True
 
-from cincoconfig.abc import ConfigFormat, BaseConfig
+from ..core import ConfigFormat, Config
 
 
 class YamlConfigFormat(ConfigFormat):
@@ -63,7 +63,7 @@ class YamlConfigFormat(ConfigFormat):
 
         self.root_key = root_key
 
-    def dumps(self, config: BaseConfig, tree: dict) -> bytes:
+    def dumps(self, config: Config, tree: dict) -> bytes:
         '''
         Serialize the basic value ``tree`` to YAML :class:`bytes` document. If *root_key* was
         specified, the returned YAML document will contain a single top-level field named
@@ -77,7 +77,7 @@ class YamlConfigFormat(ConfigFormat):
             tree = {self.root_key: tree}
         return yaml.dump(tree, Dumper=yaml.Dumper).encode()
 
-    def loads(self, config: BaseConfig, content: bytes) -> dict:
+    def loads(self, config: Config, content: bytes) -> dict:
         '''
         Deserialize the ``content`` (a :class:`bytes` instance containing a YAML document) to a
         Python basic value tree.  If *root_key* was specified, the returned basic value tree will

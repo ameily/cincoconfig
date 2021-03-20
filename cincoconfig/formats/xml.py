@@ -8,8 +8,8 @@
 from xml.etree import ElementTree as ET
 from xml.dom import minidom
 from typing import Any
-from cincoconfig.abc import ConfigFormat, BaseConfig
-from cincoconfig.fields import BoolField
+from ..core import ConfigFormat, Config
+from ..fields import BoolField
 
 
 class XmlConfigFormat(ConfigFormat):
@@ -156,7 +156,7 @@ class XmlConfigFormat(ConfigFormat):
         reparsed = minidom.parseString(rough_string)
         return reparsed.toprettyxml(indent="  ").encode()
 
-    def dumps(self, config: BaseConfig, tree: dict) -> bytes:
+    def dumps(self, config: Config, tree: dict) -> bytes:
         '''
         Serialize the basic value ``tree`` to an XML :class:`bytes` document. The returned XML
         document will contain a single top-level tag named *root_key* that all other values are
@@ -169,7 +169,7 @@ class XmlConfigFormat(ConfigFormat):
         ele = self._to_element(self.root_tag, tree)
         return self._prettify(ele)
 
-    def loads(self, config: BaseConfig, content: bytes) -> dict:
+    def loads(self, config: Config, content: bytes) -> dict:
         '''
         Deserialize the ``content`` (a :class:`bytes` instance containing an XML document) to a
         Python basic value tree. The returned basic value tree will be scoped to *root_tag*, if it
