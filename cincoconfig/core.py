@@ -19,6 +19,17 @@ import warnings
 ConfigValidator = Callable[['Config'], None]
 FieldValidator = Callable[['Config', Any], Any]
 SchemaField = Union['BaseField', 'ConfigType']
+TFormatFactory = Callable[[], "ConfigFormat"]
+
+
+def isconfigtype(obj: Any) -> bool:
+    '''
+    Check if an object is configuration type (is class and is subclass of :class:`BaseConfig`).
+
+    :param obj: object to check
+    :returns: the object is a configuration type
+    '''
+    return inspect.isclass(obj) and issubclass(obj, ConfigType)
 
 
 class ValidationError(ValueError):
@@ -120,7 +131,7 @@ class BaseField:
         :param name: descriptive name
         :param schema: owning schema
         '''
-        self._key: str = ''
+        self._key: str = key
         self._name = name
         self._schema: Optional['Schema'] = schema
 
@@ -286,10 +297,10 @@ class Field(BaseField):
     '''
     storage_type = Any
 
-    def __init__(self, *, key: str = None, name: str = None, required: bool = False,
-                 default: Union[Callable, Any] = None, validator: FieldValidator = None,
-                 sensitive: bool = False, description: str = None, help: str = None,
-                 env: Union[bool, str] = None):
+    def __init__(self, *, key: str = None, schema: 'Schema' = None, name: str = None,
+                 required: bool = False, default: Union[Callable, Any] = None,
+                 validator: FieldValidator = None, sensitive: bool = False,
+                 description: str = None, help: str = None, env: Union[bool, str] = None):
         '''
         All builtin Fields accept the following keyword parameters.
 
@@ -304,7 +315,7 @@ class Field(BaseField):
         :param sensitive: the field stores a senstive value
         :param help: the field documentation
         '''
-        super().__init__(name=name, key=key)
+        super().__init__(name=name, key=key, schema=schema)
         self.required = required
         self._default = default
         self.validator = validator
@@ -683,7 +694,7 @@ class Schema(BaseField):
         elif isinstance(val, Config):
             val.validate()
 
-    def get_all_fields(self) -> List[Tuple[str, BaseField]]:
+    def get_all_fields(self) -> List[Tuple[str, 'Schema', BaseField]]:
         '''
         **(Deprecated)** get all the fields in the configuration. Use
         :meth:`~cincoconfig.get_all_fields`.
@@ -811,7 +822,7 @@ class Config:
         field = self._get_field(key)
         if not field:
             if not self._schema._dynamic:
-                raise TypeError("")
+                raise AttributeError(key)
             field = self._fields[key] = AnyField()
             field.__setkey__(self._schema, key)
 
@@ -823,7 +834,6 @@ class Config:
             except Exception as err:
                 raise ValidationError(self, field, err) from err
             else:
-                # self._data[key] = value
                 field.__setval__(self, value)
                 return value
         elif isinstance(value, Config):
@@ -1237,7 +1247,7 @@ class ConfigFormat:
 
         :param config: current configuration
         :param tree: basic value tree, as returned by the Config
-            :meth:`~cincoconfig.config.Config.to_tree` method.
+            :meth:`~cincoconfig.core.Config.to_tree` method.
         :returns: the serialized configuration
         '''
         raise NotImplementedError()
@@ -1245,26 +1255,13 @@ class ConfigFormat:
     def loads(self, config: Config, content: bytes) -> dict:
         '''
         Parse the serialized configuration to a basic value tree that can be parsed by the
-        Config :meth:`~cincoconfig.config.Config.load_tree` method.
+        Config :meth:`~cincoconfig.core.Config.load_tree` method.
 
         :param config: current config
         :param content: serialized content
         :returns: the parsed basic value tree
         '''
         raise NotImplementedError()
-
-
-TFormatFactory = Callable[[], ConfigFormat]
-
-
-def isconfigtype(obj: Any) -> bool:
-    '''
-    Check if an object is configuration type (is class and is subclass of :class:`BaseConfig`).
-
-    :param obj: object to check
-    :returns: the object is a configuration type
-    '''
-    return inspect.isclass(obj) and issubclass(obj, ConfigType)
 
 
 ConfigFormat.initialize_registry()
