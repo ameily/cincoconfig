@@ -2,8 +2,7 @@ from unittest.mock import MagicMock, patch, call
 
 import pytest
 
-from cincoconfig.abc import Field
-from cincoconfig.config import Schema, Config
+from cincoconfig.core import Schema, Config, Field
 from cincoconfig.fields import InstanceMethodField, BoolField, StringField, IntField, FloatField
 
 
@@ -120,10 +119,10 @@ class TestSchema:
         schema = Schema()
         mock_add_field = MagicMock(return_value=Schema())
         object.__setattr__(schema, '_add_field', mock_add_field)
-        schema.x.y = 2
+        schema.x.y = Field()
         mock_add_field.assert_called_once()
 
-    @patch('cincoconfig.config.ArgumentParser')
+    @patch('cincoconfig.support.ArgumentParser')
     def test_generate_argparse_parser(self, mock_argparse):
         parser = MagicMock()
         mock_argparse.return_value = parser

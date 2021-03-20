@@ -670,7 +670,11 @@ class Schema(BaseField):
 
         :param config: config to validate
         '''
+        ignore_types = (IncludeFieldMixin, VirtualFieldMixin, InstanceMethodFieldMixin)
         for field in self._fields.values():
+            if isinstance(field, ignore_types):
+                continue
+
             try:
                 self._validate_field(config, field)
             except ValidationError:
@@ -718,7 +722,7 @@ class Schema(BaseField):
         from .support import generate_argparse_parser
         warnings.warn("Schema.generate_argparse_parser() is deprecated, use "
                       "cincoconfig.generate_argparse_parser instead.", DeprecationWarning)
-        return generate_argparse_parser(**parser_kwargs)
+        return generate_argparse_parser(self, **parser_kwargs)
 
     def instance_method(self, key: str) -> Callable[['Config'], None]:
         '''
@@ -736,6 +740,14 @@ class Schema(BaseField):
                       "cincoconfig.validator() instead.", DeprecationWarning)
         self._validators.append(func)
         return func
+
+    def make_type(self, name: str, module: str = None,
+                  key_filename: str = None) -> Type['ConfigType']:
+        # pylint: disable=import-outside-toplevel, cyclic-import
+        from .support import make_type
+        warnings.warn("Schema.make_type() is deprecated, use "
+                      "cincoconfig.make_type() instead.", DeprecationWarning)
+        return make_type(self, name, module, key_filename)
 
 
 class Config:
