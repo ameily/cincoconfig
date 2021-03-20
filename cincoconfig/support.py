@@ -51,15 +51,9 @@ def make_type(schema: Schema, name: str, module: str = None,
     :param validator: config validator callback method
     :returns: the new type
     '''
-    def init_method(self, **kwargs):
-        Config.__init__(self, schema, key_filename=key_filename)
-        for key, value in kwargs.items():
-            self._set_value(key, value)
-
-    init_method.__name__ = '__init__'
     result = type(name, (ConfigType,), {
-        '__init__': init_method,
         '__schema__': schema,
+        '__key_filename__': key_filename
     })
     # This is copied from the namedtuple method. We try to set the module of the new
     # class to the calling module.
@@ -233,3 +227,7 @@ def cmdline_args_override(config: Config, args: Namespace,
     for key, value in vars(args).items():
         if key not in ignore and value is not None:
             config.__setitem__(key, value)
+
+
+def item_ref_path(item: Union[BaseField, Config]) -> str:
+    return item._ref_path

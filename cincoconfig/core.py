@@ -18,18 +18,28 @@ import warnings
 
 ConfigValidator = Callable[['Config'], None]
 FieldValidator = Callable[['Config', Any], Any]
-SchemaField = Union['Schema', 'Field', 'ConfigType']
+SchemaField = Union['BaseField', 'ConfigType']
 
 
 class ValidationError(ValueError):
+    '''
+    An error that occurs while validating a field's value or entire configuration.
+    '''
 
-    def __init__(self, config: 'Config', field: Optional['SchemaField'], exc: Union[str, Exception],
-                 full_path: str = None):
-        super().__init__(config, field, exc, full_path)
+    def __init__(self, config: 'Config', field: Optional['BaseField'], exc: Union[str, Exception],
+                 ref_path: str = None):
+        '''
+        :param config: parent configuration
+        :param field: field being validated, None if the entire config was being validated
+        :param exc: original exception
+        :param ref_path: override reference path to the field or configuration that failed
+            validation
+        '''
+        super().__init__(config, field, exc, ref_path)
         self.config = config
         self.field = field
         self.exc = exc
-        self._full_path = full_path
+        self._ref_path = ref_path
 
     def __str__(self):
         if isinstance(self.exc, OSError):
@@ -37,15 +47,18 @@ class ValidationError(ValueError):
         else:
             msg = str(self.exc)
 
-        path = self.full_path
+        path = self.ref_path
         if self.field and self.field.name:
             path = "%s (%s)" % (self.field.name, path)
 
         return '%s: %s' % (path, msg)
 
     @property
-    def full_path(self) -> str:
-        return self._full_path or (self.field.full_path if self.field else self.config.full_path)
+    def ref_path(self) -> str:
+        '''
+        :returns: the full path to the field or configuration that failed validation
+        '''
+        return self._ref_path or (self.field._ref_path if self.field else self.config._ref_path)
 
 
 class ContainerValueMixin:
@@ -65,14 +78,21 @@ class ContainerValueMixin:
 
 
 class VirtualFieldMixin:
-    pass
+    '''
+    Field mixin to flag a field as virtual.
+    '''
 
 
 class InstanceMethodFieldMixin:
-    pass
+    '''
+    Field mixin to flag a field as an instance method.
+    '''
 
 
 class IncludeFieldMixin:
+    '''
+    Field mixin to include a configuration file.
+    '''
 
     def include(self, config: 'Config', fmt: 'ConfigFormat', filename: str, base: dict) -> dict:
         '''
@@ -90,13 +110,27 @@ class IncludeFieldMixin:
 
 
 class BaseField:
+    '''
+    Base class for all fields in a schema.
+    '''
 
-    def __init__(self, key: str = None, name: str = None):
+    def __init__(self, key: str = None, name: str = None, schema: 'Schema' = None):
+        '''
+        :param key: field key
+        :param name: descriptive name
+        :param schema: owning schema
+        '''
         self._key: str = ''
         self._name = name
-        self._schema: Optional['Schema'] = None
+        self._schema: Optional['Schema'] = schema
 
     def __setkey__(self, schema: 'Schema', key: str) -> None:
+        '''
+        Set the field key and bind it to a schema.
+
+        :param schema: owning schema
+        :param key: field key
+        '''
         self._schema = schema
         self._key = key
 
@@ -110,8 +144,41 @@ class BaseField:
         '''
         return cfg._data[self._key]
 
+    def __setdefault__(self, cfg: 'Config') -> None:
+        '''
+        Set the default value in the configuration. Subclasses should set the field's default value
+        directly in the ``cfg._data`` dictionary. For example:
+
+        .. code-block:: python
+
+            def __setdefault__(self, cfg: 'Config') -> None:
+                cfg._data[self._key] = "Hello, world!"
+        '''
+
     @property
     def full_path(self) -> str:
+        '''
+        **(Deprecated)** get the full path to the field
+
+        :returns: the full path to this configuration
+        '''
+        warnings.warn("BaseField.full_path is deprecated, use BaseField._ref_path or "
+                      "cincoconfig.item_ref_path() instead", DeprecationWarning)
+        return self._ref_path
+
+    @property
+    def _ref_path(self) -> str:
+        '''
+        Get the full reference path to the schema field. For example:
+
+        .. code-block::
+
+            >>> schema = Schema()
+            >>> schema.x.y.z = Field()
+            >>> schema.x.y.z._ref_path
+            'x.y.z'
+        '''
+
         path = [self._key]
         curr = self._schema
         while curr:
@@ -409,16 +476,67 @@ class AnyField(Field):
     '''
 
 
-class Schema(BaseField):
+class ConfigTypeField(BaseField):
+    '''
+    A field that wraps a :class:`ConfigType` object, created by the :meth:`~cincoconfig.make_type`
+    method.
+    '''
 
-    def __init__(self, key: str = None, dynamic: bool = False, env: Union[str, bool] = None,
-                 config_type: Type['ConfigType'] = None):
+    def __init__(self, config_type: Type["ConfigType"], key: str = None, name: str = None):
+        '''
+        :param config_type: the ``ConfigType`` class
+        '''
+        super().__init__(key=key, name=name)
+        self.config_type = config_type
+
+    def __setdefault__(self, cfg: 'Config') -> None:
+        cfg._data[self._key] = self.config_type(cfg)
+
+    def __call__(self, cfg: 'Config') -> 'ConfigType':
+        '''
+        Create an instance of the wrapped ``ConfigType``.
+
+        :param cfg: parent configuration
+        :returns: the config type instance
+        '''
+        return self.config_type(cfg)
+
+
+class Schema(BaseField):
+    '''
+    A config schema containing all available configuration options. A schema's fields and hierarchy
+    are built dynamically.
+
+    .. code-block:: python
+
+        schema = Schema()
+        schema.mode = ApplicationModeField(default='production', required=True)
+        schema.http.port = PortField(default=8080)
+        # the previous line implicitly performs "schema.http = Schema(key='http')"
+        schema.http.host = IPv4Address(default='127.0.0.1')
+
+    Accessing a field that does not exist, such as ``schema.http`` in the above code, dynamically
+    creates and adds a new ``Schema``.
+
+    Once a schema is completely defined, a :class:`Config` is created by calling the schema. The
+    config is populate with the default values specified for each field and can then load the
+    configuration from a file.
+    '''
+
+    def __init__(self, key: str = None, dynamic: bool = False, env: Union[str, bool] = None):
+        '''
+        :param key: schema field key
+        :param dynamic: configurations created from this schema are dynamic and can add fields not
+            originally in the schema
+            *_key*
+        :param env: the environment variable prefix for this schema and all children schemas, for
+            information, see :ref:`Field Environment Variables <field-env-variables>`
+        '''
         super().__init__(key=key)
         self._dynamic = dynamic
         self._fields: Dict[str, BaseField] = OrderedDict()
         self._env_prefix = '' if env is True else env
         self._validators: List[ConfigValidator] = []
-        self._config_type = config_type
 
     def __setkey__(self, schema: 'Schema', key: str) -> None:
         '''
@@ -434,7 +552,13 @@ class Schema(BaseField):
             prefix = (schema._env_prefix + '_') if schema._env_prefix else ''
             self._env_prefix = prefix + self._key.upper()
 
+    def __setdefault__(self, cfg: 'Config') -> None:
+        cfg._data[self._key] = Config(self, cfg)
+
     def _get_field(self, key: str) -> Optional[BaseField]:
+        '''
+        :returns: a field from the schema
+        '''
         return self._fields.get(key)
 
     def __setattr__(self, name: str, value: Any) -> Any:
@@ -444,10 +568,8 @@ class Schema(BaseField):
         '''
         if name.startswith('_'):
             object.__setattr__(self, name, value)
-        elif isinstance(value, BaseField) or isconfigtype(value):
-            value = self._add_field(name, value)
         else:
-            raise TypeError("TODO")
+            value = self._add_field(name, value)
 
         return value
 
@@ -457,8 +579,11 @@ class Schema(BaseField):
 
         :returns: the added field (``field``)
         '''
+
         if isconfigtype(field):
-            field = Schema(config_type=field)  # type: ignore
+            field = ConfigTypeField(field)  # type: ignore
+        elif not isinstance(field, BaseField):
+            raise TypeError("TODO")
 
         self._fields[name] = field  # type: ignore
         field.__setkey__(self, name)
@@ -470,12 +595,9 @@ class Schema(BaseField):
 
         :param name: field or schema key
         '''
-        field = self._fields.get(name)
-        if field is None:
-            field = self._add_field(name, Schema())
-        return field
+        return self._fields.get(name) or self._add_field(name, Schema())
 
-    def __call__(self, **data):
+    def __call__(self, parent: 'Config', **data):
         '''
         Compile the schema into an initial config with default values set.
         '''
@@ -485,8 +607,7 @@ class Schema(BaseField):
         '''
         Iterate over schema fields, produces as a list of tuples ``(key, field)``.
         '''
-        for key, field in self._fields.items():
-            yield key, field
+        yield from self._fields.items()
 
     def __getitem__(self, key: str) -> BaseField:
         '''
@@ -521,9 +642,6 @@ class Schema(BaseField):
                 >>> print(schema.x.y)
                 IntField(key='y', ...)
         '''
-        if not isinstance(value, BaseField) and not isconfigtype(value):
-            raise TypeError("TODO")
-
         key, _, subkey = name.partition('.')
         field = self._fields[key]
         if subkey:
@@ -545,19 +663,31 @@ class Schema(BaseField):
             except ValidationError:
                 raise
             except Exception as err:
-                raise ValidationError(config, field, err) from err  # type: ignore
+                raise ValidationError(config, field, err) from err
 
         for validator in self._validators:
             validator(config)
 
     def _validate_field(self, config: 'Config', field: BaseField) -> None:
+        '''
+        Validate a single field in the configuration.
+
+        :param config: configuration
+        :param field: the field to validate
+        '''
+        val = field.__getval__(config)
         if isinstance(field, Field):
-            val = field.__getval__(config)
             field.validate(config, val)
-        elif isinstance(field, Schema) and isinstance(config[field._key], Config):
-            field._validate(config[field._key])
+        elif isinstance(val, Config):
+            val._validate()
 
     def get_all_fields(self) -> List[Tuple[str, Schema, BaseField]]:
+        '''
+        **(Deprecated)** get all the fields in the configuration. Use
+        :meth:`~cincoconfig.get_all_fields`.
+
+        :returns: a list of tuples with ``(key, schema, field)``
+        '''
         # pylint: disable=import-outside-toplevel, cyclic-import
         from .support import get_all_fields
         warnings.warn("Config.get_all_fields() is deprecated, use "
@@ -565,6 +695,12 @@ class Schema(BaseField):
         return get_all_fields(self)
 
     def generate_argparse_parser(self, **parser_kwargs) -> ArgumentParser:
+        '''
+        **(Deprecated)** generate an :class:`~argparse.ArgumentParser` for the schema. Use
+        :meth:`~cincoconfig.generate_argparse_parser`.
+
+        :returns: an ``ArgumentParser`` containing arguments that match the schema's fields
+        '''
         # pylint: disable=import-outside-toplevel, cyclic-import
         from .support import generate_argparse_parser
         warnings.warn("Config.generate_argparse_parser() is deprecated, use "
@@ -572,6 +708,10 @@ class Schema(BaseField):
         return generate_argparse_parser(**parser_kwargs)
 
     def instance_method(self, key: str) -> Callable[['Config'], None]:
+        '''
+        **(Deprecated)** decorator to register an instance method with the schema. Use
+        :meth:`~cincoconfig.instance_method`.
+        '''
         # pylint: disable=import-outside-toplevel, cyclic-import
         from .fields import instance_method
         warnings.warn("Config.instance_method() is deprecated, use "
@@ -624,6 +764,7 @@ class Config:
         :param parent: parent config instance, only set when this config is a field of another
             config, stored as *_parent*
         :param key_filename: path to key file
+        :param data: configuration values
         '''
         self._schema = schema
         self._parent = parent
@@ -638,12 +779,12 @@ class Config:
             if key in data:
                 continue
 
-            if isinstance(field, Schema):
-                self._data[key] = Config(field, self)
-            elif isinstance(field, Field):
-                field.__setdefault__(self)
+            field.__setdefault__(self)
 
     def _get_field(self, key: str) -> Optional[BaseField]:
+        '''
+        :returns: a field from the schema or the dynamically added field if the schema is dynamic.
+        '''
         return self._schema._get_field(key) or self._fields.get(key)
 
     def _set_value(self, key: str, value: Any) -> Any:
@@ -673,14 +814,11 @@ class Config:
             else:
                 self._data[key] = value
                 return value
-
-        if not isinstance(field, Schema):
-            raise TypeError("TODO")
-
-        if isinstance(value, Config):
+        elif isinstance(value, Config):
             value._parent = self
-        elif isinstance(value, dict):
-            cfg = Config(field, parent=self)
+        elif isinstance(value, dict) and isinstance(field, (Schema, ConfigTypeField)):
+            # both Schema and ConfigTypeField implement __call__, which will return a Config object
+            cfg = field(self)
             try:
                 cfg.load_tree(value)
                 cfg.validate()
@@ -714,13 +852,14 @@ class Config:
 
         :param name: field key
         '''
-        field = self._get_field(name)
-        if not field:
-            if not self._schema._dynamic:
-                raise AttributeError("TODO")
-            return None
+        return self._get_value(name)
 
-        return field.__getval__(self)
+    def _get_value(self, key: str) -> Any:
+        field = self._get_field(key)
+        if not field and not self._schema._dynamic:
+            raise AttributeError("TODO")
+
+        return field.__getval__(self) if field else None
 
     def __getitem__(self, key: str) -> Any:
         '''
@@ -735,10 +874,9 @@ class Config:
                 >>> print(config['x.y'])
                 10
         '''
-        if '.' in key:
-            key, remainder = key.split('.', 1)
-            return self.__getattr__(key).__getitem__(remainder)
-        return self.__getattr__(key)
+        key, _, subkey = key.partition('.')
+        value = self._get_value(key)
+        return value.__getitem__(subkey) if subkey else value
 
     def __setitem__(self, key: str, value: Any) -> Any:
         '''
@@ -754,11 +892,11 @@ class Config:
             >>> print(config.x.y)
             20
         '''
-        if '.' in key:
-            key, remainder = key.split('.', 1)
-            self.__getattr__(key).__setitem__(remainder, value)
-        else:
-            self._set_value(key, value)
+        key, _, subkey = key.partition('.')
+        if subkey:
+            return self._get_value(key).__setitem__(subkey, value)
+
+        return self._set_value(key, value)
 
     def __contains__(self, key: str) -> bool:
         '''
@@ -773,11 +911,11 @@ class Config:
                 >>> 'x.y' in config
                 True
         '''
-        if '.' in key:
-            key, remainder = key.split('.', 1)
+        key, _, subkey = key.partition('.')
+        if subkey:
             cfg = self._data.get(key)
             if isinstance(cfg, Config):
-                return cfg.__contains__(remainder)
+                return cfg.__contains__(subkey)
             return False
 
         return key in self._data
@@ -785,12 +923,29 @@ class Config:
     @property
     def full_path(self) -> str:
         '''
+        **(Deprecated)** get the full path to the configuration
         :returns: the full path to this configuration
         '''
+        warnings.warn("Config.full_path is deprecated, use Config._ref_path or "
+                      "cincoconfig.item_ref_path() instead", DeprecationWarning)
+        return self._ref_path
+
+    @property
+    def _ref_path(self) -> str:
+        '''
+        :returns: the full reference path to the configuration
+        '''
         if self._parent:
-            path = self._parent.full_path + "." + self._schema._key
+            root = self._parent._ref_path
+        elif self._schema._schema:
+            root = self._schema._schema._ref_path
         else:
-            path = self._schema.full_path
+            root = ''
+
+        if root:
+            path = root + "." + self._schema._key
+        else:
+            path = self._schema._key
 
         if self._container:
             try:
@@ -847,7 +1002,7 @@ class Config:
         :returns: the basic tree containing all set values
         '''
         tree = {}
-        fields = dict(self._schema._fields)
+        fields: Dict[str, BaseField] = dict(self._schema._fields)
         fields.update(self._fields)
 
         for key, field in fields.items():
@@ -858,19 +1013,21 @@ class Config:
             if isinstance(field, InstanceMethodFieldMixin):
                 continue
 
-            if isinstance(field, Schema):
-                value = self._data[key].to_tree(virtual=virtual, sensitive_mask=sensitive_mask)
+            field_value = field.__getval__(self)
+            value: Any = None
+
+            if isinstance(field_value, Config):
+                value = field_value.to_tree(virtual=virtual, sensitive_mask=sensitive_mask)
             elif isinstance(field, Field) and field.sensitive and sensitive_mask is not None:
-                value = self._data[key]
-                if not value:
+                if not field_value:
                     pass
                 elif len(sensitive_mask) == 1:
-                    value = sensitive_mask * len(value)
+                    value = sensitive_mask * len(str(field_value))
                 else:
                     value = sensitive_mask
             elif isinstance(field, Field):
                 try:
-                    value = field.to_basic(self, field.__getval__(self))
+                    value = field.to_basic(self, field_value)
                 except ValidationError:
                     raise
                 except Exception as err:
@@ -977,6 +1134,13 @@ class Config:
         self._schema._validate(self)
 
     def cmdline_args_override(self, args: Namespace, ignore: Union[str, List[str]] = None) -> None:
+        '''
+        **(Deprecated)** override configuration values from the command line arguments. Use
+        :meth:`~cincoconfig.cmdline_args_override`.
+
+        :param args: parsed arguments
+        :param ignore: list of field keys to ignore
+        '''
         # pylint: disable=import-outside-toplevel, cyclic-import
         from .support import cmdline_args_override
         warnings.warn("Schema.cmdline_args_override() is deprecated, use "
@@ -985,7 +1149,18 @@ class Config:
 
 
 class ConfigType(Config):
+    '''
+    A base class for configuration types. This class is returned by the
+    :meth:`~cincoconfig.make_type` function.
+    '''
     __schema__ = None  # type: Schema
+    __key_filename__ = None  # type: str
+
+    def __init__(self, parent: Config = None, **kwargs):
+        '''
+        :param parent: parent configuration
+        '''
+        super().__init__(self.__schema__, parent, key_filename=self.__key_filename__, **kwargs)
 
     def __eq__(self, other: Any) -> bool:
         if other is None:
@@ -1004,11 +1179,24 @@ class ConfigFormat:
     __initialized: bool = False
 
     @classmethod
-    def register(cls, name: str, format_cls: Type['ConfigFormat']):
+    def register(cls, name: str, format_cls: Type['ConfigFormat']) -> None:
+        '''
+        Register a new configuration format.
+
+        :param name: format name
+        :param format_cls: ``ConfigFormat`` subclass to register
+        '''
         cls.__registry[name] = format_cls
 
     @classmethod
     def get(cls, name: str, **kwargs) -> 'ConfigFormat':
+        '''
+        Get a registered configuration format.
+
+        :param name: config format name
+        :param kwargs: keyword arguments to pass into the config format ``__init__()`` method
+        :returns: the config format instance
+        '''
         format_cls = cls.__registry[name]
         return format_cls(**kwargs)  # type: ignore
 
@@ -1060,7 +1248,7 @@ def isconfigtype(obj: Any) -> bool:
     :param obj: object to check
     :returns: the object is a configuration type
     '''
-    return inspect.isclass(obj) and issubclass(obj, Config)
+    return inspect.isclass(obj) and issubclass(obj, ConfigType)
 
 
 ConfigFormat.initialize_registry()
