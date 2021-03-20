@@ -18,8 +18,9 @@ class TestInstanceMethodField:
         return (cfg, x, y, z)
 
     def test_call_wrapper(self):
-        field = InstanceMethodField(self._meth)
-        wrapper = field.__getval__(self.cfg)
+        field = InstanceMethodField(self._meth, key='method')
+        field.__setdefault__(self.cfg)
+        wrapper = self.cfg.method
         assert wrapper.__name__ == '_meth'
         assert wrapper(1, y=2) == (self.cfg, 1, 2, None)
 

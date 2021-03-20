@@ -8,8 +8,7 @@ from typing import List
 from unittest.mock import patch, call
 import pytest
 from cincoconfig.fields import ListField, ListProxy, IntField
-from cincoconfig.config import Schema, Config
-from cincoconfig.abc import ValidationError
+from cincoconfig.core import Schema, Config, ValidationError
 
 
 class MockConfig:

@@ -173,7 +173,7 @@ class TestApplicationModeField:
         field = ApplicationModeField(modes=['production'])
         self.ms._add_field('mode', field)
         assert isinstance(self.ms._fields['is_production_mode'], VirtualField)
-        assert self.ms._fields['is_production_mode'].key == 'is_production_mode'
+        assert self.ms._fields['is_production_mode']._key == 'is_production_mode'
 
     def test_call_helpers(self):
         field = ApplicationModeField(default='production')
