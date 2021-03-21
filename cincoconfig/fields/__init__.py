@@ -12,7 +12,7 @@ from .bytes_field import BytesField
 from .dict_field import DictField
 from .file_field import FilenameField
 from .include_field import IncludeField
-from .instance_method import InstanceMethodField, instance_method
+from .instance_method_field import InstanceMethodField, instance_method
 from .list_field import ListField, ListProxy
 from .net_field import IPv4AddressField, IPv4NetworkField, PortField, HostnameField
 from .number_field import IntField, NumberField, FloatField

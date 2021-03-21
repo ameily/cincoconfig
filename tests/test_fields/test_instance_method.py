@@ -1,6 +1,6 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 import pytest
-from cincoconfig.fields import InstanceMethodField
+from cincoconfig.fields.instance_method_field import InstanceMethodField, instance_method
 
 
 class MockConfig:
@@ -45,3 +45,12 @@ class TestInstanceMethodField:
         x = cfg.func()
         getter.assert_called_once_with(cfg)
         assert x == 'hello'
+
+    @patch('cincoconfig.fields.instance_method_field.InstanceMethodField')
+    def test_instance_method_decorator_schema(self, mock_method_cls):
+        schema = MagicMock()
+        func = lambda s: s
+        instance_method(schema, 'asdf')(func)
+        schema._add_field.assert_called_once_with('asdf', mock_method_cls.return_value)
+        mock_method_cls.assert_called_once_with(method=func)
+

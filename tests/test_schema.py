@@ -100,25 +100,18 @@ class TestSchema:
         assert isinstance(cfg, Config)
         assert cfg._schema is schema
 
-    def test_make_type(self):
+    @patch('cincoconfig.support.make_type')
+    def test_make_type(self, mock_make_type):
         schema = Schema()
-        schema.x = Field(default=2)
-        schema.y = Field()
+        retval = mock_make_type.return_value
+        assert schema.make_type('asdf', module='qwer', key_filename='zxcv') is retval
+        mock_make_type.assert_called_once_with(schema, 'asdf', 'qwer', 'zxcv')
 
-        CustomConfig = schema.make_type('CustomConfig')
-        a = CustomConfig(y=10)
-        assert isinstance(a, Config)
-        assert a.x == 2
-        assert a.y == 10
-
-    def test_instance_method_decorator(self):
+    @patch('cincoconfig.fields.instance_method')
+    def test_instance_method_decorator(self, mock_method):
         schema = Schema()
-        @schema.instance_method('test')
-        def meth(cfg):
-            pass
-
-        assert isinstance(schema._fields['test'], InstanceMethodField)
-        assert schema._fields['test'].method is meth
+        assert schema.instance_method('asdf') is mock_method.return_value
+        mock_method.assert_called_once_with(schema, 'asdf')
 
     def test_validate_ignore_methods(self):
         getter = MagicMock()
@@ -130,25 +123,11 @@ class TestSchema:
         schema._validate(config)
         assert not schema.x.__getval__.called
 
-    def test_get_all_fields(self):
+    @patch('cincoconfig.support.get_all_fields')
+    def test_get_all_fields(self, mock_get_all_fields):
         schema = Schema()
-        schema.x = Field()
-        schema.sub1.y = Field()
-        schema.sub1.sub2.z = Field()
-        schema.sub1.a = Field()
-        schema.sub3.b = Field()
-
-        check = schema.get_all_fields()
-        assert check == [
-            ('x', schema, schema.x),
-            ('sub1', schema, schema.sub1),
-            ('sub1.y', schema.sub1, schema.sub1.y),
-            ('sub1.sub2', schema.sub1, schema.sub1.sub2),
-            ('sub1.sub2.z', schema.sub1.sub2, schema.sub1.sub2.z),
-            ('sub1.a', schema.sub1, schema.sub1.a),
-            ('sub3', schema, schema.sub3),
-            ('sub3.b', schema.sub3, schema.sub3.b)
-        ]
+        schema.get_all_fields()
+        mock_get_all_fields.assert_called_once_with(schema)
 
     def test_getitem(self):
         schema = Schema()
@@ -177,26 +156,14 @@ class TestSchema:
         schema.x.y = Field()
         mock_add_field.assert_called_once()
 
-    @patch('cincoconfig.support.ArgumentParser')
-    def test_generate_argparse_parser(self, mock_argparse):
-        parser = MagicMock()
-        mock_argparse.return_value = parser
+    @patch('cincoconfig.support.generate_argparse_parser')
+    def test_generate_argparse_parser(self, mock_gen_parser):
         schema = Schema()
-        schema.long_name = StringField(help='asdf')
-        schema.sub.short_name = IntField()
-        schema.enable = BoolField()
-        schema.runtime = FloatField()
-        schema.ignore_me2 = Field()  # no storage_type
+        schema.generate_argparse_parser(x=1, y=2)
+        mock_gen_parser.assert_called_once_with(schema, x=1, y=2)
 
-        retval = schema.generate_argparse_parser(x=1, y=2)
-        assert retval is parser
-        mock_argparse.assert_called_once_with(x=1, y=2)
-        parser.add_argument.call_args_list == [
-            call('--long-name', action='store', dest='long_name', help='asdf',
-                 metavar='LONG_NAME'),
-            call('--sub-short-name', action='store', dest='sub.short_name', help=None,
-                 metavar='SUB_SHORT_NAME'),
-            call('--enable', action='store_true', help=None, dest='enable'),
-            call('--no-enable', action='store_false', help=None, dest='enable'),
-            call('--runtime', action='store', dest='runtime', help=None)
-        ]
+    def test_validator(self):
+        schema = Schema()
+        schema._validators = MagicMock()
+        assert schema.validator('asdf') == 'asdf'
+        schema._validators.append.assert_called_once_with('asdf')

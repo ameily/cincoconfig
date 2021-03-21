@@ -437,45 +437,14 @@ class TestConfig:
         config.validate()
         validator.assert_called_once_with(config)
 
-    def test_cmdline_args_override(self):
-        parser = argparse.ArgumentParser()
+    @patch('cincoconfig.support.cmdline_args_override')
+    def test_cmdline_args_override(self, mock_override):
+        args = object()
         schema = Schema()
-        schema.w = Field(default='w')
-        schema.x = Field(default='x')
-        schema.y.z = Field(default='z')
         config = schema()
-
-        parser.add_argument('-x', action='store')
-        parser.add_argument('-z', action='store', dest='y.z')
-        parser.add_argument('-i', action='store')
-        parser.add_argument('-j', action='store')
-        args = parser.parse_args(['-x', '1', '-z', '2', '-j', '3'])
-
         config.cmdline_args_override(args, ignore=['j'])
 
-        assert config.x == '1'
-        assert config.y.z == '2'
-        assert config.w == 'w'
-
-    def test_cmdline_args_ocverride_single_ignore(self):
-        parser = argparse.ArgumentParser()
-        schema = Schema()
-        schema.w = Field(default='w')
-        schema.x = Field(default='x')
-        schema.y.z = Field(default='z')
-        config = schema()
-
-        parser.add_argument('-x', action='store')
-        parser.add_argument('-z', action='store', dest='y.z')
-        parser.add_argument('-i', action='store')
-        parser.add_argument('-j', action='store')
-        args = parser.parse_args(['-x', '1', '-z', '2', '-j', '3'])
-
-        config.cmdline_args_override(args, ignore='j')
-
-        assert config.x == '1'
-        assert config.y.z == '2'
-        assert config.w == 'w'
+        mock_override.assert_called_once_with(config, args, ['j'])
 
     def test_in_flat(self):
         schema = Schema()
