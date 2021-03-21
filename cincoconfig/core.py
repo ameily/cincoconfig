@@ -62,7 +62,7 @@ class ValidationError(ValueError):
 
         path = self.ref_path
         if isinstance(self.field, Field) and self.field._name:
-            path = "%s (%s)" % (self.field._name, path)
+            path += " (%s)" % self.field._name
 
         return '%s: %s' % (path, msg)
 
@@ -71,7 +71,16 @@ class ValidationError(ValueError):
         '''
         :returns: the full path to the field or configuration that failed validation
         '''
-        return self._ref_path or (self.field._ref_path if self.field else self.config._ref_path)
+        if self._ref_path:
+            return self._ref_path
+
+        path = self.config._ref_path
+        if self.field:
+            if path:
+                path += "." + self.field._key
+            else:
+                path = self.field._key
+        return path
 
 
 class ContainerValueMixin:
@@ -811,6 +820,7 @@ class Config:
         self._container: Optional[ContainerValueMixin] = None
         self._data: Dict[str, Any] = OrderedDict()
         self._fields: Dict[str, BaseField] = OrderedDict()
+        self._key = schema._key
         self.__keyfile = None  # type: Optional[KeyFile]
 
         if key_filename:
@@ -899,9 +909,11 @@ class Config:
                 return value
         elif isinstance(value, Config):
             value._parent = self
+            value._key = key
         elif isinstance(value, dict) and isinstance(field, (Schema, ConfigTypeField)):
             # both Schema and ConfigTypeField implement __call__, which will return a Config object
             cfg = field(self)
+            cfg._key = key
             try:
                 cfg.load_tree(value)
                 cfg.validate()
@@ -1030,9 +1042,9 @@ class Config:
             root = ''
 
         if root:
-            path = root + "." + self._schema._key
+            path = root + "." + self._key
         else:
-            path = self._schema._key
+            path = self._key
 
         if self._container:
             try:
