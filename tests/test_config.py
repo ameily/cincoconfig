@@ -1,11 +1,11 @@
 import argparse
 import os
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch, mock_open, PropertyMock
 
 import pytest
 
 from cincoconfig.core import Config, Schema, Field, AnyField, ConfigType, ValidationError, ConfigFormat
-from cincoconfig.fields import IncludeField, VirtualField, SecureField
+from cincoconfig.fields import IncludeField, VirtualField, SecureField, InstanceMethodField
 from cincoconfig.version import __version__
 
 
@@ -99,12 +99,12 @@ class TestConfig:
         assert child._keyfile is parent._keyfile
         assert child._keyfile.filename == '/path/to/cincokey'
 
-    def test_full_path(self):
+    def test_ref_path(self):
         parent = Config(Schema(key='root'))
         child = Config(Schema(key='child'), parent=parent)
         assert child._ref_path == 'root.child'
 
-    def test_full_path_container(self):
+    def test_ref_path_container(self):
         parent = Config(Schema(key='root'))
         child = Config(Schema(key='child'), parent=parent)
         child._container = MagicMock()
@@ -112,6 +112,17 @@ class TestConfig:
         child._container._get_item_position.return_value = '1'
         assert child._ref_path == 'root.child[1]'
         child._container._get_item_position.assert_called_once_with(child)
+
+    def test_ref_path_container_error(self):
+        parent = Config(Schema(key='root'))
+        child = Config(Schema(key='child'), parent=parent)
+        child._container = MagicMock()
+        child._container._get_item_position = MagicMock(side_effect=ValueError())
+        assert child._ref_path == 'root.child'
+
+    def test_ref_path_no_parent(self):
+        cfg = Config(Schema(key='child', schema=Schema(key='root')))
+        assert cfg._ref_path == "root.child"
 
     def test_setdefault(self):
         schema = Schema()
@@ -615,3 +626,88 @@ class TestConfig:
         cfg2 = Cfg()
         cfg2._data = {'x': 1, 'y': 3}
         assert not cfg.__eq__(cfg2)
+
+    def test_set_value_config_validation_error(self):
+        err = ValidationError(None, None, None)
+        schema = Schema()
+        schema.x.y = Field()
+        schema.x._validators.append(MagicMock(side_effect=err))
+        config = schema()
+        with pytest.raises(ValidationError) as exc:
+            config._set_value('x', {})
+
+        assert exc.value is err
+
+    def test_set_value_config_exc(self):
+        err = ValueError()
+        schema = Schema()
+        schema.x.y = Field()
+        schema.x._validators.append(MagicMock(side_effect=err))
+        config = schema()
+        with pytest.raises(ValidationError) as exc:
+            config._set_value('x', {})
+
+        assert exc.value.exc is err
+
+    def test_full_path(self):
+        schema = Schema()
+        config = schema()
+        with patch.object(Config, '_ref_path', new_callable=PropertyMock) as mock_ref_path:
+            retval = mock_ref_path.return_value = object()
+            assert config.full_path is retval
+            mock_ref_path.assert_called_once()
+
+    def test_to_tree_ignore_instance_method(self):
+        schema = Schema()
+        schema._add_field('x', InstanceMethodField(lambda cfg: 1))
+        config = schema()
+        config._data['x'] = 1
+        assert config.to_tree() == {}
+
+    def test_to_tree_to_basic_exc(self):
+        err = ValueError()
+        schema = Schema()
+        field = schema.x = Field()
+        field.to_basic = MagicMock(side_effect=err)
+        config = schema()
+        config.x = 2
+        with pytest.raises(ValidationError) as exc:
+            config.to_tree()
+
+        assert exc.value.exc is err
+        field.to_basic.assert_called_once_with(config, 2)
+
+    def test_to_tree_to_basic_validation_error(self):
+        err = ValidationError(None, None, None)
+        schema = Schema()
+        field = schema.x = Field()
+        field.to_basic = MagicMock(side_effect=err)
+        config = schema()
+        config.x = 2
+        with pytest.raises(ValidationError) as exc:
+            config.to_tree()
+
+        assert exc.value is err
+
+    def test_load_tree_to_python_exc(self):
+        err = ValueError()
+        schema = Schema()
+        field = schema.x = Field()
+        field.to_python = MagicMock(side_effect=err)
+        config = schema()
+        with pytest.raises(ValidationError) as exc:
+            config.load_tree({'x': 2})
+
+        assert exc.value.exc is err
+        field.to_python.assert_called_once_with(config, 2)
+
+    def test_load_tree_to_python_validation_error(self):
+        err = ValidationError(None, None, None)
+        schema = Schema()
+        field = schema.x = Field()
+        field.to_python = MagicMock(side_effect=err)
+        config = schema()
+        with pytest.raises(ValidationError) as exc:
+            config.load_tree({'x': 2})
+
+        assert exc.value is err

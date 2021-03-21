@@ -54,3 +54,7 @@ class TestInstanceMethodField:
         schema._add_field.assert_called_once_with('asdf', mock_method_cls.return_value)
         mock_method_cls.assert_called_once_with(method=func)
 
+    def test_validate(self):
+        field = InstanceMethodField(lambda cfg: 1)
+        retval = object()
+        assert field.validate(MagicMock(), retval) is retval

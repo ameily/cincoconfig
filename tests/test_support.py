@@ -5,7 +5,7 @@ import argparse
 from cincoconfig.fields import StringField, IntField, BoolField, FloatField
 from cincoconfig.core import Schema, Field, Config
 from cincoconfig.support import (generate_argparse_parser, make_type, get_all_fields,
-                                 cmdline_args_override, validator)
+                                 cmdline_args_override, validator, item_ref_path)
 
 
 class TestSupportFuncs:
@@ -138,3 +138,8 @@ class TestSupportFuncs:
         func = lambda cfg, value: cfg
         assert validator(field)(func) is func
         assert field.validator is func
+
+    def test_item_ref_path(self):
+        item = MagicMock()
+        retval = item._ref_path = object()
+        assert item_ref_path(item) is retval

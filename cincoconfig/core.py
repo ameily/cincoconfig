@@ -200,7 +200,6 @@ class BaseField:
             >>> schema.x.y.z._ref_path
             'x.y.z'
         '''
-
         path = [self._key]
         curr = self._schema
         while curr:
@@ -208,8 +207,7 @@ class BaseField:
                 path.append(curr._key)
             curr = curr._schema
 
-        path.reverse()
-        return '.'.join(path)
+        return '.'.join(reversed(path))
 
 
 class Field(BaseField):
@@ -547,7 +545,8 @@ class Schema(BaseField):
     configuration from a file.
     '''
 
-    def __init__(self, key: str = None, dynamic: bool = False, env: Union[str, bool] = None):
+    def __init__(self, key: str = None, dynamic: bool = False, env: Union[str, bool] = None,
+                 schema: 'Schema' = None):
         '''
         :param key: schema field key
         :param dynamic: configurations created from this schema are dynamic and can add fields not
@@ -556,7 +555,7 @@ class Schema(BaseField):
         :param env: the environment variable prefix for this schema and all children schemas, for
             information, see :ref:`Field Environment Variables <field-env-variables>`
         '''
-        super().__init__(key=key)
+        super().__init__(key=key, schema=schema)
         self._dynamic = dynamic
         self._fields: Dict[str, BaseField] = OrderedDict()
         self._env_prefix = '' if env is True else env
@@ -646,11 +645,11 @@ class Schema(BaseField):
                 IntField(key='y', ...)
         '''
         key, _, subkey = key.partition('.')
-        field = self._fields[key]
+        field = self._get_field(key) or self._add_field(key, Schema())
         if subkey:
             if isinstance(field, Schema):
-                return field[subkey]
-            raise KeyError(subkey)
+                return field.__getitem__(subkey)
+            raise TypeError("Field is not a schema: %s" % field._ref_path)
         return field
 
     def __setitem__(self, name: str, value: SchemaField) -> BaseField:
@@ -667,11 +666,11 @@ class Schema(BaseField):
                 IntField(key='y', ...)
         '''
         key, _, subkey = name.partition('.')
-        field = self._fields[key]
+        field = self._get_field(key) or self._add_field(key, Schema())
         if subkey:
             if isinstance(field, Schema):
                 return field.__setitem__(subkey, value)
-            raise KeyError(subkey)
+            raise TypeError("Field is not a schema: %s" % field._ref_path)
 
         return self._add_field(name, value)
 
@@ -694,7 +693,12 @@ class Schema(BaseField):
                 raise ValidationError(config, field, err) from err
 
         for validator in self._validators:
-            validator(config)
+            try:
+                validator(config)
+            except ValidationError:
+                raise
+            except Exception as err:
+                raise ValidationError(config, None, err) from err
 
     def _validate_field(self, config: 'Config', field: BaseField) -> None:
         '''
@@ -761,7 +765,7 @@ class Schema(BaseField):
         return make_type(self, name, module, key_filename)
 
 
-class Config:
+class Config:  # pylint: disable=too-many-instance-attributes
     '''
     A configuration.
 
@@ -907,22 +911,16 @@ class Config:
             else:
                 field.__setval__(self, value)
                 return value
-        elif isinstance(value, Config):
+
+        if isinstance(value, Config):
             value._parent = self
             value._key = key
         elif isinstance(value, dict) and isinstance(field, (Schema, ConfigTypeField)):
             # both Schema and ConfigTypeField implement __call__, which will return a Config object
             cfg = field(self)
             cfg._key = key
-            try:
-                cfg.load_tree(value)
-                cfg.validate()
-            except ValidationError:
-                raise
-            except Exception as err:
-                raise ValidationError(cfg, None, err) from err
-            else:
-                value = cfg
+            cfg.load_tree(value)  # load_tree will raise a ValidationError on error
+            value = cfg
         else:
             raise ValidationError(self, field,
                                   "Unable to coerce %s to Config" % type(value).__name__)
@@ -1155,7 +1153,7 @@ class Config:
                 except Exception as err:
                     raise ValidationError(self, field, err) from err
 
-            self.__setattr__(key, value)
+            self._set_value(key, value)
 
         self.validate()
 

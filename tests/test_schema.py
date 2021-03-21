@@ -2,7 +2,7 @@ from unittest.mock import MagicMock, patch, call
 
 import pytest
 
-from cincoconfig.core import Schema, Config, Field
+from cincoconfig.core import Schema, Config, Field, ConfigType
 from cincoconfig.fields import InstanceMethodField, BoolField, StringField, IntField, FloatField
 
 
@@ -26,6 +26,15 @@ class TestSchema:
         child.__setkey__ = MagicMock()
         schema._add_field('hello', child)
         child.__setkey__.assert_called_once_with(schema, 'hello')
+
+    @patch('cincoconfig.core.ConfigTypeField')
+    def test_add_field_config_type(self, mock_ct_field_cls):
+        mock_ct_field = mock_ct_field_cls.return_value = MagicMock()
+        mock_ct_field.__setkey__ = MagicMock()
+        schema = Schema()
+        schema._add_field('x', ConfigType)
+        assert schema._fields == {'x': mock_ct_field}
+        mock_ct_field.__setkey__.assert_called_once_with(schema, 'x')
 
     def test_add_field_other(self):
         schema = Schema()
@@ -138,16 +147,27 @@ class TestSchema:
         assert schema['y'] is schema.y
         assert schema['y.z'] is schema.y.z
 
-    def test_getitem_keyerror(self):
+    def test_getitem_missing_schema(self):
         schema = Schema()
-        with pytest.raises(KeyError):
-            x = schema['x']
+        assert isinstance(schema['x'], Schema)
 
     def test_getitem_keyerror_not_schema(self):
         schema = Schema()
         schema.x = Field()
-        with pytest.raises(KeyError):
+        with pytest.raises(TypeError):
             y = schema['x.y']
+
+    def test_setitem(self):
+        schema = Schema()
+        field = schema['x.y'] = Field()
+        assert isinstance(schema._fields['x'], Schema)
+        assert schema._fields['x']._fields['y'] is field
+
+    def test_setitem_typeerror(self):
+        schema = Schema()
+        schema.x = Field()
+        with pytest.raises(TypeError):
+            schema['x.y'] = Field()
 
     def test_getattr_add_field(self):
         schema = Schema()

@@ -5,7 +5,7 @@
 # this source code package.
 #
 import os
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch, MagicMock, PropertyMock
 import pytest
 
 from cincoconfig.core import Field, Schema, Config, ValidationError
@@ -101,16 +101,23 @@ class TestBaseField:
         with pytest.raises(KeyError):
             field.validate(self.cfg, 'hello')
 
-    def test_full_path_flat(self):
+    def test_ref_path_flat(self):
         field = Field(key='asdf')
         assert field._ref_path == 'asdf'
 
-    def test_full_path_nested(self):
+    def test_ref_path_nested(self):
         root = MagicMock()
         root._key = 'asdf'
         root._schema = None
         field = Field(key='value', schema=root)
         assert field._ref_path == 'asdf.value'
+
+    def test_full_path(self):
+        field = Field(key='x')
+        with patch.object(Field, '_ref_path', new_callable=PropertyMock) as mock_ref_path:
+            retval = mock_ref_path.return_value = object()
+            assert field.full_path is retval
+            mock_ref_path.assert_called_once()
 
     def test_short_help_none(self):
         field = Field()

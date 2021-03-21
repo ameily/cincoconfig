@@ -49,3 +49,9 @@ class TestFormatRegistry:
             'pickle': PickleConfigFormat,
             'xml': XmlConfigFormat
         }
+
+    def test_initialize_cache(self):
+        ConfigFormat.initialize_registry()
+        reg = ConfigFormat._ConfigFormat__registry = object()
+        ConfigFormat.initialize_registry()
+        assert ConfigFormat._ConfigFormat__registry is reg
