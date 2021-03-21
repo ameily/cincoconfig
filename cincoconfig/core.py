@@ -16,6 +16,8 @@ from typing import Union, Any, Optional, Dict, Iterator, Tuple, List, Callable, 
 from argparse import ArgumentParser, Namespace
 import warnings
 
+from .encryption import KeyFile
+
 ConfigValidator = Callable[['Config'], None]
 FieldValidator = Callable[['Config', Any], Any]
 SchemaField = Union['BaseField', 'ConfigType']
@@ -24,7 +26,7 @@ TFormatFactory = Callable[[], "ConfigFormat"]
 
 def isconfigtype(obj: Any) -> bool:
     '''
-    Check if an object is configuration type (is class and is subclass of :class:`BaseConfig`).
+    Check if an object is configuration type (is class and is subclass of :class:`ConfigType`).
 
     :param obj: object to check
     :returns: the object is a configuration type
@@ -787,7 +789,14 @@ class Config:
         # schema.port = PortField(default=8080)
         # schema.host = HostnameField(default='127.0.0.1')
         # config = schema()
+
+    Each config object can have an associated :class:`cincoconfig.KeyFile`, passed in the
+    constructor as ``key_filename``. If the configuration file doesn't have a key file path set,
+    the config object will use the parent config's key file. Requesting a key file will bubble up
+    to the first config object that has the key filename set and, if no config has a keyfile, the
+    default path will be used, :const:`DEFAULT_CINCOKEY_FILEPATH`.
     '''
+    DEFAULT_CINCOKEY_FILEPATH = os.path.join(os.path.expanduser("~"), ".cincokey")
 
     def __init__(self, schema: Schema, parent: 'Config' = None, key_filename: str = None, **data):
         '''
@@ -802,6 +811,10 @@ class Config:
         self._container: Optional[ContainerValueMixin] = None
         self._data: Dict[str, Any] = OrderedDict()
         self._fields: Dict[str, BaseField] = OrderedDict()
+        self.__keyfile = None  # type: Optional[KeyFile]
+
+        if key_filename:
+            self._key_filename = key_filename
 
         for key, value in data.items():
             self._set_value(key, value)
@@ -811,6 +824,42 @@ class Config:
                 continue
 
             field.__setdefault__(self)
+
+    @property
+    def _key_filename(self) -> str:
+        '''
+        :return: the path to the cinco encryption key file (if not set, get the parent config's
+            key filename)
+        '''
+        if self.__keyfile:
+            return self.__keyfile.filename
+        if self._parent:
+            return self._parent._key_filename
+        return Config.DEFAULT_CINCOKEY_FILEPATH
+
+    @_key_filename.setter
+    def _key_filename(self, key_filename: str) -> None:
+        '''
+        Set the cinco encryption key file
+        :param key_filename: path to the cinco encryption key file
+        '''
+        if not key_filename:
+            self.__keyfile = None
+        else:
+            self.__keyfile = KeyFile(key_filename)
+
+    @property
+    def _keyfile(self) -> KeyFile:
+        '''
+        :returns: the config's encryption key file (if not set, get the parent config's key file)
+        '''
+        if not self.__keyfile:
+            if self._parent:
+                # This will bubble up to the root config
+                self.__keyfile = self._parent._keyfile
+            else:
+                self.__keyfile = KeyFile(Config.DEFAULT_CINCOKEY_FILEPATH)
+        return self.__keyfile
 
     def _get_field(self, key: str) -> Optional[BaseField]:
         '''
@@ -1235,6 +1284,9 @@ class ConfigFormat:
         :param kwargs: keyword arguments to pass into the config format ``__init__()`` method
         :returns: the config format instance
         '''
+        if not cls.__initialized:
+            cls.initialize_registry()
+
         format_cls = cls.__registry[name]
         return format_cls(**kwargs)  # type: ignore
 
@@ -1274,6 +1326,3 @@ class ConfigFormat:
         :returns: the parsed basic value tree
         '''
         raise NotImplementedError()
-
-
-ConfigFormat.initialize_registry()

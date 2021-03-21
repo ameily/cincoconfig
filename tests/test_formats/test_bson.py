@@ -1,6 +1,7 @@
-import bson as bson_lib
+
 from unittest.mock import patch
 import pytest
+import bson as bson_lib
 from cincoconfig.formats import bson
 
 
@@ -25,4 +26,3 @@ class TestBsonConfigFormat:
         obj = {'x': 1}
         bobj = bson_lib.dumps(obj)
         assert fmt.loads(None, bobj) == obj
-

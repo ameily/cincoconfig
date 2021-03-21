@@ -162,7 +162,7 @@ def generate_stub(config: Union[Schema, ConfigType, Config], class_name: str = N
             attrs[key] = properties[key] = get_arg_annotation(key, field)
 
     blocks = [
-        'class %s(cincoconfig.config.ConfigType):' % class_name,
+        'class %s(cincoconfig.core.ConfigType):' % class_name,
     ] + ['    %s' % attr for attr in properties.values()] + ['']
 
     attr_list = ['self'] + list(attrs.values())

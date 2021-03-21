@@ -27,6 +27,92 @@ class MockFormatInclude:
 
 class TestConfig:
 
+    def test_add_field_dynamic(self):
+        schema = Schema(dynamic=True)
+        config = Config(schema)
+        assert config._set_value('hello', 'world') == 'world'
+        assert config._data['hello'] == 'world'
+        assert isinstance(config._fields['hello'], AnyField)
+
+    def test_add_field_failed(self):
+        schema = Schema()
+        config = Config(schema)
+
+        with pytest.raises(AttributeError):
+            config._set_value('hello', 'world')
+
+    def test_get_field_base(self):
+        schema = Schema()
+        field = schema._fields['hello'] = Field()
+        config = Config(schema)
+
+        assert config._get_field('hello') is field
+
+    def test_get_field_dynamic(self):
+        schema = Schema()
+        config = Config(schema)
+        config._fields['hello'] = 'world'
+        assert config._get_field('hello') == 'world'
+
+    def test_key_filename_ctor(self):
+        cfg = Config(Schema(), key_filename='asdf.txt')
+        assert cfg._key_filename == 'asdf.txt'
+        assert cfg._Config__keyfile.filename == 'asdf.txt'
+
+    def test_key_filename_none_ctor(self):
+        cfg = Config(Schema())
+        assert cfg._key_filename is Config.DEFAULT_CINCOKEY_FILEPATH
+
+    def test_key_filename_parent(self):
+        parent = Config(Schema(), key_filename='asdf.txt')
+        child = Config(Schema(), parent)
+        assert child._key_filename == 'asdf.txt'
+
+    def test_key_filename_setter(self):
+        parent = Config(Schema(), key_filename='asdf.txt')
+        child = Config(Schema(), parent)
+        child._key_filename = 'qwer.txt'
+        assert child._key_filename == 'qwer.txt'
+        assert parent._key_filename == 'asdf.txt'
+
+    def test_key_filename_set_none(self):
+        parent = Config(Schema(), key_filename='asdf.txt')
+        child = Config(Schema(), parent, key_filename='qwer.txt')
+        child._key_filename = None
+        assert child._key_filename == 'asdf.txt'
+        assert parent._key_filename == 'asdf.txt'
+
+    def test_keyfile_set(self):
+        parent = Config(Schema(), key_filename='asdf.txt')
+        child = Config(Schema(), parent, key_filename='qwer.txt')
+        assert child._keyfile is not parent._keyfile
+
+    def test_keyfile_parent(self):
+        parent = Config(Schema(), key_filename='asdf.txt')
+        child = Config(Schema(), parent)
+        assert child._keyfile is parent._keyfile
+
+    @patch('cincoconfig.core.Config.DEFAULT_CINCOKEY_FILEPATH', '/path/to/cincokey')
+    def test_keyfile_default(self):
+        parent = Config(Schema())
+        child = Config(Schema(), parent)
+        assert child._keyfile is parent._keyfile
+        assert child._keyfile.filename == '/path/to/cincokey'
+
+    def test_full_path(self):
+        parent = Config(Schema(key='root'))
+        child = Config(Schema(key='child'), parent=parent)
+        assert child._ref_path == 'root.child'
+
+    def test_full_path_container(self):
+        parent = Config(Schema(key='root'))
+        child = Config(Schema(key='child'), parent=parent)
+        child._container = MagicMock()
+        child._container._get_item_position = MagicMock()
+        child._container._get_item_position.return_value = '1'
+        assert child._ref_path == 'root.child[1]'
+        child._container._get_item_position.assert_called_once_with(child)
+
     def test_setdefault(self):
         schema = Schema()
         field = Field()
@@ -66,7 +152,7 @@ class TestConfig:
     def test_setattr_non_dynamic(self):
         schema = Schema()
         config = schema()
-        with pytest.raises(TypeError):
+        with pytest.raises(AttributeError):
             config.x = 2
 
     def test_setattr_config_dict(self):
