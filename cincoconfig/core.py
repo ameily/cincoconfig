@@ -133,9 +133,9 @@ class BaseField:
         :param name: descriptive name
         :param schema: owning schema
         '''
-        self._key: str = key
+        self._key: str = key or ''
         self._name = name
-        self._schema: Optional['Schema'] = schema
+        self._schema = schema
 
     def __setkey__(self, schema: 'Schema', key: str) -> None:
         '''
