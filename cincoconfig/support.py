@@ -98,9 +98,9 @@ def generate_argparse_parser(schema, **parser_kwargs) -> ArgumentParser:
 
 def validator(field: BaseField) -> Callable:
     '''
-    Decorator to register a new validator with the schema. All validators will be run against
-    the configuration whenever the configuration is loaded from disk. Multiple validators can
-    be registered by using the decorator multiple times. Subconfigs can also be validated by
+    Decorator to register a new validator with the schema or field. All validators will be run
+    against the configuration whenever the configuration is loaded from disk. Multiple validators
+    can be registered by using the decorator multiple times. Subconfigs can also be validated by
     using the decorateor on the sub schema.
 
     .. code-block:: python
@@ -144,7 +144,8 @@ def validator(field: BaseField) -> Callable:
 
 def get_all_fields(schema: Union[Schema, Config]) -> List[Tuple[str, Schema, BaseField]]:
     '''
-    Get all the fields and nested fields of the schema, including the nested schemas.
+    Get all the fields and nested fields of the schema or config, including the nested
+    schemas/configs.
 
     .. code-block:: python
 
@@ -230,4 +231,10 @@ def cmdline_args_override(config: Config, args: Namespace,
 
 
 def item_ref_path(item: Union[BaseField, Config]) -> str:
+    '''
+    Get the full reference path to a field or configuration.
+
+    :param item: field, schema, or configuraiton
+    :returns: full reference path to the item
+    '''
     return item._ref_path
