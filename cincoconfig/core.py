@@ -260,7 +260,7 @@ class Field(BaseField):
     implement the ``__setkey__``, ``__setdefault__``, ``__getval__`` and ``__setval__`` methods,
     unless the field needs to modify the default behavior of these methods.
 
-    The Field ``key`` is used to set and reference the value in the config.
+    The Field ``_key`` is used to set and reference the value in the config.
 
     Each Field subclass can define a class or instance level ``storage_type`` which holds the
     annotation of the value being stored in memory.
@@ -410,8 +410,8 @@ class Field(BaseField):
 
     def __setkey__(self, schema: 'Schema', key: str):
         '''
-        Set the field's *key*, which is called when the field is added to a schema. The default
-        implementation just sets ``self.key = key``
+        Set the field's *_key*, which is called when the field is added to a schema. The default
+        implementation just sets ``self._key = key``
 
         :param schema: the schema the field belongs to
         :param key: the field's unique key
