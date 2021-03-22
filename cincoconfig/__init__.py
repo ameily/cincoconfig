@@ -12,3 +12,7 @@ from .fields import *
 from .encryption import KeyFile
 from .stubs import generate_stub
 from .version import __version__
+
+# DEPRECATED TYPE ALIASES
+BaseConfig = Config
+BaseSchema = Schema
