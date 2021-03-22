@@ -24,7 +24,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   - `Config.cmdline_args_override`: use `cincoconfig.cmdline_args_override` instead.
 - `BaseSchema` and `BaseConfig` were removed and their functionality merged into their concrete
   classes, `Schema` and `Config`, respectively. cincoconfig will continues to provide `BaseConfig`
-  and `BaseSchema` aliases but these will be removed in a future release.
+  and `BaseSchema` aliases but these will be removed in v1.0.0.
 - `FormatRegistry` functionality integrated into `ConfigFormat`.
 
 ### Internal API Changes
