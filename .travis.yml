@@ -1,14 +1,28 @@
-language: python
-python:
-  - "3.6"
-  - "3.7"
-  - "3.8"
-install:
-  - pip install -r requirements/requirements.txt -r requirements/requirements-dev.txt -r requirements/requirements-features.txt coveralls
-script:
-  - pytest --cov=cincoconfig --cov-report=term-missing
-  - pycodestyle cincoconfig
-  - pylint --rcfile=.pylintrc cincoconfig
-  - mypy cincoconfig
-after_success:
- coveralls
+jobs:
+  include:
+    - stage: lint
+      language: python
+      python:
+        - "3.6"
+        - "3.7"
+        - "3.8"
+      install:
+        - pip install -r requirements/requirements.txt -r requirements/requirements-dev.txt -r requirements/requirements-features.txt coveralls
+      script:
+        - pytest --cov=cincoconfig --cov-report=term-missing
+        - pycodestyle cincoconfig
+        - pylint --rcfile=.pylintrc cincoconfig
+        - mypy cincoconfig
+      after_success:
+        coveralls
+
+    - stage: spell
+      language: node_js
+      node_js:
+        - 14
+
+      install:
+        - npm install cspell
+
+      script:
+        - npx cspell cincoconfig/**/*.py docs/*.rst
