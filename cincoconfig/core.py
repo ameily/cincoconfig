@@ -751,6 +751,10 @@ class Schema(BaseField):
         return instance_method(self, key)
 
     def validator(self, func: ConfigValidator) -> ConfigValidator:
+        '''
+        **(Deprecated)** decorator to register a validator method with the schema. Use
+        :meth:`~cincoconfig.validator`.
+        '''
         warnings.warn("Schema.validator() is deprecated, use "
                       "cincoconfig.validator() instead.", DeprecationWarning)
         self._validators.append(func)
@@ -758,6 +762,9 @@ class Schema(BaseField):
 
     def make_type(self, name: str, module: str = None,
                   key_filename: str = None) -> Type['ConfigType']:
+        '''
+        **(Deprecated)** create a new type from the schema. Use :meth:`~cincoconfig.make_type`.
+        '''
         # pylint: disable=import-outside-toplevel, cyclic-import
         from .support import make_type
         warnings.warn("Schema.make_type() is deprecated, use "

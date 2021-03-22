@@ -59,6 +59,20 @@ class InstanceMethodField(Field, InstanceMethodFieldMixin):
 
 
 def instance_method(schema: Schema, name: str) -> Callable:
+    '''
+    Bind a function to a schema as an instance method. Use this as a decorator:
+
+    .. code-block:: python
+
+        schema = Schema()
+
+        @instance_method(schema, "say_hello")
+        def say_hello_method(config: Config) -> str:
+            return "Hello, world!"
+
+        config = schema()
+        print(config.say_hello())  # "Hello, world!"
+    '''
     def wrapper(func: Callable[[Config], Any]) -> Callable[[Config], Any]:
         schema._add_field(name, InstanceMethodField(method=func))
         return func

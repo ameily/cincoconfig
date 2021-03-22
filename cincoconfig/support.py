@@ -1,3 +1,12 @@
+#
+# Copyright (C) 2021 Adam Meily
+#
+# This file is subject to the terms and conditions defined in the file 'LICENSE', which is part of
+# this source code package.
+#
+'''
+Support functions.
+'''
 import sys
 from argparse import ArgumentParser, Namespace
 from typing import Callable, List, Tuple, Union, Type

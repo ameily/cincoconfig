@@ -1,10 +1,12 @@
 #
-# Copyright (C) 2019 Adam Meily
+# Copyright (C) 2021 Adam Meily
 #
 # This file is subject to the terms and conditions defined in the file 'LICENSE', which is part of
 # this source code package.
 #
-
+'''
+XML config file format.
+'''
 from xml.etree import ElementTree as ET
 from xml.dom import minidom
 from typing import Any

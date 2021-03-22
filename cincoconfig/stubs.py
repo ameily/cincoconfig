@@ -1,9 +1,12 @@
 #
-# Copyright (C) 2019 Adam Meily
+# Copyright (C) 2021 Adam Meily
 #
 # This file is subject to the terms and conditions defined in the file 'LICENSE', which is part of
 # this source code package.
 #
+'''
+Generate type stubs for configurations.
+'''
 import inspect
 from typing import Type, Union, Any, Dict
 from .core import Config, Schema, ConfigType, VirtualFieldMixin, Field, BaseField

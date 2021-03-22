@@ -1,10 +1,12 @@
 #
-# Copyright (C) 2019 Adam Meily
+# Copyright (C) 2021 Adam Meily
 #
 # This file is subject to the terms and conditions defined in the file 'LICENSE', which is part of
 # this source code package.
 #
-
+'''
+BSON config file format.
+'''
 try:
     import bson
 except ImportError:  # pragma: no cover
