@@ -5,14 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [Unreleased]
 ### Added
 - Improved full reference path detection for both field and configuration objects.
 - New internal `ConfigTypeField` that allows a schema field to reference a `ConfigType` class, as
   returned by the `cincoconfig.make_type` function.
 
 ### Deprecated
-- Work was done to reduce methods exposed by the `Schema` and `Config` classes, including:
+- Work was done to reduce methods exposed by the `Schema` and `Config` classes by moving the
+  functions out of the class. This methods are still available in the class but will be removed
+  in v1.0.0.
   - `Schema.instance_method`: use `cincoconfig.instance_method` instead.
   - `Schema.generate_argparse_parser`: use `cincoconfig.generate_argparse_parser` instead.
   - `Schema.make_type`: use `cincoconfig.make_type` instead.
@@ -27,6 +29,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Internal API Changes
 - `Field` subclasses were broken out into separate modules.
+- `Field.key` was renamed to `Field._key` to be consistent with `Schema` and `Config`.
+- `Field.schema` was renamed to `Field._schema` to be consistent with `Schema` and `Config`.
 - `cincoconfig.abc` and `cincoconfig.config` modules were integrated into a new `cincoconfig.core`
   module.
 

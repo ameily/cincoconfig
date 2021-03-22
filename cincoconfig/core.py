@@ -180,11 +180,11 @@ class BaseField:
     @property
     def full_path(self) -> str:
         '''
-        **(Deprecated)** get the full path to the field
+        **(Deprecated, will be removed in v1.0.0)** get the full path to the field
 
         :returns: the full path to this configuration
         '''
-        warnings.warn("BaseField.full_path is deprecated, use BaseField._ref_path or "
+        warnings.warn("BaseField.full_path is deprecated and will be removed in v1.0.0, use "
                       "cincoconfig.item_ref_path() instead", DeprecationWarning)
         return self._ref_path
 
@@ -715,47 +715,48 @@ class Schema(BaseField):
 
     def get_all_fields(self) -> List[Tuple[str, 'Schema', BaseField]]:
         '''
-        **(Deprecated)** get all the fields in the configuration. Use
+        **(Deprecated, will be removed in v1.0.0)** get all the fields in the configuration. Use
         :meth:`~cincoconfig.get_all_fields`.
 
         :returns: a list of tuples with ``(key, schema, field)``
         '''
         # pylint: disable=import-outside-toplevel, cyclic-import
         from .support import get_all_fields
-        warnings.warn("Config.get_all_fields() is deprecated, use "
+        warnings.warn("Config.get_all_fields() is deprecated and will be removed in v1.0.0, use "
                       "cincoconfig.get_all_fields() instead.", DeprecationWarning)
         return get_all_fields(self)
 
     def generate_argparse_parser(self, **parser_kwargs) -> ArgumentParser:
         '''
-        **(Deprecated)** generate an :class:`~argparse.ArgumentParser` for the schema. Use
-        :meth:`~cincoconfig.generate_argparse_parser`.
+        **(Deprecated, will be removed in v1.0.0)** generate an :class:`~argparse.ArgumentParser`
+        for the schema. Use :meth:`~cincoconfig.generate_argparse_parser`.
 
         :returns: an ``ArgumentParser`` containing arguments that match the schema's fields
         '''
         # pylint: disable=import-outside-toplevel, cyclic-import
         from .support import generate_argparse_parser
-        warnings.warn("Schema.generate_argparse_parser() is deprecated, use "
-                      "cincoconfig.generate_argparse_parser instead.", DeprecationWarning)
+        warnings.warn("Schema.generate_argparse_parser() is deprecated and will be removed in "
+                      "v1.0.0, use  cincoconfig.generate_argparse_parser instead.",
+                      DeprecationWarning)
         return generate_argparse_parser(self, **parser_kwargs)
 
     def instance_method(self, key: str) -> Callable[['Config'], None]:
         '''
-        **(Deprecated)** decorator to register an instance method with the schema. Use
-        :meth:`~cincoconfig.instance_method`.
+        **(Deprecated, will be removed in v1.0.0)** decorator to register an instance method with
+        the schema. Use :meth:`~cincoconfig.instance_method`.
         '''
         # pylint: disable=import-outside-toplevel, cyclic-import
         from .fields import instance_method
-        warnings.warn("Schema.instance_method() is deprecated, use "
+        warnings.warn("Schema.instance_method() is deprecated and will be removed in v1.0.0, use "
                       "cincoconfig.instance_method() instead.", DeprecationWarning)
         return instance_method(self, key)
 
     def validator(self, func: ConfigValidator) -> ConfigValidator:
         '''
-        **(Deprecated)** decorator to register a validator method with the schema. Use
-        :meth:`~cincoconfig.validator`.
+        **(Deprecated, will be removed in v1.0.0)** decorator to register a validator method with
+        the schema. Use :meth:`~cincoconfig.validator`.
         '''
-        warnings.warn("Schema.validator() is deprecated, use "
+        warnings.warn("Schema.validator() is deprecated and will be removed in v1.0.0, use "
                       "cincoconfig.validator() instead.", DeprecationWarning)
         self._validators.append(func)
         return func
@@ -763,11 +764,12 @@ class Schema(BaseField):
     def make_type(self, name: str, module: str = None,
                   key_filename: str = None) -> Type['ConfigType']:
         '''
-        **(Deprecated)** create a new type from the schema. Use :meth:`~cincoconfig.make_type`.
+        **(Deprecated, will be removed in v1.0.0)** create a new type from the schema. Use
+        :meth:`~cincoconfig.make_type`.
         '''
         # pylint: disable=import-outside-toplevel, cyclic-import
         from .support import make_type
-        warnings.warn("Schema.make_type() is deprecated, use "
+        warnings.warn("Schema.make_type() is deprecated and will be removed in v1.0.0, use "
                       "cincoconfig.make_type() instead.", DeprecationWarning)
         return make_type(self, name, module, key_filename)
 
@@ -1027,10 +1029,10 @@ class Config:  # pylint: disable=too-many-instance-attributes
     @property
     def full_path(self) -> str:
         '''
-        **(Deprecated)** get the full path to the configuration
+        **(Deprecated, will be removed in v1.0.0)** get the full path to the configuration
         :returns: the full path to this configuration
         '''
-        warnings.warn("Config.full_path is deprecated, use Config._ref_path or "
+        warnings.warn("Config.full_path is deprecated and will be removed in v1.0.0, use "
                       "cincoconfig.item_ref_path() instead", DeprecationWarning)
         return self._ref_path
 
@@ -1239,16 +1241,17 @@ class Config:  # pylint: disable=too-many-instance-attributes
 
     def cmdline_args_override(self, args: Namespace, ignore: Union[str, List[str]] = None) -> None:
         '''
-        **(Deprecated)** override configuration values from the command line arguments. Use
-        :meth:`~cincoconfig.cmdline_args_override`.
+        **(Deprecated, will be removed in v1.0.0)** override configuration values from the command
+        line arguments. Use :meth:`~cincoconfig.cmdline_args_override`.
 
         :param args: parsed arguments
         :param ignore: list of field keys to ignore
         '''
         # pylint: disable=import-outside-toplevel, cyclic-import
         from .support import cmdline_args_override
-        warnings.warn("Schema.cmdline_args_override() is deprecated, use "
-                      "cincoconfig.cmdline_args_override() instead", DeprecationWarning)
+        warnings.warn("Schema.cmdline_args_override() is deprecated and will be removed in "
+                      "v1.0.0, use cincoconfig.cmdline_args_override() instead",
+                      DeprecationWarning)
         cmdline_args_override(self, args, ignore)
 
 
