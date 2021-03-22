@@ -101,5 +101,5 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 - The Schema fields are now stored in an `OrderedDict` so that the original order that the fields
-  were added to the Schema is preserved when tterating over the Schema's fields, via `iter()` or
+  were added to the Schema is preserved when iterating over the Schema's fields, via `iter()` or
   the new `get_all_fields()`.

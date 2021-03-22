@@ -25,4 +25,4 @@ jobs:
         - npm install cspell
 
       script:
-        - npx cspell cincoconfig/**/*.py docs/*.rst
+        - npx cspell cincoconfig/**/*.py docs/*.rst CHANGELOG.md
