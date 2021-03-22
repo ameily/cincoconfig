@@ -83,6 +83,7 @@ def get_method_annotation(key: str, field: InstanceMethodField) -> str:
     :returns: the instance method annotation
     '''
     # pylint: disable=too-many-locals
+    # spell-checker:ignore varargs, varkw, kwonlyargs
     args, varargs, varkw, _, kwonlyargs, _, annotations = inspect.getfullargspec(field.method)
     has_ret_annotation = 'return' in annotations
     if kwonlyargs:

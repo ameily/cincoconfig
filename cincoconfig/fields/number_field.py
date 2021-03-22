@@ -22,8 +22,8 @@ class NumberField(Field):
                  max: Union[int, float] = None, **kwargs):
         '''
         :param type_cls: number type class that values will be converted to
-        :param min: minimum value
-        :param max: maxium value
+        :param min: minimum value (inclusive)
+        :param max: maximum value (inclusive)
         '''
         super().__init__(**kwargs)
         self.type_cls = type_cls

@@ -45,7 +45,7 @@ class EncryptionError(Exception):
 class IEncryptionProvider:
     '''
     Interface class for an encryption algorithm provider. An encryption provider
-    implementes both encryption and decryption of string values.
+    implements both encryption and decryption of string values.
 
     The encrypt and decrypt methods must be deterministic.
 

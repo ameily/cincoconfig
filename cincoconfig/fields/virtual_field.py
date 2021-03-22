@@ -5,7 +5,7 @@
 # this source code package.
 #
 '''
-Virutal field
+Virtual field
 '''
 from typing import Callable, Any
 
@@ -27,7 +27,7 @@ class VirtualField(Field, VirtualFieldMixin):
             being set
         '''
         if kwargs.get('default') is not None:
-            raise TypeError('virutal fields cannot have a default value')
+            raise TypeError('virtual fields cannot have a default value')
 
         super().__init__(**kwargs)
         self.getter = getter

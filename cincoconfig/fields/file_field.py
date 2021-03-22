@@ -24,7 +24,7 @@ class FilenameField(StringField):
         '''
         The *exists* parameter can be set to one of the following values:
 
-        - ``None`` - don't check file's existance
+        - ``None`` - don't check file's existence
         - ``False`` - validate that the filename does not exist
         - ``True`` - validate that the filename does exist
         - ``"dir"`` - validate that the filename is a directory that exists
@@ -35,7 +35,7 @@ class FilenameField(StringField):
         filename's will be resolve relative to :meth:`os.getcwd` and the relative file path will
         be validated.
 
-        :param exists: validate the filename's existance on disk
+        :param exists: validate the filename's existence on disk
         :param startdir: resolve relative paths to a start directory
         '''
         super().__init__(**kwargs)

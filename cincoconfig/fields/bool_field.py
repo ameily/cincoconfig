@@ -29,16 +29,16 @@ class BoolField(Field):
         '''
 
         if isinstance(value, bool):
-            bval = value
+            bool_val = value
         elif isinstance(value, (int, float)):
-            bval = bool(value)
+            bool_val = bool(value)
         elif isinstance(value, str):
             if value.lower() in self.TRUE_VALUES:
-                bval = True
+                bool_val = True
             elif value.lower() in self.FALSE_VALUES:
-                bval = False
+                bool_val = False
             else:
                 raise ValueError('value is not a valid boolean')
         else:
             raise ValueError('value is not a valid boolean')
-        return bval
+        return bool_val

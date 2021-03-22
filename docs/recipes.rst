@@ -17,21 +17,21 @@ the following:
     schema.db.username = StringField()
     schema.db.password = StringField()
 
-    @schema.validator
+    @validator(schema)
     def validate_x_lt_y(cfg):
         # validates that x < y
         if cfg.x and cfg.y and cfg.x >= cfg.y:
             raise ValueError('x must be less-than y')
 
-    @schema.db.validator
-    def validate_db_creds(cfg):
-        # validates that if the db username is specifed then the password must
+    @validator(schema.db)
+    def validate_db_credentials(cfg):
+        # validates that if the db username is specified then the password must
         # also be specified.
         if cfg.username and not db.password:
             raise ValueError('db.password is required when username is specified')
 
     config = schema()
-    config.load('mycfg.json', format='json')  # will call the above validators
+    config.load('config.json', format='json')  # will call the above validators
 
 
 Allow Multiple Configuration Files
@@ -49,14 +49,14 @@ in memory prior to parsing.
     # other fields
     config = schema()
 
-    config.load('mycfg.json', format='json')
+    config.load('config.json', format='json')
 
-**mycfg.json**
+**config.json**
 
 .. code-block:: json
 
     {
-        "include": "otherfile.json"
+        "include": "other_file.json"
     }
 
 IncludeFields can occur anywhere in a configuration, however, when the included file is processed,
@@ -79,7 +79,7 @@ values.
     schema.db.host = HostnameField(default='127.0.0.1', allow_ipv4=True)
 
     config = schema()
-    config.load('mycfg.json', format='json')
+    config.load('config.json', format='json')
 
     #
     # get the set port
@@ -125,8 +125,8 @@ webhooks.
     wh.url = 'https://google.com'
     config.issue_webhooks.append(wh)
 
-Here, the ``webhook`` schema is usable across mutliple configurations. As seen here, it is not
-very intuative to create reusable configuration items. The Schema
+Here, the ``webhook`` schema is usable across multiple configurations. As seen here, it is not
+very intuitive to create reusable configuration items. The Schema
 :meth:`~cincoconfig.Schema.make_type` method is designed to make working with these reusable
 configurations easier. ``make_type`` creates a new type, inheriting from
 :class:`~cincoconfig.Config` that is more Pythonic.

@@ -110,7 +110,7 @@ def validator(field: BaseField) -> Callable:
     Decorator to register a new validator with the schema or field. All validators will be run
     against the configuration whenever the configuration is loaded from disk. Multiple validators
     can be registered by using the decorator multiple times. Subconfigs can also be validated by
-    using the decorateor on the sub schema.
+    using the decorator on the sub schema.
 
     .. code-block:: python
 
@@ -126,12 +126,12 @@ def validator(field: BaseField) -> Callable:
                 raise ValueError('x must be less-than y')
 
         @validator(schema.db)
-        def validate_db_creds(cfg):
+        def validate_db_credentials(cfg):
             if cfg.username and not db.password:
                 raise ValueError('db.password is required when username is specified')
 
         config = schema()
-        config.load('mycfg.json', format='json')  # will call the above validators
+        config.load('config.json', format='json')  # will call the above validators
         # .....
 
     The validator function needs to raise an exception, preferably a :class:`ValueError`, if
@@ -243,7 +243,7 @@ def item_ref_path(item: Union[BaseField, Config]) -> str:
     '''
     Get the full reference path to a field or configuration.
 
-    :param item: field, schema, or configuraiton
+    :param item: field, schema, or configuration
     :returns: full reference path to the item
     '''
     return item._ref_path

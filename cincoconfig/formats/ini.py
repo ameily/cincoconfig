@@ -16,7 +16,7 @@ class IniConfigFormat(ConfigFormat):
     '''
 
     def __init__(self):
-        raise NotImplementedError()
+        pass
 
     def dumps(self, config: Config, tree: dict) -> bytes:
         raise NotImplementedError()

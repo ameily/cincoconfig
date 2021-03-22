@@ -111,7 +111,7 @@ class HostnameField(StringField):
         Validate a value.
 
         :param cfg: current config
-        :param value: value to valdiate
+        :param value: value to validate
         '''
         value = super()._validate(cfg, value)
 

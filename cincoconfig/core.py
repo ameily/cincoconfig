@@ -201,11 +201,11 @@ class BaseField:
             'x.y.z'
         '''
         path = [self._key]
-        curr = self._schema
-        while curr:
-            if curr._key:
-                path.append(curr._key)
-            curr = curr._schema
+        schema = self._schema
+        while schema:
+            if schema._key:
+                path.append(schema._key)
+            schema = schema._schema
 
         return '.'.join(reversed(path))
 
@@ -321,7 +321,7 @@ class Field(BaseField):
         :param default: the default value, which can be a called that is invoke with no arguments
             and should return the default value
         :param validator: an additional validator function that is invoked during validation
-        :param sensitive: the field stores a senstive value
+        :param sensitive: the field stores a sensitive value
         :param help: the field documentation
         '''
         super().__init__(name=name, key=key, schema=schema)
@@ -1092,7 +1092,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
         '''
         Convert the configuration values to a tree.
 
-        The *sensitive_mask* parameter is an optional string that will repalce sensitive values in
+        The *sensitive_mask* parameter is an optional string that will replace sensitive values in
         the tree.
 
         - ``None`` (default) - include the value as-is in the tree
@@ -1310,7 +1310,7 @@ class ConfigFormat:
     @classmethod
     def initialize_registry(cls) -> None:
         '''
-        Initialize the format reigstry for built-in formats.
+        Initialize the format registry for built-in formats.
         '''
         if cls.__initialized:
             return

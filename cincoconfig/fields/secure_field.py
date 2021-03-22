@@ -144,9 +144,9 @@ class ChallengeField(Field):
         >>> print(cfg.password)
         Yt4Qm5cC9FoRSdU3Ly7B7A==:+GXXhO36XvJ446fqXYJ+1w==
 
-        # Secon time application executes
+        # Second time application executes
         >>> print(cfg.password)
-        j1DumfRtnRCJxjCAAXzxww==:vKphx3hWXTaOUacYj+4agw==
+        c2MPwSJw1QYMOcE2O+cVFA==:JSNbBj3wCgh7alFM7l0geg==
 
     Digest values are saved to disk as a :class:`dict` containing two keys:
 
