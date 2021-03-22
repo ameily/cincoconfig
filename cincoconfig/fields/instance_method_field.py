@@ -46,9 +46,6 @@ class InstanceMethodField(Field, InstanceMethodFieldMixin):
         def wrapper(*args, **kwargs) -> Any:
             return self.method(cfg, *args, **kwargs)  # type: ignore
 
-        # wrapper.__name__ = getattr(self.method, '__name__', 'wrapper')
-        # wrapper.__doc__ = getattr(self.method, '__doc__', '')
-        # wrapper.__annotations__ = getattr(self.method, '__annotations__', {})
         return wrapper
 
     def validate(self, cfg: Config, value: Any) -> Any:
@@ -72,6 +69,9 @@ def instance_method(schema: Schema, name: str) -> Callable:
 
         config = schema()
         print(config.say_hello())  # "Hello, world!"
+
+    :param schema: schema
+    :param name: instance method name
     '''
     def wrapper(func: Callable[[Config], Any]) -> Callable[[Config], Any]:
         schema._add_field(name, InstanceMethodField(method=func))

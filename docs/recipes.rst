@@ -126,17 +126,16 @@ webhooks.
     config.issue_webhooks.append(wh)
 
 Here, the ``webhook`` schema is usable across multiple configurations. As seen here, it is not
-very intuitive to create reusable configuration items. The Schema
-:meth:`~cincoconfig.Schema.make_type` method is designed to make working with these reusable
-configurations easier. ``make_type`` creates a new type, inheriting from
-:class:`~cincoconfig.Config` that is more Pythonic.
+very intuitive to create reusable configuration items. The :meth:`~cincoconfig.make_type` method
+is designed to make working with these reusable configurations easier. ``make_type`` creates a new
+type, inheriting from :class:`~cincoconfig.Config` that is more Pythonic.
 
 .. code-block:: python
 
     webhook_schema = Schema()
     webhook_schema.url = UrlField(required=True)
     webhook_schema.verify_ssl = BoolField(default=True)
-    WebHook = webhook_schema.make_type('WebHook')  # WebHook is now a new type
+    WebHook = make_type(webhook_schema, 'WebHook')  # WebHook is now a new type
 
     schema = Schema()
     schema.issue_webhooks = ListField(webhook_schema)

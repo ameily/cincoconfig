@@ -7,8 +7,9 @@
 '''
 Cincoconfig Public API
 '''
-from .core import Config, Field, Schema, ValidationError, AnyField, ConfigFormat
-from .support import make_type, validator, get_all_fields, generate_argparse_parser
+from .core import Config, Field, Schema, ValidationError, AnyField, ConfigFormat, ConfigType
+from .support import (make_type, validator, get_all_fields, generate_argparse_parser,
+                      item_ref_path, cmdline_args_override)
 from .fields import *
 from .encryption import KeyFile
 from .stubs import generate_stub

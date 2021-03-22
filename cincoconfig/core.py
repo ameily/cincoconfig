@@ -1254,7 +1254,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
 
 class ConfigType(Config):
     '''
-    A base class for configuration types. This class is returned by the
+    A base class for configuration types. A subclass of ``ConfigType`` is returned by the
     :meth:`~cincoconfig.make_type` function.
     '''
     __schema__ = None  # type: Schema
