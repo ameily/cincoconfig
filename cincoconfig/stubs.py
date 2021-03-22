@@ -9,8 +9,8 @@ Generate type stubs for configurations.
 '''
 import inspect
 from typing import Type, Union, Any, Dict
-from .core import Config, Schema, ConfigType, VirtualFieldMixin, Field, BaseField
-from .fields import InstanceMethodField
+from .core import Config, Schema, ConfigType, Field, BaseField
+from .fields import InstanceMethodField, VirtualField
 
 
 def get_annotation_typestr(field: Union[BaseField, Type, str]) -> str:
@@ -157,7 +157,7 @@ def generate_stub(config: Union[Schema, ConfigType, Config], class_name: str = N
     attrs = {}  # type: Dict[str, str]
 
     for key, field in schema._fields.items():
-        if isinstance(field, VirtualFieldMixin):
+        if isinstance(field, VirtualField):
             properties[key] = get_arg_annotation(key, field)
         elif isinstance(field, InstanceMethodField):
             methods[key] = field
