@@ -24,7 +24,7 @@ setup(
     author='Adam Meily',
     author_email='meily.adam@gmail.com',
     url='https://cincoconfig.readthedocs.io/en/latest/',
-    packages=['cincoconfig', 'cincoconfig.formats'],
+    packages=['cincoconfig', 'cincoconfig.formats', 'cincoconfig.fields'],
     install_requires=requirements,
     extras_require={
         'dev': dev_requirements,
