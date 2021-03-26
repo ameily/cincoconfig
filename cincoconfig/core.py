@@ -545,8 +545,8 @@ class Schema(BaseField):
     configuration from a file.
     '''
 
-    def __init__(self, key: str = None, dynamic: bool = False, env: Union[str, bool] = None,
-                 schema: 'Schema' = None):
+    def __init__(self, key: str = None, name: str = None, dynamic: bool = False,
+                 env: Union[str, bool] = None, schema: 'Schema' = None):
         '''
         :param key: schema field key
         :param dynamic: configurations created from this schema are dynamic and can add fields not
@@ -555,7 +555,7 @@ class Schema(BaseField):
         :param env: the environment variable prefix for this schema and all children schemas, for
             information, see :ref:`Field Environment Variables <field-env-variables>`
         '''
-        super().__init__(key=key, schema=schema)
+        super().__init__(key=key, schema=schema, name=name)
         self._dynamic = dynamic
         self._fields: Dict[str, BaseField] = OrderedDict()
         self._env_prefix = '' if env is True else env
