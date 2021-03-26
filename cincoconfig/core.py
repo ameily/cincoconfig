@@ -547,6 +547,7 @@ class Schema(BaseField):
 
     def __init__(self, key: str = None, name: str = None, dynamic: bool = False,
                  env: Union[str, bool] = None, schema: 'Schema' = None):
+        # pylint: disable=too-many-arguments
         '''
         :param key: schema field key
         :param dynamic: configurations created from this schema are dynamic and can add fields not
