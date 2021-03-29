@@ -7,7 +7,7 @@
 '''
 Boolean field.
 '''
-from ..core import Field, Config
+from ..core import Field, Config, FeatureFlagFieldMixin
 
 
 class BoolField(Field):
@@ -42,3 +42,13 @@ class BoolField(Field):
         else:
             raise ValueError('value is not a valid boolean')
         return bool_val
+
+
+class FeatureFlagField(BoolField, FeatureFlagFieldMixin):
+    '''
+    Concrete implementation of the feature flag field. When this field's value is set to ``False``,
+    the bound configurations will not perform validation.
+    '''
+
+    def is_feature_enabled(self, cfg: 'Config') -> bool:
+        return self.__getval__(cfg)
