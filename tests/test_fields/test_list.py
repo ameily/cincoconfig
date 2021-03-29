@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2019 Adam Meily
+# Copyright (C) 2021 Adam Meily
 #
 # This file is subject to the terms and conditions defined in the file 'LICENSE', which is part of
 # this source code package.
@@ -8,8 +8,7 @@ from typing import List
 from unittest.mock import patch, call
 import pytest
 from cincoconfig.fields import ListField, ListProxy, IntField
-from cincoconfig.config import Schema, Config
-from cincoconfig.abc import ValidationError
+from cincoconfig.core import Schema, Config, ValidationError
 
 
 class MockConfig:

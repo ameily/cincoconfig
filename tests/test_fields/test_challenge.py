@@ -4,7 +4,8 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from cincoconfig.fields import ChallengeField, DigestValue, BaseConfig, BaseSchema
+from cincoconfig.fields import ChallengeField, DigestValue
+from cincoconfig.core import Config, Schema
 
 
 class MockConfig:
@@ -161,7 +162,7 @@ class TestChallengeField:
     def test_set_default_str(self, create_mock):
         create_mock.return_value = 'hello'
         field = ChallengeField('md5', default='default', key='test')
-        cfg = BaseConfig(BaseSchema())
+        cfg = Config(Schema())
         field.__setdefault__(cfg)
         create_mock.assert_called_with('default', hashlib.md5)
         assert cfg._data['test'] == 'hello'
@@ -169,7 +170,7 @@ class TestChallengeField:
     def test_set_default_tuple(self):
         sdt = DigestValue.create('hello', hashlib.md5)
         field = ChallengeField('md5', key='test', default=sdt)
-        cfg = BaseConfig(BaseSchema())
+        cfg = Config(Schema())
         field.__setdefault__(cfg)
         assert cfg._data['test'] is sdt
 
@@ -179,7 +180,7 @@ class TestChallengeField:
             field.__setdefault__({})
 
     def test_set_default_none(self):
-        cfg = BaseConfig(BaseSchema())
+        cfg = Config(Schema())
         field = ChallengeField('md5', key='test')
         field.__setdefault__(cfg)
         assert cfg._data['test'] is None

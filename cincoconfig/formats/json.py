@@ -1,12 +1,14 @@
 #
-# Copyright (C) 2019 Adam Meily
+# Copyright (C) 2021 Adam Meily
 #
 # This file is subject to the terms and conditions defined in the file 'LICENSE', which is part of
 # this source code package.
 #
-
+'''
+JSON config file format.
+'''
 import json
-from cincoconfig.abc import ConfigFormat, BaseConfig
+from ..core import ConfigFormat, Config
 
 
 class JsonConfigFormat(ConfigFormat):
@@ -30,7 +32,7 @@ class JsonConfigFormat(ConfigFormat):
         '''
         self.pretty = pretty
 
-    def dumps(self, config: BaseConfig, tree: dict) -> bytes:
+    def dumps(self, config: Config, tree: dict) -> bytes:
         '''
         Deserialize the ``content`` (a :class:`bytes` instance containing a JSON document) to a
         Python basic value tree.
@@ -41,7 +43,7 @@ class JsonConfigFormat(ConfigFormat):
         '''
         return json.dumps(tree, indent=2 if self.pretty else None).encode()
 
-    def loads(self, config: BaseConfig, content: bytes) -> dict:
+    def loads(self, config: Config, content: bytes) -> dict:
         '''
         Serialize the basic value ``tree`` to JSON :class:`bytes` document.
 

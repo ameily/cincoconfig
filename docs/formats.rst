@@ -1,13 +1,6 @@
 formats
 =======
 
-.. autoclass:: cincoconfig.formats.registry._FormatRegistrySingleton
-    :members:
-
-
-Available Formats
------------------
-
 The following formats are included within cincoconfig. There should not be a reason to directly
 reference these classes. Instead, to save or load a configuration in the JSON format, for example,
 use:
@@ -44,5 +37,5 @@ Base Classes
 All configuration file formats must inherit from and implement all abstract methods in the
 :class:`cincoconfig.abc.ConfigFormat` class.
 
-.. autoclass:: cincoconfig.abc.ConfigFormat
+.. autoclass:: cincoconfig.ConfigFormat
     :members:
