@@ -10,7 +10,8 @@ Support functions.
 import sys
 from argparse import ArgumentParser, Namespace
 from typing import Callable, List, Tuple, Union, Type
-from .core import Schema, BaseField, Config, ConfigType, FieldValidator, ConfigValidator, Field
+from .core import (Schema, BaseField, Config, ConfigType, FieldValidator, ConfigValidator, Field,
+                   VirtualFieldMixin)
 
 
 def make_type(schema: Schema, name: str, module: str = None,
@@ -247,3 +248,72 @@ def item_ref_path(item: Union[BaseField, Config]) -> str:
     :returns: full reference path to the item
     '''
     return item._ref_path
+
+
+def get_fields(schema: Union[Config, Schema],
+               types: Union[Type, Tuple[Type]] = None) -> List[Tuple[str, BaseField]]:
+    '''
+    Get all fields within a configuration or schema. This method does not recurse into nested
+    schemas/configs, unlike :meth:`~get_all_fields`. The return value is a list of fields as tuples
+    ``(key, field)``.
+
+    :param schema: schema or configuration object
+    :param types: only return fields of a specific type
+    :returns: the list of fields
+    '''
+
+    fields = list(schema._fields.items())
+    if isinstance(schema, Config):
+        fields += list(schema._schema._fields.items())
+
+    if types:
+        fields = [item for item in fields if isinstance(item[1], types)]
+    return fields
+
+
+def _list_asdict(items: list, virtual: bool) -> list:
+    '''
+    Handle nested lists and nested Config object for :meth:`asdict`.
+
+    :param items: list
+    :param virtual: include configuration virtual values
+    :returns: converted list
+    '''
+    value = []
+    for item in items:
+        if isinstance(item, list):
+            item = _list_asdict(item, virtual=virtual)
+        elif isinstance(item, Config):
+            item = asdict(item, virtual=virtual)
+        elif isinstance(item, dict):
+            item = dict(item)
+        value.append(item)
+    return value
+
+
+def asdict(config: Config, virtual: bool = False) -> dict:
+    '''
+    Converts the configuration object to a dict. Whereas :meth:`~Config.to_tree` converts the
+    configuration to a basic value tree suitable for saving to disk, the ``asdict`` method converts
+    the configuration, and all nested configuration objects, to a dict, preserving each value
+    as-is.
+
+    :param config: the configuration to conver to a dict
+    :param virtual: include virtual field values in the dict
+    :returns: the converted configuration dict
+    '''
+    data = {}
+    for key, value in config._data.items():
+        if isinstance(value, list):
+            value = _list_asdict(value, virtual=virtual)
+        elif isinstance(value, Config):
+            value = asdict(value, virtual=virtual)
+        elif isinstance(value, dict):
+            value = dict(value)
+        data[key] = value
+
+    if virtual:
+        fields = get_fields(config, VirtualFieldMixin)
+        data.update({key: field.__getval__(config) for key, field in fields})
+
+    return data

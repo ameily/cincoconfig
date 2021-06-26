@@ -1,11 +1,13 @@
 
+from cincoconfig.fields.virtual_field import VirtualField
 from unittest.mock import patch, MagicMock, call
 import argparse
 
 from cincoconfig.fields import StringField, IntField, BoolField, FloatField
 from cincoconfig.core import Schema, Field, Config
-from cincoconfig.support import (generate_argparse_parser, make_type, get_all_fields,
-                                 cmdline_args_override, validator, item_ref_path)
+from cincoconfig.support import (generate_argparse_parser, get_fields, make_type, get_all_fields,
+                                 cmdline_args_override, validator, item_ref_path, asdict,
+                                 _list_asdict)
 
 
 class TestSupportFuncs:
@@ -143,3 +145,90 @@ class TestSupportFuncs:
         item = MagicMock()
         retval = item._ref_path = object()
         assert item_ref_path(item) is retval
+
+    def test_get_fields_schema(self):
+        schema = Schema()
+        schema.x = Field()
+        schema.sub1.y = Field()
+        assert get_fields(schema) == [('x', schema.x), ('sub1', schema.sub1)]
+
+    def test_get_fields_config(self):
+        schema = Schema(dynamic=True)
+        schema.x = Field()
+        schema.sub1.y = Field()
+        config = schema()
+        config.z = 2
+        assert get_fields(config) == [
+             ('z', config._fields['z']), ('x', schema.x), ('sub1', schema.sub1)
+        ]
+
+    def test_get_fields_type(self):
+        schema = Schema()
+        schema.x = Field()
+        schema.y = IntField()
+        schema.sub1.y = Field()
+        assert get_fields(schema, IntField) == [('y', schema.y)]
+
+    def test_asdict(self):
+        schema = Schema(dynamic=True)
+        schema.x = Field()
+        schema.sub1.y = Field()
+        schema.a = VirtualField(lambda cfg: 100)
+        config = schema()
+        config.x = 1
+        config.sub1.y = 2
+        config.z = 3
+        assert asdict(config) == {'x': 1, 'z': 3, 'sub1': {'y': 2}}
+
+    def test_asdict_virtual(self):
+        schema = Schema()
+        schema.x = Field()
+        schema.sub1.y = Field()
+        schema.a = VirtualField(lambda cfg: 100)
+        config = schema()
+        config.x = 1
+        config.sub1.y = 2
+        assert asdict(config, virtual=True) == {'x': 1, 'sub1': {'y': 2}, 'a': 100}
+
+    def test_asdict_copy(self):
+        schema = Schema()
+        config = schema()
+        test = config._data['x'] = {'a': 1}
+        result = asdict(config)
+        assert result['x'] == test
+        assert result['x'] is not test
+
+    @patch('cincoconfig.support._list_asdict')
+    def test_asdict_list(self, mock_list_asdict):
+        mock_list_asdict.return_value = object()
+        schema = Schema()
+        config = schema()
+        lst = config._data['x'] = [1, 2, 3]
+        virtual = object()
+        assert asdict(config, virtual=virtual) == {'x': mock_list_asdict.return_value}
+        mock_list_asdict.assert_called_once_with([1, 2, 3], virtual=virtual)
+
+    @patch('cincoconfig.support._list_asdict')
+    def test_list_asdict_nested_list(self, mock_list_asdict):
+        mock_list_asdict.return_value = object()
+        virtual = object()
+        assert _list_asdict([[1], 2, 3], virtual=virtual) == [mock_list_asdict.return_value, 2, 3]
+        mock_list_asdict.assert_called_once_with([1], virtual=virtual)
+
+    @patch('cincoconfig.support.asdict')
+    def test_list_asdict_nested_config(self, mock_asdict):
+        schema = Schema()
+        config = schema()
+        mock_asdict.return_value = object()
+        virtual = object()
+        assert _list_asdict([config], virtual=virtual) == [mock_asdict.return_value]
+        mock_asdict.assert_called_once_with(config, virtual=virtual)
+
+    def test_list_asdict_copy(self):
+        x = {'a': 1}
+        y = [x]
+        result = _list_asdict(y, False)
+        assert result == y
+        assert result is not y
+        assert result[0] == x
+        assert result[0] is not x

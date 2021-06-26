@@ -12,3 +12,7 @@ support
 .. autofunction:: cincoconfig.cmdline_args_override
 
 .. autofunction:: cincoconfig.item_ref_path
+
+.. autofunction:: cincoconfig.get_fields
+
+.. autofunction:: cincoconfig.asdict
