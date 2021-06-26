@@ -67,7 +67,8 @@ class ListProxy(list, ContainerValueMixin):
         ret.extend(iterable)
         return ret
 
-    def __setitem__(self, index: Union[int, slice], item: Union[_T, Iterable[_T]]) -> None:
+    def __setitem__(self, index: Union[int, slice],  # type: ignore[override]
+                    item: Union[_T, Iterable[_T]]) -> None:
         if isinstance(index, slice) and isinstance(item, (list, tuple)):
             super().__setitem__(index, [self._validate(i) for i in item])
         elif isinstance(index, int):
