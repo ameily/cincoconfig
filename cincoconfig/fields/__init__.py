@@ -7,7 +7,7 @@
 '''
 Cinco Config Fields.
 '''
-from .bool_field import BoolField
+from .bool_field import BoolField, FeatureFlagField
 from .bytes_field import BytesField
 from .dict_field import DictField
 from .file_field import FilenameField
@@ -25,4 +25,5 @@ __all__ = ('StringField', 'IntField', 'FloatField', 'PortField', 'IPv4AddressFie
            'IPv4NetworkField', 'FilenameField', 'BoolField', 'UrlField', 'ListField',
            'HostnameField', 'DictField', 'ListProxy', 'VirtualField', 'ApplicationModeField',
            'LogLevelField', 'NumberField', 'ChallengeField', 'DigestValue', 'SecureField',
-           'BytesField', 'IncludeField', 'InstanceMethodField', 'instance_method')
+           'BytesField', 'IncludeField', 'InstanceMethodField', 'instance_method',
+           'FeatureFlagField')

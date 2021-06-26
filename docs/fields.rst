@@ -47,6 +47,9 @@ fields
 .. autoclass:: cincoconfig.BoolField
     :members:
 
+.. autoclass:: cincoconfig.FeatureFlagField
+    :members:
+
 .. autoclass:: cincoconfig.UrlField
     :members:
 

@@ -1,5 +1,6 @@
 import argparse
 import os
+from tests.test_fields.test_bool import MockConfig
 from unittest.mock import MagicMock, patch, mock_open, PropertyMock
 
 import pytest
@@ -408,10 +409,11 @@ class TestConfig:
         config = schema()
 
         mock = MagicMock()
-        object.__setattr__(schema.x, '_validate', mock)
+        print(config._data)
+        schema.x._validate = mock
         config.validate()
 
-        mock.assert_called_once_with(config.x)
+        mock.assert_called_once_with(config.x, collect_errors=False)
 
     def test_load_tree_validate(self):
         schema = Schema()
@@ -711,3 +713,17 @@ class TestConfig:
             config.load_tree({'x': 2})
 
         assert exc.value is err
+
+    def test_validate_collect_errors(self):
+        schema = Schema()
+        schema._validate = MagicMock()
+        config = schema()
+        config.validate(collect_errors=True)
+        schema._validate.assert_called_once_with(config, collect_errors=True)
+
+    def test_load_tree_no_validate(self):
+        schema = Schema()
+        schema.x = Field(required=True)
+        config = schema()
+        assert config.load_tree({}, validate=False) is None
+

@@ -2,8 +2,8 @@ from unittest.mock import MagicMock, patch, call
 
 import pytest
 
-from cincoconfig.core import Schema, Config, Field, ConfigType
-from cincoconfig.fields import InstanceMethodField, BoolField, StringField, IntField, FloatField
+from cincoconfig.core import Schema, Config, Field, ConfigType, ValidationError
+from cincoconfig.fields import InstanceMethodField, FeatureFlagField
 
 
 class TestSchema:
@@ -187,3 +187,67 @@ class TestSchema:
         schema._validators = MagicMock()
         assert schema.validator('asdf') == 'asdf'
         schema._validators.append.assert_called_once_with('asdf')
+
+    def test_validate_collect_errors(self):
+        schema_error = ValidationError(None, None, None)
+        field_error = ValidationError(None, None, None)
+        schema = Schema()
+        schema._validators.append(MagicMock(side_effect=schema_error))
+        schema.x = Field()
+        schema.x.validate = MagicMock(side_effect=field_error)
+
+        config = schema()
+
+        errors = schema._validate(config, collect_errors=True)
+        assert errors == [field_error, schema_error]
+
+    def test_validate_collect_errors_other(self):
+        schema_error = ValueError()
+        field_error = ValueError()
+        schema = Schema()
+        schema._validators.append(MagicMock(side_effect=schema_error))
+        schema.x = Field()
+        schema.x.validate = MagicMock(side_effect=field_error)
+
+        config = schema()
+
+        errors = schema._validate(config, collect_errors=True)
+        assert len(errors) == 2
+        assert isinstance(errors[0], ValidationError)
+        assert errors[0].exc is field_error
+        assert isinstance(errors[1], ValidationError)
+        assert errors[1].exc is schema_error
+
+    def test_feature_flag_fields(self):
+        schema = Schema()
+        schema.x = Field()
+        schema.y = FeatureFlagField()
+        schema.z = FeatureFlagField()
+        assert list(schema._feature_flag_fields) == [schema.y, schema.z]
+
+    def test_is_feature_enabled_true(self):
+        schema = Schema()
+        schema.x = Field()
+        schema.y = FeatureFlagField()
+        schema.z = FeatureFlagField()
+        config = schema()
+        config._data.update({'y': True, 'z': True})
+        assert schema._is_feature_enabled(config)
+
+    def test_is_feature_disabled_false(self):
+        schema = Schema()
+        schema.x = Field()
+        schema.y = FeatureFlagField()
+        schema.z = FeatureFlagField()
+        config = schema()
+        config._data.update({'y': True, 'z': False})
+        assert not schema._is_feature_enabled(config)
+
+    def test_validate_feature_flag_disabled(self):
+        cfg = MagicMock()
+        schema = Schema()
+        schema._validators.append(MagicMock(side_effect=ValueError()))
+
+        schema._is_feature_enabled = MagicMock(return_value=False)
+        schema._validate(cfg)
+        schema._is_feature_enabled.assert_called_once_with(cfg)

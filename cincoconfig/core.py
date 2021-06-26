@@ -107,8 +107,21 @@ class VirtualFieldMixin:
 
 class InstanceMethodFieldMixin:
     '''
-    Field mixin to flag a field as an instance method.
+    Field mixin to bind an instance method to a configuration object.
     '''
+
+
+class FeatureFlagFieldMixin:
+    '''
+    Field mixin to flag a the schema as enabled or disabled.
+    '''
+    def is_feature_enabled(self, cfg: 'Config') -> bool:
+        '''
+        Check if the feature is enabled.
+
+        :returns: ``True`` if the feature is enabled and ``False`` if it is not.
+        '''
+        raise NotImplementedError()
 
 
 class IncludeFieldMixin:
@@ -547,6 +560,7 @@ class Schema(BaseField):
 
     def __init__(self, key: str = None, name: str = None, dynamic: bool = False,
                  env: Union[str, bool] = None, schema: 'Schema' = None):
+        # pylint: disable=too-many-arguments
         '''
         :param key: schema field key
         :param dynamic: configurations created from this schema are dynamic and can add fields not
@@ -560,6 +574,21 @@ class Schema(BaseField):
         self._fields: Dict[str, BaseField] = OrderedDict()
         self._env_prefix = '' if env is True else env
         self._validators: List[ConfigValidator] = []
+
+    @property
+    def _feature_flag_fields(self) -> Iterator[FeatureFlagFieldMixin]:
+        '''
+        :returns: an iterator of all feature flag fields
+        '''
+        return (field for field in self._fields.values()
+                if isinstance(field, FeatureFlagFieldMixin))
+
+    def _is_feature_enabled(self, cfg: 'Config') -> bool:
+        '''
+        :returns: the feature is enabled (all :class:`FeatureFlagFieldMixin` fields returned
+            ``True``)
+        '''
+        return all(field.is_feature_enabled(cfg) for field in self._feature_flag_fields)
 
     def __setkey__(self, schema: 'Schema', key: str) -> None:
         '''
@@ -674,31 +703,48 @@ class Schema(BaseField):
 
         return self._add_field(name, value)
 
-    def _validate(self, config: 'Config') -> None:
+    def _validate(self, config: 'Config', collect_errors: bool = False) -> List[ValidationError]:
         '''
         Validate the configuration by running any registered validators against it.
 
         :param config: config to validate
         '''
+        if not self._is_feature_enabled(config):
+            return []
+
         ignore_types = (IncludeFieldMixin, VirtualFieldMixin, InstanceMethodFieldMixin)
+        errors = []
+
         for field in self._fields.values():
             if isinstance(field, ignore_types):
                 continue
 
             try:
                 self._validate_field(config, field)
-            except ValidationError:
-                raise
-            except Exception as err:
-                raise ValidationError(config, field, err) from err
+            except ValidationError as err:
+                if not collect_errors:
+                    raise
+                errors.append(err)
+            except Exception as err:  # pylint: disable=broad-except
+                exc = ValidationError(config, field, err)
+                if not collect_errors:
+                    raise exc from err
+                errors.append(exc)
 
         for validator in self._validators:
             try:
                 validator(config)
-            except ValidationError:
-                raise
-            except Exception as err:
-                raise ValidationError(config, None, err) from err
+            except ValidationError as err:
+                if not collect_errors:
+                    raise
+                errors.append(err)
+            except Exception as err:  # pylint: disable=broad-except
+                exc = ValidationError(config, None, err)
+                if not collect_errors:
+                    raise exc from err
+                errors.append(exc)
+
+        return errors
 
     def _validate_field(self, config: 'Config', field: BaseField) -> None:
         '''
@@ -1143,7 +1189,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
 
         return tree
 
-    def load_tree(self, tree: dict) -> None:
+    def load_tree(self, tree: dict, validate: bool = True) -> None:
         '''
         Load a tree and then validate the values.
 
@@ -1164,7 +1210,8 @@ class Config:  # pylint: disable=too-many-instance-attributes
 
             self._set_value(key, value)
 
-        self.validate()
+        if validate:
+            self.validate()
 
     def load(self, filename: str, format: str):
         '''
@@ -1233,11 +1280,11 @@ class Config:  # pylint: disable=too-many-instance-attributes
 
         return tree
 
-    def validate(self):
+    def validate(self, collect_errors: bool = False) -> List[ValidationError]:
         '''
         Perform validation on the entire config.
         '''
-        self._schema._validate(self)
+        return self._schema._validate(self, collect_errors=collect_errors)
 
     def cmdline_args_override(self, args: Namespace, ignore: Union[str, List[str]] = None) -> None:
         '''

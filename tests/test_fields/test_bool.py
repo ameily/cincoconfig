@@ -6,7 +6,7 @@
 #
 
 import pytest
-from cincoconfig.fields import BoolField
+from cincoconfig.fields import BoolField, FeatureFlagField
 
 
 class MockConfig:
@@ -56,3 +56,20 @@ class TestBoolField:
         field = BoolField()
         with pytest.raises(ValueError):
             field.validate(MockConfig(), 'asdf')
+
+
+class TestFeatureFlagFIeld:
+
+    def test_enabled(self):
+        field = FeatureFlagField(key='flag')
+        cfg = MockConfig()
+        cfg._data['flag'] = True
+
+        assert field.is_feature_enabled(cfg)
+
+    def test_disabled(self):
+        field = FeatureFlagField(key='flag')
+        cfg = MockConfig()
+        cfg._data['flag'] = False
+
+        assert not field.is_feature_enabled(cfg)
