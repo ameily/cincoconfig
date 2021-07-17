@@ -31,7 +31,7 @@ setup(
         'features': feature_requirements
     },
     project_urls={
-        'Travis CI': 'https://travis-ci.org/ameily/cincoconfig',
+        'Travis CI': 'https://travis-ci.com/github/ameily/cincoconfig',
         'Documentation': 'https://cincoconfig.readthedocs.io/en/latest/',
         'Source': 'https://github.com/ameily/cincoconfig/',
     },
