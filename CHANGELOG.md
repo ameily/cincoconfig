@@ -5,11 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [v0.8.0](https://github.com/ameily/cincoconfig/releases/tag/v0.8.0) - 2021-07-17
 ### Added
 - Improved full reference path detection for both field and configuration objects.
 - New internal `ConfigTypeField` that allows a schema field to reference a `ConfigType` class, as
   returned by the `cincoconfig.make_type` function.
+- New method, `asdict`, to get a Config values as a `dict`.
+- New method, `get_fields`, to get all fields within a Schema or Config.
 
 ### Deprecated
 - Work was done to reduce methods exposed by the `Schema` and `Config` classes by moving the
@@ -36,7 +38,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
 
-## [v0.7.0] - 2020-02-09
+## [v0.7.0](https://github.com/ameily/cincoconfig/releases/tag/v0.7.0) - 2021-02-09
 ### Added
 - Support for the `~` home directory symbol. All filenames are passed through the
   `os.path.expanduser` function.
@@ -54,7 +56,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   field's full name and path.
 
 
-## [v0.6.0] - 2020-11-05
+## [v0.6.0](https://github.com/ameily/cincoconfig/releases/tag/v0.6.0) - 2020-11-05
 ### Added
 - `Field.sensitive` property to mark a value as sensitive.
 - `Config.to_tree()` now supports masking sensitive values (`sensitive_mask` parameter) and
@@ -70,7 +72,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `ListField` now handles empty or `None` values.
 
 
-## [v0.5.0] - 2020-10-31
+## [v0.5.0](https://github.com/ameily/cincoconfig/releases/tag/v0.5.0) - 2020-10-31
 ### Added
 - `StringField`: Provide available choices in the raised exception when value is not valid.
 - `Field.friendly_name()` to retrieve the friendly name of the field, either the `Field.name` or
@@ -94,7 +96,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   encryption.
 
 
-## [0.4.0] - 2020-07-25
+## [0.4.0](https://github.com/ameily/cincoconfig/releases/tag/v0.4.0) - 2020-07-25
 ### Added
 - `Schema.__getitem__()` implementation to get a schema field programmatically.
 - `Schema.get_all_fields()` to recursively get all the fields and nested fields from a schema.
