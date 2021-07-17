@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2019 Adam Meily
+# Copyright (C) 2021 Adam Meily
 #
 # This file is subject to the terms and conditions defined in the file 'LICENSE', which is part of
 # this source code package.
@@ -173,7 +173,7 @@ class TestApplicationModeField:
         field = ApplicationModeField(modes=['production'])
         self.ms._add_field('mode', field)
         assert isinstance(self.ms._fields['is_production_mode'], VirtualField)
-        assert self.ms._fields['is_production_mode'].key == 'is_production_mode'
+        assert self.ms._fields['is_production_mode']._key == 'is_production_mode'
 
     def test_call_helpers(self):
         field = ApplicationModeField(default='production')

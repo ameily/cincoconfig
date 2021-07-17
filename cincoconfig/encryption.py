@@ -1,10 +1,12 @@
 #
-# Copyright (C) 2019 Adam Meily
+# Copyright (C) 2021 Adam Meily
 #
 # This file is subject to the terms and conditions defined in the file 'LICENSE', which is part of
 # this source code package.
 #
-
+'''
+Encryption classes and methods.
+'''
 import os
 from itertools import cycle
 from typing import NamedTuple, Optional, Union, Tuple
@@ -43,7 +45,7 @@ class EncryptionError(Exception):
 class IEncryptionProvider:
     '''
     Interface class for an encryption algorithm provider. An encryption provider
-    implementes both encryption and decryption of string values.
+    implements both encryption and decryption of string values.
 
     The encrypt and decrypt methods must be deterministic.
 

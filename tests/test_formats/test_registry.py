@@ -1,6 +1,6 @@
 from unittest.mock import patch, MagicMock, PropertyMock
 import pytest
-from cincoconfig.formats.registry import FormatRegistry, _FormatRegistrySingleton
+from cincoconfig.core import ConfigFormat
 from cincoconfig.formats.json import JsonConfigFormat
 from cincoconfig.formats.bson import BsonConfigFormat
 from cincoconfig.formats.yaml import YamlConfigFormat
@@ -10,44 +10,39 @@ from cincoconfig.formats.pickle import PickleConfigFormat
 
 class TestFormatRegistry:
 
+    def setup_method(self, _):
+        ConfigFormat._ConfigFormat__registry = {}
+        ConfigFormat._ConfigFormat__initialized = False
+
     def test_register(self):
         fmt = MagicMock
-        FormatRegistry.register('blah', fmt)
-        assert FormatRegistry._formats['blah'] is fmt
+        ConfigFormat.register('blah', fmt)
+        assert ConfigFormat._ConfigFormat__registry['blah'] is fmt
 
     def test_get(self):
-        reg = _FormatRegistrySingleton()
         fmt = MagicMock()
         fmt.return_value = 'hello'
-        reg._formats['blah'] = fmt
+        ConfigFormat._ConfigFormat__registry['blah'] = fmt
 
-        check = reg.get('blah', x=1, y='2')
+        ConfigFormat._ConfigFormat__initialized = True
+        check = ConfigFormat.get('blah', x=1, y='2')
         fmt.assert_called_once_with(x=1, y='2')
         assert check == 'hello'
 
+    @patch.object(ConfigFormat, 'initialize_registry')
+    def test_get_initialize(self, mock_init):
+        ConfigFormat._ConfigFormat__registry['blah'] = MagicMock()
+        ConfigFormat.get('blah')
+        mock_init.assert_called_once()
+
     def test_get_no_exists(self):
         with pytest.raises(KeyError):
-            fmt = FormatRegistry.get('asdfasdfasdf')
-
-    def test_get_calls_init(self):
-        reg = _FormatRegistrySingleton()
-        reg._initialize = MagicMock()
-        reg._formats['blah'] = lambda: 'hello'
-        assert reg.get('blah') == 'hello'
-        reg._initialize.assert_called_once_with()
-
-    def test_register_calls_init(self):
-        reg = _FormatRegistrySingleton()
-        reg._initialize = MagicMock()
-        reg.register('blah', 'hello')
-        reg._initialize.assert_called_once_with()
-        assert reg._formats['blah'] == 'hello'
+            ConfigFormat.get('asdfasdfasdf')
 
     def test_base_formats(self):
-        reg = _FormatRegistrySingleton()
-        reg._initialize()
+        ConfigFormat.initialize_registry()
 
-        assert reg._formats == {
+        assert ConfigFormat._ConfigFormat__registry == {
             'json': JsonConfigFormat,
             'yaml': YamlConfigFormat,
             'bson': BsonConfigFormat,
@@ -55,11 +50,8 @@ class TestFormatRegistry:
             'xml': XmlConfigFormat
         }
 
-    @patch.object(FormatRegistry, 'get')
-    def test_make_factory(self, mock_get):
-        token = object()
-        mock_get.return_value = token
-        factory = FormatRegistry.make_factory('format', x=1, y=2)
-        assert callable(factory)
-        assert factory() is token
-        mock_get.assert_called_once_with('format', x=1, y=2)
+    def test_initialize_cache(self):
+        ConfigFormat.initialize_registry()
+        reg = ConfigFormat._ConfigFormat__registry = object()
+        ConfigFormat.initialize_registry()
+        assert ConfigFormat._ConfigFormat__registry is reg

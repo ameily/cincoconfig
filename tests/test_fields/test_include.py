@@ -32,7 +32,7 @@ class TestIncludeField:
             'd': 6
         }
 
-    @patch('cincoconfig.fields.open', new_callable=mock_open, read_data=b'hello')
+    @patch('cincoconfig.fields.include_field.open', new_callable=mock_open, read_data=b'hello')
     def test_include(self, mop):
         field = IncludeField()
         fmt = MockConfigFormat()
@@ -49,8 +49,8 @@ class TestIncludeField:
         field.combine_trees.assert_called_once_with(base, fmt.retval)
         fmt.loads.assert_called_once_with(cfg, b'hello')
 
-    @patch('cincoconfig.fields.open', new_callable=mock_open, read_data=b'{}')
-    @patch('cincoconfig.config.os.path.expanduser')
+    @patch('cincoconfig.fields.include_field.open', new_callable=mock_open, read_data=b'{}')
+    @patch('cincoconfig.core.os.path.expanduser')
     def test_include_expanduser(self, expanduser, mop):
         field = IncludeField()
         fmt = MockConfigFormat()

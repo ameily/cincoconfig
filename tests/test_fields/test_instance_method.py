@@ -1,6 +1,6 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 import pytest
-from cincoconfig.fields import InstanceMethodField
+from cincoconfig.fields.instance_method_field import InstanceMethodField, instance_method
 
 
 class MockConfig:
@@ -18,8 +18,9 @@ class TestInstanceMethodField:
         return (cfg, x, y, z)
 
     def test_call_wrapper(self):
-        field = InstanceMethodField(self._meth)
-        wrapper = field.__getval__(self.cfg)
+        field = InstanceMethodField(self._meth, key='method')
+        field.__setdefault__(self.cfg)
+        wrapper = self.cfg.method
         assert wrapper.__name__ == '_meth'
         assert wrapper(1, y=2) == (self.cfg, 1, 2, None)
 
@@ -44,3 +45,16 @@ class TestInstanceMethodField:
         x = cfg.func()
         getter.assert_called_once_with(cfg)
         assert x == 'hello'
+
+    @patch('cincoconfig.fields.instance_method_field.InstanceMethodField')
+    def test_instance_method_decorator_schema(self, mock_method_cls):
+        schema = MagicMock()
+        func = lambda s: s
+        instance_method(schema, 'asdf')(func)
+        schema._add_field.assert_called_once_with('asdf', mock_method_cls.return_value)
+        mock_method_cls.assert_called_once_with(method=func)
+
+    def test_validate(self):
+        field = InstanceMethodField(lambda cfg: 1)
+        retval = object()
+        assert field.validate(MagicMock(), retval) is retval

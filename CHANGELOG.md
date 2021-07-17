@@ -5,6 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Added
+- Improved full reference path detection for both field and configuration objects.
+- New internal `ConfigTypeField` that allows a schema field to reference a `ConfigType` class, as
+  returned by the `cincoconfig.make_type` function.
+
+### Deprecated
+- Work was done to reduce methods exposed by the `Schema` and `Config` classes by moving the
+  functions out of the class. This methods are still available in the class but will be removed
+  in v1.0.0.
+  - `Schema.instance_method`: use `cincoconfig.instance_method` instead.
+  - `Schema.generate_argparse_parser`: use `cincoconfig.generate_argparse_parser` instead.
+  - `Schema.make_type`: use `cincoconfig.make_type` instead.
+  - `Schema.validator`: use `cincoconfig.validator` instead.
+  - `Schema.get_all_fields`: use `cincoconfig.get_all_fields` instead.
+  - `Schema.full_path` and `Config.full_path`: use `cincoconfig.item_ref_path` instead.
+  - `Config.cmdline_args_override`: use `cincoconfig.cmdline_args_override` instead.
+- `BaseSchema` and `BaseConfig` were removed and their functionality merged into their concrete
+  classes, `Schema` and `Config`, respectively. cincoconfig will continues to provide `BaseConfig`
+  and `BaseSchema` aliases but these will be removed in v1.0.0.
+- `FormatRegistry` functionality integrated into `ConfigFormat`.
+
+### Internal API Changes
+- `Field` subclasses were broken out into separate modules.
+- `Field.key` was renamed to `Field._key` to be consistent with `Schema` and `Config`.
+- `Field.schema` was renamed to `Field._schema` to be consistent with `Schema` and `Config`.
+- `cincoconfig.abc` and `cincoconfig.config` modules were integrated into a new `cincoconfig.core`
+  module.
+
+
+
 ## [v0.7.0] - 2020-02-09
 ### Added
 - Support for the `~` home directory symbol. All filenames are passed through the
@@ -70,5 +101,5 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 - The Schema fields are now stored in an `OrderedDict` so that the original order that the fields
-  were added to the Schema is preserved when tterating over the Schema's fields, via `iter()` or
+  were added to the Schema is preserved when iterating over the Schema's fields, via `iter()` or
   the new `get_all_fields()`.

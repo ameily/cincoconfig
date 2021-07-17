@@ -16,14 +16,14 @@
     "**/.git": true
   },
   "files.eol": "\n",
-  "python.linting.pep8Path": "pycodestyle",
+  "python.linting.pycodestylePath": "pycodestyle",
 
   // Trim trailing whitespace on save
   "trailing-spaces.trimOnSave": true,
 
   // Enable linting of Python code
   "python.linting.enabled": true,
-  "python.linting.pep8Enabled": true,
+  "python.linting.pycodestyleEnabled": true,
   "python.linting.lintOnSave": true,
 
   "python.linting.pylintArgs": [

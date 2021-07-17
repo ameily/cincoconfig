@@ -47,6 +47,9 @@ fields
 .. autoclass:: cincoconfig.BoolField
     :members:
 
+.. autoclass:: cincoconfig.FeatureFlagField
+    :members:
+
 .. autoclass:: cincoconfig.UrlField
     :members:
 
@@ -81,6 +84,12 @@ The following fields provide secure configuration option storage and challenges.
     :members:
 
 
+Instance Method Field
+---------------------
+
+.. autofunction:: cincoconfig.instance_method
+
+
 Internal Types and Base fields
 ------------------------------
 
@@ -88,8 +97,8 @@ The following classes are used internally by cincoconfig and should not have to 
 referenced directly in applications. These are not included in the public API and must be imported
 explicitly from the ``cincoconfig.fields`` module.
 
-.. autoclass:: cincoconfig.fields.ListProxy
+.. autoclass:: cincoconfig.ListProxy
     :members:
 
-.. autoclass:: cincoconfig.fields.NumberField
+.. autoclass:: cincoconfig.NumberField
     :members:

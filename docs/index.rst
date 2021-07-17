@@ -1,5 +1,5 @@
 .. cincoconfig documentation master file, created by
-   sphinx-quickstart on Sun Mar 17 21:57:06 2019.
+   sphinx on Sun Mar 17 21:57:06 2019.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
@@ -16,12 +16,13 @@ Welcome to cincoconfig's documentation!
    formats
    encryption
    stubs
+   support
 
 
 
 
 ``cincoconfig`` is an easy to use configuration file management library. It allows you to build
-custom application and library configurations declaritively without any subclassing or
+custom application and library configurations declaratively without any subclassing or
 specializations. Cincoconfig ships with 20+ builtin :doc:`fields` with comprehensive value
 validation.
 
@@ -56,9 +57,9 @@ Configuration values are directly accessed as attributes.
     schema.http.address = IPv4AddressField(default='127.0.0.1', required=True)
 
     schema.http.ssl.enabled = BoolField(default=False)
-    schema.http.ssl.cafile = FilenameField()
-    schema.http.ssl.keyfile = FilenameField()
-    schema.http.ssl.certfile = FilenameField()
+    schema.http.ssl.ca_file = FilenameField()
+    schema.http.ssl.key_file = FilenameField()
+    schema.http.ssl.cert_file = FilenameField()
 
     schema.db.host = HostnameField(allow_ipv4=True, required=True, default='localhost')
     schema.db.port = PortField(default=27017, required=True)
