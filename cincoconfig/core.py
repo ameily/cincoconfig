@@ -1032,6 +1032,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
         return value.__getitem__(subkey) if subkey else value
 
     def __iter__(self) -> Iterator[Tuple[str, Any]]:
+        # pylint: disable=superfluous-parens
         return ((key, self._get_value(key)) for key in self._data)
 
     def __setitem__(self, key: str, value: Any) -> Any:
