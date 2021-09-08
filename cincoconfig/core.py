@@ -12,7 +12,7 @@ import os
 import inspect
 from collections import OrderedDict
 from functools import partial
-from typing import Union, Any, Optional, Dict, Iterator, Tuple, List, Callable, Type
+from typing import Union, Any, Optional, Dict, Iterator, Tuple, List, Callable, Type, Set
 from argparse import ArgumentParser, Namespace
 import warnings
 
@@ -881,6 +881,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
         self._fields: Dict[str, BaseField] = OrderedDict()
         self._key = schema._key
         self.__keyfile = None  # type: Optional[KeyFile]
+        self._default_value_keys: Set[str] = set()
 
         if key_filename:
             self._key_filename = key_filename
@@ -893,6 +894,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
                 continue
 
             field.__setdefault__(self)
+            self._default_value_keys.add(key)
 
     @property
     def _key_filename(self) -> str:
@@ -965,6 +967,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
                 raise ValidationError(self, field, err) from err
             else:
                 field.__setval__(self, value)
+                self._default_value_keys.discard(key)
                 return value
 
         if isinstance(value, Config):
@@ -981,6 +984,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
                                   "Unable to coerce %s to Config" % type(value).__name__)
 
         self._data[key] = value
+        self._default_value_keys.discard(key)
         return value
 
     def __setattr__(self, name: str, value: Any) -> Any:

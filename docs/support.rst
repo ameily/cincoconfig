@@ -16,3 +16,7 @@ support
 .. autofunction:: cincoconfig.get_fields
 
 .. autofunction:: cincoconfig.asdict
+
+.. autofunction:: cincoconfig.is_default_value
+
+.. autofunction:: cincoconfig.reset_value

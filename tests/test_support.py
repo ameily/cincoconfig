@@ -1,13 +1,14 @@
 
-from cincoconfig.fields.virtual_field import VirtualField
 from unittest.mock import patch, MagicMock, call
 import argparse
 
-from cincoconfig.fields import StringField, IntField, BoolField, FloatField
+import pytest
+
+from cincoconfig.fields import StringField, IntField, BoolField, FloatField, VirtualField
 from cincoconfig.core import Schema, Field, Config
-from cincoconfig.support import (generate_argparse_parser, get_fields, make_type, get_all_fields,
-                                 cmdline_args_override, validator, item_ref_path, asdict,
-                                 _list_asdict)
+from cincoconfig.support import (generate_argparse_parser, get_fields, is_default_value, make_type,
+                                 get_all_fields, cmdline_args_override, reset_value, validator,
+                                 item_ref_path, asdict, _list_asdict)
 
 
 class TestSupportFuncs:
@@ -232,3 +233,37 @@ class TestSupportFuncs:
         assert result is not y
         assert result[0] == x
         assert result[0] is not x
+
+    def test_is_default_value(self):
+        config = MagicMock(_default_value_keys=set(['x']))
+        assert is_default_value(config, 'x') is True
+        assert is_default_value(config, 'y') is False
+
+    def test_is_default_value_nested(self):
+        config = {
+            'sub': MagicMock(_default_value_keys=set(['x']))
+        }
+        assert is_default_value(config, 'sub.x') is True
+        assert is_default_value(config, 'sub.y') is False
+
+    def test_reset_value(self):
+        config = MagicMock()
+        field = config._get_field.return_value = MagicMock(__setdefault__=MagicMock())
+        reset_value(config, 'x')
+        config._get_field.assert_called_once_with('x')
+        field.__setdefault__.assert_called_once_with(config)
+        config._default_value_keys.add.assert_called_once_with('x')
+
+    def test_reset_value_nested(self):
+        config = MagicMock()
+        field = config._get_field.return_value = MagicMock(__setdefault__=MagicMock())
+        reset_value({'sub': config}, 'sub.x')
+        config._get_field.assert_called_once_with('x')
+        field.__setdefault__.assert_called_once_with(config)
+        config._default_value_keys.add.assert_called_once_with('x')
+
+    def test_reset_value_attribute_error(self):
+        config = MagicMock()
+        config._get_field.return_value = None
+        with pytest.raises(AttributeError):
+            reset_value(config, 'x')
