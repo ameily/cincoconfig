@@ -22,7 +22,7 @@ class TestIPv4AddressField:
 
     def test_valid_ipv4(self):
         field = IPv4AddressField()
-        assert field.validate(MockConfig(), '192.168.001.1') == '192.168.1.1'
+        assert field.validate(MockConfig(), '192.168.1.1') == '192.168.1.1'
 
     def test_invalid_ipv4(self):
         field = IPv4AddressField()
@@ -34,7 +34,7 @@ class TestIPv4NetworkField:
 
     def test_valid_net(self):
         field = IPv4NetworkField()
-        assert field.validate(MockConfig(), '192.168.001.0/24') == '192.168.1.0/24'
+        assert field.validate(MockConfig(), '192.168.1.0/24') == '192.168.1.0/24'
 
     def test_invalid_net(self):
         field = IPv4NetworkField()
@@ -64,7 +64,7 @@ class TestHostnameField:
 
     def test_valid_ipv4(self):
         field = HostnameField(allow_ipv4=True)
-        assert field.validate(MockConfig(), '192.168.001.1') == '192.168.1.1'
+        assert field.validate(MockConfig(), '192.168.1.1') == '192.168.1.1'
 
     def test_no_ipv4(self):
         field = HostnameField(allow_ipv4=False)
