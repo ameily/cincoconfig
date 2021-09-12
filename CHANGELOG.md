@@ -7,8 +7,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## Unreleased
 ### Added
-- New support method, `is_default_value` to check if a config field value is the initial default.
+- New support method, `is_value_defined` to check if a config field value is defined by the user,
+  through either a loaded config file or the API.
 - New support method, `reset_value` to reset a configuration value back to the default.
+- New Config method, `Config._set_default_value`, to set a field default value. This was added so
+  that `__setdefault__` methods wouldn't need to access the `_data` dictionary directly.
 
 
 ## [v0.8.0](https://github.com/ameily/cincoconfig/releases/tag/v0.8.0) - 2021-07-17
