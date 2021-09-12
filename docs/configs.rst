@@ -20,6 +20,7 @@ configs
 
     .. automethod:: _get_field
     .. automethod:: _set_value
+    .. automethod:: _set_default_value
     .. automethod:: _get_value
     .. automethod:: __setattr__
     .. automethod:: __getattr__

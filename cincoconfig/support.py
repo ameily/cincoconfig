@@ -319,20 +319,20 @@ def asdict(config: Config, virtual: bool = False) -> dict:
     return data
 
 
-def is_default_value(config: Config, key: str) -> bool:
+def is_value_defined(config: Config, key: str) -> bool:
     '''
-    Check if the given field is set to the default value. This is true when the config value has
-    not been set by a loaded configuration or via the API.
+    Check if the given field has been set by the user through either loading a configuration file
+    or using the API to set the field value.
 
     :param config: configuration object
     :param key: field key
-    :returns: the field is using the default value
+    :returns: the field is set by the user
     '''
     path, _, key = key.rpartition('.')
     if path:
         config = config[path]
 
-    return key in config._default_value_keys
+    return key not in config._default_value_keys
 
 
 def reset_value(config: Config, key: str) -> None:
@@ -351,4 +351,3 @@ def reset_value(config: Config, key: str) -> None:
         raise AttributeError(key)
 
     field.__setdefault__(config)
-    config._default_value_keys.add(key)

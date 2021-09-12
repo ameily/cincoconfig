@@ -203,7 +203,7 @@ class ChallengeField(Field):
             val = self.default
         else:
             raise TypeError('invalid default value: %r' % self.default)
-        cfg._data[self._key] = val
+        cfg._set_default_value(self._key, val)
 
     def _validate(self, cfg: Config, value: Any) -> DigestValue:
         '''

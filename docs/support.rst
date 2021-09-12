@@ -17,6 +17,6 @@ support
 
 .. autofunction:: cincoconfig.asdict
 
-.. autofunction:: cincoconfig.is_default_value
+.. autofunction:: cincoconfig.is_value_defined
 
 .. autofunction:: cincoconfig.reset_value

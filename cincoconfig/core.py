@@ -182,12 +182,12 @@ class BaseField:
     def __setdefault__(self, cfg: 'Config') -> None:
         '''
         Set the default value in the configuration. Subclasses should set the field's default value
-        directly in the ``cfg._data`` dictionary. For example:
+        using the :meth:`Config._set_deafult_value` method. For example:
 
         .. code-block:: python
 
             def __setdefault__(self, cfg: 'Config') -> None:
-                cfg._data[self._key] = "Hello, world!"
+                cfg._set_default_value(self._key, "Hello, world!")
         '''
 
     @property
@@ -467,7 +467,7 @@ class Field(BaseField):
         if value is None:
             value = self.default
 
-        cfg._data[self._key] = value
+        cfg._set_default_value(self._key, value)
 
     def to_python(self, cfg: 'Config', value: Any) -> Any:
         '''
@@ -525,7 +525,7 @@ class ConfigTypeField(BaseField):
         self.config_type = config_type
 
     def __setdefault__(self, cfg: 'Config') -> None:
-        cfg._data[self._key] = self.config_type(cfg)
+        cfg._set_default_value(self._key, self.config_type(cfg))
 
     def __call__(self, cfg: 'Config' = None) -> 'ConfigType':
         '''
@@ -605,7 +605,7 @@ class Schema(BaseField):
             self._env_prefix = prefix + self._key.upper()
 
     def __setdefault__(self, cfg: 'Config') -> None:
-        cfg._data[self._key] = Config(self, cfg)
+        cfg._set_default_value(self._key, Config(self, cfg))
 
     def _get_field(self, key: str) -> Optional[BaseField]:
         '''
@@ -894,7 +894,6 @@ class Config:  # pylint: disable=too-many-instance-attributes
                 continue
 
             field.__setdefault__(self)
-            self._default_value_keys.add(key)
 
     @property
     def _key_filename(self) -> str:
@@ -937,6 +936,17 @@ class Config:  # pylint: disable=too-many-instance-attributes
         :returns: a field from the schema or the dynamically added field if the schema is dynamic.
         '''
         return self._schema._get_field(key) or self._fields.get(key)
+
+    def _set_default_value(self, key: str, value: Any) -> None:
+        '''
+        Set a default value without performing any validation. The value is set and the field is
+        marked as having the initial default value.
+
+        :param key: field key
+        :param value: field default value
+        '''
+        self._data[key] = value
+        self._default_value_keys.add(key)
 
     def _set_value(self, key: str, value: Any) -> Any:
         '''
@@ -1115,14 +1125,15 @@ class Config:  # pylint: disable=too-many-instance-attributes
 
         return path
 
-    def save(self, filename: str, format: str):
+    def save(self, filename: str, format: str, **kwargs):
         '''
-        Save the configuration to a file.
+        Save the configuration to a file. Additional keyword arguments are passed to :meth:`dumps`.
 
         :param filename: destination file path
         :param format: output format
+        :param: additional keyword arguments for :meth:`dumps`
         '''
-        content = self.dumps(format)
+        content = self.dumps(format, **kwargs)
         filename = os.path.expanduser(filename)
         with open(filename, 'wb') as file:
             file.write(content)

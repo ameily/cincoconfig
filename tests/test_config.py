@@ -749,3 +749,10 @@ class TestConfig:
         config = schema()
         config.x = {'y': 2}
         assert config._default_value_keys == set()
+
+    def test_set_default_value(self):
+        schema = Schema()
+        config = schema()
+        config._set_default_value('x', 'asdf')
+        assert config._data == {'x': 'asdf'}
+        assert config._default_value_keys == set(['x'])

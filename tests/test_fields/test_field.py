@@ -18,6 +18,7 @@ class MockConfig:
         self._parent = parent
         self._key = key
         self._schema = Schema()
+        self._set_default_value = MagicMock()
 
     def _full_path(self):
         return ''
@@ -58,7 +59,7 @@ class TestBaseField:
     def test_setdefault(self):
         field = Field(key='key', default='hello')
         field.__setdefault__(self.cfg)
-        assert self.cfg._data['key'] == 'hello'
+        self.cfg._set_default_value.assert_called_once_with('key', 'hello')
 
     def test_to_python(self):
         field = Field()

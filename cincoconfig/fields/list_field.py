@@ -145,7 +145,7 @@ class ListField(Field):
         if isinstance(default, list) and self.field:
             default = ListProxy(cfg, self, default)
 
-        cfg._data[self._key] = default
+        cfg._set_default_value(self._key, default)
 
     def _validate(self, cfg: Config, value: list) -> Union[list, ListProxy]:
         '''
