@@ -317,3 +317,37 @@ def asdict(config: Config, virtual: bool = False) -> dict:
         data.update({key: field.__getval__(config) for key, field in fields})
 
     return data
+
+
+def is_value_defined(config: Config, key: str) -> bool:
+    '''
+    Check if the given field has been set by the user through either loading a configuration file
+    or using the API to set the field value.
+
+    :param config: configuration object
+    :param key: field key
+    :returns: the field is set by the user
+    '''
+    path, _, key = key.rpartition('.')
+    if path:
+        config = config[path]
+
+    return key not in config._default_value_keys
+
+
+def reset_value(config: Config, key: str) -> None:
+    '''
+    Reset a config value back to the default.
+
+    :param config: configuration object
+    :param key: field key
+    '''
+    path, _, key = key.rpartition('.')
+    if path:
+        config = config[path]
+
+    field = config._get_field(key)
+    if not field:
+        raise AttributeError(key)
+
+    field.__setdefault__(config)

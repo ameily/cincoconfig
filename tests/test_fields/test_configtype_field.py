@@ -11,7 +11,7 @@ class TestConfigTypeField:
         cfg._data = {}
         field = ConfigTypeField(mock_ct, key='x')
         field.__setdefault__(cfg)
-        assert cfg._data == {'x': retval}
+        cfg._set_default_value.assert_called_once_with('x', retval)
         mock_ct.assert_called_once_with(cfg)
 
     def test_call(self):

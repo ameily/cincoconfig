@@ -727,3 +727,32 @@ class TestConfig:
         config = schema()
         assert config.load_tree({}, validate=False) is None
 
+    def test_default_keys(self):
+        schema = Schema()
+        schema.a.b = Field(default=0)
+        schema.x = Field(default=1)
+        schema.y = Field(default=2)
+        schema.z = Field(default=3)
+        config = schema(y=2, z=4)
+        assert config._default_value_keys == set(['a', 'x'])
+
+    def test_default_keys_override(self):
+        schema = Schema()
+        schema.x = Field(default=1)
+        config = schema()
+        config.x = 1
+        assert config._default_value_keys == set()
+
+    def test_default_keys_config_override(self):
+        schema = Schema()
+        schema.x.y = Field(default=1)
+        config = schema()
+        config.x = {'y': 2}
+        assert config._default_value_keys == set()
+
+    def test_set_default_value(self):
+        schema = Schema()
+        config = schema()
+        config._set_default_value('x', 'asdf')
+        assert config._data == {'x': 'asdf'}
+        assert config._default_value_keys == set(['x'])

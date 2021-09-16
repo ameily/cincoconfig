@@ -5,7 +5,7 @@
 # this source code package.
 #
 from typing import List
-from unittest.mock import patch, call
+from unittest.mock import patch, call, MagicMock
 import pytest
 from cincoconfig.fields import ListField, ListProxy, IntField
 from cincoconfig.core import Schema, Config, ValidationError
@@ -15,6 +15,7 @@ class MockConfig:
 
     def __init__(self):
         self._data = {}
+        self._set_default_value = MagicMock()
 
 
 class TestListProxy:
@@ -298,8 +299,9 @@ class TestListField:
         cfg = MockConfig()
         field = ListField(IntField(), default=lambda: [1, 2, 3], key='asdf')
         field.__setdefault__(cfg)
-        assert isinstance(cfg._data['asdf'], ListProxy)
-        assert cfg._data['asdf'] == ListProxy(cfg, field, [1, 2, 3])
+        cfg._set_default_value.assert_called_once_with('asdf', ListProxy(cfg, field, [1, 2, 3]))
+        # assert isinstance(cfg._data['asdf'], ListProxy)
+        # assert cfg._data['asdf'] == ListProxy(cfg, field, [1, 2, 3])
 
     def test_to_basic_none(self):
         field = ListField(IntField(), default=None, key='asdf')

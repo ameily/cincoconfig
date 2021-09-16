@@ -12,7 +12,7 @@ import os
 import inspect
 from collections import OrderedDict
 from functools import partial
-from typing import Union, Any, Optional, Dict, Iterator, Tuple, List, Callable, Type
+from typing import Union, Any, Optional, Dict, Iterator, Tuple, List, Callable, Type, Set
 from argparse import ArgumentParser, Namespace
 import warnings
 
@@ -182,12 +182,12 @@ class BaseField:
     def __setdefault__(self, cfg: 'Config') -> None:
         '''
         Set the default value in the configuration. Subclasses should set the field's default value
-        directly in the ``cfg._data`` dictionary. For example:
+        using the :meth:`Config._set_deafult_value` method. For example:
 
         .. code-block:: python
 
             def __setdefault__(self, cfg: 'Config') -> None:
-                cfg._data[self._key] = "Hello, world!"
+                cfg._set_default_value(self._key, "Hello, world!")
         '''
 
     @property
@@ -467,7 +467,7 @@ class Field(BaseField):
         if value is None:
             value = self.default
 
-        cfg._data[self._key] = value
+        cfg._set_default_value(self._key, value)
 
     def to_python(self, cfg: 'Config', value: Any) -> Any:
         '''
@@ -525,7 +525,7 @@ class ConfigTypeField(BaseField):
         self.config_type = config_type
 
     def __setdefault__(self, cfg: 'Config') -> None:
-        cfg._data[self._key] = self.config_type(cfg)
+        cfg._set_default_value(self._key, self.config_type(cfg))
 
     def __call__(self, cfg: 'Config' = None) -> 'ConfigType':
         '''
@@ -605,7 +605,7 @@ class Schema(BaseField):
             self._env_prefix = prefix + self._key.upper()
 
     def __setdefault__(self, cfg: 'Config') -> None:
-        cfg._data[self._key] = Config(self, cfg)
+        cfg._set_default_value(self._key, Config(self, cfg))
 
     def _get_field(self, key: str) -> Optional[BaseField]:
         '''
@@ -881,6 +881,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
         self._fields: Dict[str, BaseField] = OrderedDict()
         self._key = schema._key
         self.__keyfile = None  # type: Optional[KeyFile]
+        self._default_value_keys: Set[str] = set()
 
         if key_filename:
             self._key_filename = key_filename
@@ -936,6 +937,17 @@ class Config:  # pylint: disable=too-many-instance-attributes
         '''
         return self._schema._get_field(key) or self._fields.get(key)
 
+    def _set_default_value(self, key: str, value: Any) -> None:
+        '''
+        Set a default value without performing any validation. The value is set and the field is
+        marked as having the initial default value.
+
+        :param key: field key
+        :param value: field default value
+        '''
+        self._data[key] = value
+        self._default_value_keys.add(key)
+
     def _set_value(self, key: str, value: Any) -> Any:
         '''
         Set a configuration value. This method passes the value through the field validation chain
@@ -965,6 +977,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
                 raise ValidationError(self, field, err) from err
             else:
                 field.__setval__(self, value)
+                self._default_value_keys.discard(key)
                 return value
 
         if isinstance(value, Config):
@@ -981,6 +994,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
                                   "Unable to coerce %s to Config" % type(value).__name__)
 
         self._data[key] = value
+        self._default_value_keys.discard(key)
         return value
 
     def __setattr__(self, name: str, value: Any) -> Any:
@@ -1028,6 +1042,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
         return value.__getitem__(subkey) if subkey else value
 
     def __iter__(self) -> Iterator[Tuple[str, Any]]:
+        # pylint: disable=superfluous-parens
         return ((key, self._get_value(key)) for key in self._data)
 
     def __setitem__(self, key: str, value: Any) -> Any:
@@ -1110,14 +1125,15 @@ class Config:  # pylint: disable=too-many-instance-attributes
 
         return path
 
-    def save(self, filename: str, format: str):
+    def save(self, filename: str, format: str, **kwargs):
         '''
-        Save the configuration to a file.
+        Save the configuration to a file. Additional keyword arguments are passed to :meth:`dumps`.
 
         :param filename: destination file path
         :param format: output format
+        :param: additional keyword arguments for :meth:`dumps`
         '''
-        content = self.dumps(format)
+        content = self.dumps(format, **kwargs)
         filename = os.path.expanduser(filename)
         with open(filename, 'wb') as file:
             file.write(content)
