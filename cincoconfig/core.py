@@ -64,7 +64,7 @@ class ValidationError(ValueError):
         if isinstance(self.field, Field) and self.field._name:
             path += " (%s)" % self.field._name
 
-        return '%s: %s' % (path, msg)
+        return '%s: %s' % (path, msg) if path else msg
 
     @property
     def ref_path(self) -> str:
