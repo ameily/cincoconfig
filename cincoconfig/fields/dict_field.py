@@ -143,7 +143,8 @@ class DictField(Field):
         default = self.default
         if isinstance(default, dict) and self._use_proxy:
             default = DictProxy(cfg, self, default)
-
+        elif default is not None:
+            default = dict(default)
         cfg._set_default_value(self._key, default)
 
     def to_basic(self, cfg: Config, value: Union[dict, DictProxy]) -> dict:
