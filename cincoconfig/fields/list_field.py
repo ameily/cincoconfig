@@ -142,10 +142,11 @@ class ListField(Field):
 
     def __setdefault__(self, cfg: Config) -> None:
         default = self.default
-        if isinstance(default, list) and self.field:
-            default = ListProxy(cfg, self, default)
-        elif default is not None:
-            default = list(default)
+        if isinstance(default, list):
+            if self.field:
+                default = ListProxy(cfg, self, default)
+            else:
+                default = list(default)
         cfg._set_default_value(self._key, default)
 
     def _validate(self, cfg: Config, value: list) -> Union[list, ListProxy]:
