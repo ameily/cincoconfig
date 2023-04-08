@@ -21,7 +21,6 @@ def _iterate_dict_like(iterable: KeyValuePairs) -> List[Tuple[Any, Any]]:
     return list(iterable)
 
 
-
 class DictProxy(dict):
     '''
     A Field-validated :class:`list` proxy. This proxy supports all methods that the builtin
@@ -59,12 +58,17 @@ class DictProxy(dict):
         '''
         return self.dict_field.value_field  # type: ignore
 
-    def update(self, iterable: KeyValuePairs, **kwargs) -> None:
-        if isinstance(iterable, DictProxy) and iterable.dict_field is self.dict_field:
-            super().update(iterable)
-        else:
-            super().update([self._validate(key, value)
-                            for key, value in _iterate_dict_like(iterable)])
+    def _is_compatible_proxy(self, other: 'DictProxy'):
+        return self.cfg is other.cfg and self.dict_field is other.dict_field
+
+    def update(self, iterable: Optional[KeyValuePairs] = None, **kwargs) -> None:
+        if iterable:
+            if isinstance(iterable, DictProxy) and self._is_compatible_proxy(iterable):
+                for key, value in iterable.items():
+                    super().__setitem__(key, value)
+            else:
+                super().update([self._validate(key, value)
+                                for key, value in _iterate_dict_like(iterable)])
 
         for key, value in kwargs.items():
             self.__setitem__(key, value)
@@ -90,13 +94,22 @@ class DictProxy(dict):
             validated_value = self.value_field.validate(self.cfg, value)
         except Exception as exc:
             raise ValidationError(self.cfg, self.dict_field, 'invalid dictionary value: %s' % exc,
-                                 ref_path=self._ref_path(key))
+                                  ref_path=self._ref_path(key))
 
         return (validated_key, validated_value)
 
     def setdefault(self, key: Any, value: Any) -> None:
         key, value = self._validate(key, value)
         super().setdefault(key, value)
+
+    def __eq__(self, other: Any) -> bool:
+        if other is None or not isinstance(other, dict):
+            return False
+
+        if isinstance(other, DictProxy):
+            return self._is_compatible_proxy(other) and super().__eq__(other)
+
+        return super().__eq__(other)
 
 
 class DictField(Field):
@@ -162,7 +175,7 @@ class DictField(Field):
         if not self._use_proxy:
             return dict(value)
 
-        return {self.key_field.to_basic(key): self.value_field.to_basic(value)
+        return {self.key_field.to_basic(cfg, key): self.value_field.to_basic(cfg, value)
                 for key, value in value.items()}
 
     def to_python(self, cfg: Config, value: dict) -> Union[dict, DictProxy]:
