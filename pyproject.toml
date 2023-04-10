@@ -1,0 +1,39 @@
+[tool.poetry]
+name = "cincoconfig"
+version = "0.8.0"
+description = ""
+authors = ["Adam Meily <meily.adam@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.7"
+
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.0.261"
+pyright = "^1.1.302"
+sphinx = "*"
+sphinx-autodoc-typehints = "^1.22"
+sphinx-rtd-theme = "^1.2.0"
+coverage = "^7.2.3"
+pytest = "^7.3.0"
+
+
+[tool.poetry.group.bson.dependencies]
+bson = "*"
+
+
+[tool.poetry.group.yaml.dependencies]
+pyyaml = "*"
+
+
+[tool.poetry.group.crypto.dependencies]
+cryptography = "*"
+
+[tool.ruff]
+select = ["E", "F"]  # enable "I" for import sorting
+line-length = 99
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
