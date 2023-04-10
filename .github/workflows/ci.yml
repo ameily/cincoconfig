@@ -25,6 +25,8 @@ jobs:
           ruff check cincoconfig
           pyright cincoconfig
       - name: Test with pytest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           coverage run -m pytest
           coverage report -m
