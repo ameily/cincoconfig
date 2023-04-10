@@ -19,12 +19,11 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements/requirements.txt -r requirements/requirements-dev.txt -r requirements/requirements-features.txt coveralls
+          pip install pytest coverage coveralls ruff pyright
       - name: Linting
         run: |
-          pycodestyle cincoconfig
-          pylint --rcfile=.pylintrc cincoconfig
-          mypy cincoconfig
+          ruff check cincoconfig
+          pyright cincoconfig
       - name: Test with pytest
         run: |
           pytest --cov=cincoconfig --cov-report=term-missing
