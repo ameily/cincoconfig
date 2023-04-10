@@ -26,5 +26,6 @@ jobs:
           pyright cincoconfig
       - name: Test with pytest
         run: |
-          pytest --cov=cincoconfig --cov-report=term-missing
+          coverage run -m pytest
+          coverage report -m
           coveralls
