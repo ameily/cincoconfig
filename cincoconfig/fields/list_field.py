@@ -8,12 +8,9 @@
 List field
 '''
 import inspect
-from typing import Iterable, TypeVar, Type, Union, Any, List
+from typing import Iterable, Type, Union, Any, List, Optional
 from ..core import (ContainerValueMixin, Field, Config, BaseField, Schema, isconfigtype, AnyField,
                     ConfigType)
-
-
-_T = TypeVar('_T')
 
 
 class ListProxy(list, ContainerValueMixin):
@@ -23,7 +20,8 @@ class ListProxy(list, ContainerValueMixin):
     the field returned by the :class:`ListField` validation chain.
     '''
 
-    def __init__(self, cfg: Config, list_field: 'ListField', iterable: Iterable[_T] = None):
+    def __init__(self, cfg: Config, list_field: 'ListField',
+                 iterable: Optional[Iterable] = None):
         iterable = iterable or []
         self.cfg = cfg
         self.list_field = list_field
@@ -43,32 +41,32 @@ class ListProxy(list, ContainerValueMixin):
         '''
         return self.list_field.field  # type: ignore
 
-    def append(self, item: _T) -> None:
+    def append(self, item: Any) -> None:
         super().append(self._validate(item))
 
-    def extend(self, iterable: Iterable[_T]) -> None:
+    def extend(self, iterable: Iterable) -> None:
         if isinstance(iterable, ListProxy) and iterable.item_field is self.item_field:
             super().extend(iterable)
         else:
             super().extend(self._validate(item) for item in iterable)
 
-    def insert(self, index: int, item: _T) -> None:
+    def insert(self, index: int, item: Any) -> None:
         super().insert(index, self._validate(item))
 
     def copy(self) -> 'ListProxy':
         return ListProxy(self.cfg, self.list_field, self)
 
-    def __iadd__(self, iterable: Iterable[_T]) -> 'ListProxy':
+    def __iadd__(self, iterable: Iterable) -> 'ListProxy':
         self.extend(iterable)
         return self
 
-    def __add__(self, iterable: Iterable[_T]) -> 'ListProxy':
+    def __add__(self, iterable: Iterable) -> 'ListProxy':
         ret = self.copy()
         ret.extend(iterable)
         return ret
 
     def __setitem__(self, index: Union[int, slice],  # type: ignore[override]
-                    item: Union[_T, Iterable[_T]]) -> None:
+                    item: Union[Any, Iterable]) -> None:
         if isinstance(index, slice) and isinstance(item, (list, tuple)):
             super().__setitem__(index, [self._validate(i) for i in item])
         elif isinstance(index, int):
@@ -110,7 +108,7 @@ class ListProxy(list, ContainerValueMixin):
     def _get_item_position(self, item: Any) -> str:
         try:
             return str(self.index(item))
-        except:
+        except:  # noqa: E722
             return str(len(self))
 
 
@@ -125,7 +123,7 @@ class ListField(Field):
     '''
     storage_type = List
 
-    def __init__(self, field: Union[BaseField, Type[ConfigType]] = None, **kwargs):
+    def __init__(self, field: Optional[Union[BaseField, Type[ConfigType]]] = None, **kwargs):
         '''
         :param field: Field to validate values against
         '''

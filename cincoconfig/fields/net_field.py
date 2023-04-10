@@ -9,6 +9,7 @@ Network fields
 '''
 import socket
 import re
+from typing import Optional
 from ipaddress import IPv4Address, IPv4Network
 
 from ..core import Config
@@ -56,7 +57,8 @@ class IPv4NetworkField(StringField):
     '''
     storage_type = str
 
-    def __init__(self, min_prefix_len: int = None, max_prefix_len: int = None, **kwargs):
+    def __init__(self, min_prefix_len: Optional[int] = None, max_prefix_len: Optional[int] = None,
+                 **kwargs):
         '''
         :param min_prefix_len: minimum subnet prefix length (/X), in bits
         :param max_prefix_len: maximum subnet prefix length (/X), in bits
@@ -117,7 +119,7 @@ class HostnameField(StringField):
 
         try:
             addr = IPv4Address(value)
-        except:
+        except:  # noqa: E722
             pass
         else:
             if self.allow_ipv4:

@@ -7,6 +7,8 @@
 '''
 YAML config file format.
 '''
+from typing import Optional
+
 try:
     import yaml
 except ImportError:  # pragma: no cover
@@ -33,7 +35,7 @@ class YamlConfigFormat(ConfigFormat):
         config.load('filename.yml', format='yaml')
     '''
 
-    def __init__(self, root_key: str = None):
+    def __init__(self, root_key: Optional[str] = None):
         '''
         By default, the basic value tree is serialized to YAML document as-is, where top-level
         configuration values are placed at the top level of the config file. For example:

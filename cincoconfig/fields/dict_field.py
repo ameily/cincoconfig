@@ -7,8 +7,8 @@
 '''
 Dict field.
 '''
-from typing import Optional, Mapping, TypeVar, Any, Tuple, Union, Sequence, Dict, List
 from ..core import Field, Config, AnyField, ValidationError
+from typing import Optional, TypeVar, Any, Tuple, Union, Sequence, Dict, List
 
 _KeyT = TypeVar('_KeyT')
 _ValueT = TypeVar('_ValueT')
@@ -114,8 +114,7 @@ class DictProxy(dict):
 
 class DictField(Field):
     '''
-    A generic :class:`dict` field. Individual key/value pairs are not validated. So, this field
-    should only be used when a configuration field is completely dynamic.
+    A generic :class:`dict` field that optionally validates keys and values.
 
     Specifying *required=True* will cause the field validation to validate that the ``dict`` is
     not ``None`` and is not empty.
@@ -175,8 +174,10 @@ class DictField(Field):
         if not self._use_proxy:
             return dict(value)
 
-        return {self.key_field.to_basic(cfg, key): self.value_field.to_basic(cfg, value)
-                for key, value in value.items()}
+        return {
+            self.key_field.to_basic(cfg, key): self.value_field.to_basic(cfg, val)  # type: ignore
+            for key, val in value.items()
+        }
 
     def to_python(self, cfg: Config, value: dict) -> Union[dict, DictProxy]:
         '''

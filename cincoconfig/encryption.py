@@ -9,7 +9,7 @@ Encryption classes and methods.
 '''
 import os
 from itertools import cycle
-from typing import NamedTuple, Optional, Union, Tuple
+from typing import NamedTuple, Union, Tuple, Optional
 
 try:
     from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -99,7 +99,7 @@ class KeyFile:
         :param filename: the cinco key filename
         '''
         self.filename = filename
-        self.__key = None  # type: Optional[bytes]
+        self.__key: Optional[bytes] = None
         self.__refcount = 0
 
     def __load_key(self) -> None:

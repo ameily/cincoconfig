@@ -9,13 +9,13 @@ Support functions.
 '''
 import sys
 from argparse import ArgumentParser, Namespace
-from typing import Callable, List, Tuple, Union, Type
+from typing import Callable, List, Tuple, Union, Type, Optional
 from .core import (Schema, BaseField, Config, ConfigType, FieldValidator, ConfigValidator, Field,
                    VirtualFieldMixin)
 
 
-def make_type(schema: Schema, name: str, module: str = None,
-              key_filename: str = None) -> Type[ConfigType]:
+def make_type(schema: Schema, name: str, module: Optional[str] = None,
+              key_filename: Optional[str] = None) -> Type[ConfigType]:
     '''
     Create a new type that wraps this schema. This method should only be called once per
     schema object.
@@ -78,7 +78,7 @@ def make_type(schema: Schema, name: str, module: str = None,
     return result
 
 
-def generate_argparse_parser(schema, **parser_kwargs) -> ArgumentParser:
+def generate_argparse_parser(schema: Union[Config, Schema], **parser_kwargs) -> ArgumentParser:
     '''
     Generate a :class:`argparse.ArgumentParser` based on the schema. This method generates
     ``--long-arguments`` for each field that stores a string, integer, float, or bool (based
@@ -195,7 +195,7 @@ def get_all_fields(schema: Union[Schema, Config]) -> List[Tuple[str, Schema, Bas
 
 
 def cmdline_args_override(config: Config, args: Namespace,
-                          ignore: Union[str, List[str]] = None) -> None:
+                          ignore: Optional[Union[str, List[str]]] = None) -> None:
     '''
     Override configuration setting based on command line arguments, parsed from the
     :mod:`argparse` module. This method is useful when loading a configuration but allowing the

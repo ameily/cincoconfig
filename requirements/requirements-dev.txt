@@ -1,9 +1,7 @@
 coverage
-mypy
-pycodestyle
-pylint
+pyright
+ruff
 pytest
-pytest-cov
 # sphinx # See https://github.com/pypa/pip/issues/9031
 sphinx-autodoc-typehints
 sphinx-rtd-theme
