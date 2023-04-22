@@ -16,6 +16,7 @@ formats: all
 python:
   version: 3.7
   install:
-    - requirements: requirements/requirements.txt
-    - requirements: requirements/requirements-features.txt
-    - requirements: requirements/requirements-dev.txt
+    # - requirements: requirements/requirements.txt
+    # - requirements: requirements/requirements-features.txt
+    # - requirements: requirements/requirements-dev.txt
+    - requirements: docs/rtd-requirements.txt
