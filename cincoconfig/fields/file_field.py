@@ -4,25 +4,31 @@
 # This file is subject to the terms and conditions defined in the file 'LICENSE', which is part of
 # this source code package.
 #
-'''
+"""
 File field.
-'''
+"""
 import os
-from typing import Union, Optional
+from typing import Optional, Union
 
-from .string_field import StringField
 from ..core import Config
+from .string_field import StringField
 
 
 class FilenameField(StringField):
-    '''
+    """
     A field for representing a filename on disk.
-    '''
+    """
+
     storage_type = str
 
-    def __init__(self, *, exists: Optional[Union[bool, str]] = None,
-                 startdir: Optional[str] = None, **kwargs):
-        '''
+    def __init__(
+        self,
+        *,
+        exists: Optional[Union[bool, str]] = None,
+        startdir: Optional[str] = None,
+        **kwargs
+    ):
+        """
         The *exists* parameter can be set to one of the following values:
 
         - ``None`` - don't check file's existence
@@ -38,39 +44,45 @@ class FilenameField(StringField):
 
         :param exists: validate the filename's existence on disk
         :param startdir: resolve relative paths to a start directory
-        '''
+        """
         super().__init__(**kwargs)
         self.exists = exists
         self.startdir = startdir
 
     def _validate(self, cfg: Config, value: str) -> str:
-        '''
+        """
         Validate a value.
 
         :param cfg: current config
         :param value: value to validate
-        '''
+        """
         value = super()._validate(cfg, value)
 
         if not value:
             return value
 
         if not os.path.isabs(value) and self.startdir:
-            value = os.path.abspath(os.path.expanduser(os.path.join(self.startdir, value)))
+            value = os.path.abspath(
+                os.path.expanduser(os.path.join(self.startdir, value))
+            )
 
-        if os.path.sep == '\\':
-            value = value.replace('/', '\\')
+        if os.path.sep == "\\":
+            value = value.replace("/", "\\")
 
         value_exists = os.path.exists(value)
         if self.exists is True and not value_exists:
-            raise ValueError('file or directory does not exist: %s' % value)
+            raise ValueError("file or directory does not exist: %s" % value)
         if self.exists is False and value_exists:
-            raise ValueError('file or directory already exists: %s' % value)
-        if self.exists == 'dir' and not os.path.isdir(value):
-            raise ValueError('directory %s: %s' %
-                             ('already exists' if value_exists else 'does not exist', value))
-        if self.exists == 'file' and not os.path.isfile(value):
-            raise ValueError('file %s: %s' %
-                             ('already exists' if value_exists else 'does not exist', value))
+            raise ValueError("file or directory already exists: %s" % value)
+        if self.exists == "dir" and not os.path.isdir(value):
+            raise ValueError(
+                "directory %s: %s"
+                % ("already exists" if value_exists else "does not exist", value)
+            )
+        if self.exists == "file" and not os.path.isfile(value):
+            raise ValueError(
+                "file %s: %s"
+                % ("already exists" if value_exists else "does not exist", value)
+            )
 
         return value

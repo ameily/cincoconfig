@@ -4,14 +4,15 @@
 # This file is subject to the terms and conditions defined in the file 'LICENSE', which is part of
 # this source code package.
 #
-'''
+"""
 Dict field.
-'''
-from ..core import Field, Config, AnyField, ValidationError
-from typing import Optional, TypeVar, Any, Tuple, Union, Sequence, Dict, List
+"""
+from typing import Any, Dict, List, Optional, Sequence, Tuple, TypeVar, Union
 
-_KeyT = TypeVar('_KeyT')
-_ValueT = TypeVar('_ValueT')
+from ..core import AnyField, Config, Field, ValidationError
+
+_KeyT = TypeVar("_KeyT")
+_ValueT = TypeVar("_ValueT")
 KeyValuePairs = Union[Dict[Any, Any], Sequence[Tuple[Any, Any]]]
 
 
@@ -22,43 +23,53 @@ def _iterate_dict_like(iterable: KeyValuePairs) -> List[Tuple[Any, Any]]:
 
 
 class DictProxy(dict):
-    '''
+    """
     A Field-validated :class:`dict` proxy. This proxy supports all methods that the builtin
     ``dict`` supports with the added ability to validate keys and values against a :class:`Field`.
     This is the value returned by the :class:`DictField` validation chain.
-    '''
+    """
 
-    def __init__(self, cfg: Config, dict_field: 'DictField',
-                 iterable: Optional[KeyValuePairs] = None):
+    def __init__(
+        self,
+        cfg: Config,
+        dict_field: "DictField",
+        iterable: Optional[KeyValuePairs] = None,
+    ):
         iterable = iterable or []
         self.cfg = cfg
         self.dict_field = dict_field
         if not self.dict_field._use_proxy:
-            raise TypeError('DictProxy requires a parent DictField.{key,value}_field attribute')
+            raise TypeError(
+                "DictProxy requires a parent DictField.{key,value}_field attribute"
+            )
 
         if isinstance(iterable, DictProxy) and iterable.dict_field is dict_field:
             super().__init__(iterable)
         elif iterable:
-            super().__init__([self._validate(key, value)
-                              for key, value in _iterate_dict_like(iterable)])
+            super().__init__(
+                [
+                    self._validate(key, value)
+                    for key, value in _iterate_dict_like(iterable)
+                ]
+            )
         else:
             super().__init__()
 
     @property
     def key_field(self) -> Field:
-        '''
+        """
         :returns: the field for each item stored in the list.
-        '''
+        """
         return self.dict_field.key_field  # type: ignore
 
     @property
     def value_field(self) -> Field:
-        '''
+        """
         :returns: the field for each item stored in the list.
-        '''
+        """
         return self.dict_field.value_field  # type: ignore
 
-    def _is_compatible_proxy(self, other: 'DictProxy') -> bool:
+    def _is_compatible_proxy(self, other: "DictProxy") -> bool:
         """
         Check if a proxy is compatible with this proxy. Two proxies are compatible when they share
         the same configuration object and the same parent :class:`DictField`.
@@ -71,13 +82,17 @@ class DictProxy(dict):
                 for key, value in iterable.items():
                     super().__setitem__(key, value)
             else:
-                super().update([self._validate(key, value)
-                                for key, value in _iterate_dict_like(iterable)])
+                super().update(
+                    [
+                        self._validate(key, value)
+                        for key, value in _iterate_dict_like(iterable)
+                    ]
+                )
 
         for key, value in kwargs.items():
             self.__setitem__(key, value)
 
-    def copy(self) -> 'DictProxy':
+    def copy(self) -> "DictProxy":
         return DictProxy(self.cfg, self.dict_field, self)
 
     def __setitem__(self, key: Any, value: Any) -> None:
@@ -91,14 +106,22 @@ class DictProxy(dict):
         try:
             validated_key = self.key_field.validate(self.cfg, key)
         except Exception as exc:
-            raise ValidationError(self.cfg, self.dict_field, 'invalid dictionary key: %s' % exc,
-                                  ref_path=self._ref_path(key))
+            raise ValidationError(
+                self.cfg,
+                self.dict_field,
+                "invalid dictionary key: %s" % exc,
+                ref_path=self._ref_path(key),
+            )
 
         try:
             validated_value = self.value_field.validate(self.cfg, value)
         except Exception as exc:
-            raise ValidationError(self.cfg, self.dict_field, 'invalid dictionary value: %s' % exc,
-                                  ref_path=self._ref_path(key))
+            raise ValidationError(
+                self.cfg,
+                self.dict_field,
+                "invalid dictionary value: %s" % exc,
+                ref_path=self._ref_path(key),
+            )
 
         return (validated_key, validated_value)
 
@@ -117,16 +140,21 @@ class DictProxy(dict):
 
 
 class DictField(Field):
-    '''
+    """
     A generic :class:`dict` field that optionally validates keys and values.
 
     Specifying *required=True* will cause the field validation to validate that the ``dict`` is
     not ``None`` and is not empty.
-    '''
+    """
+
     storage_type = dict
 
-    def __init__(self, key_field: Optional[Field] = None, value_field: Optional[Field] = None,
-                 **kwargs):
+    def __init__(
+        self,
+        key_field: Optional[Field] = None,
+        value_field: Optional[Field] = None,
+        **kwargs
+    ):
         if key_field or value_field:
             self._use_proxy = True
             self.key_field = key_field or AnyField()
@@ -138,17 +166,17 @@ class DictField(Field):
         super().__init__(**kwargs)
 
     def _validate(self, cfg: Config, value: dict) -> dict:
-        '''
+        """
         Validate a value.
 
         :param cfg: current config
         :param value: value to validate
-        '''
+        """
         if not isinstance(value, dict):
-            raise ValueError('value is not a dict object')
+            raise ValueError("value is not a dict object")
 
         if self.required and not value:
-            raise ValueError('value is required')
+            raise ValueError("value is required")
 
         if not self._use_proxy:
             return value
@@ -164,12 +192,12 @@ class DictField(Field):
         cfg._set_default_value(self._key, default)
 
     def to_basic(self, cfg: Config, value: Union[dict, DictProxy]) -> dict:
-        '''
+        """
         Convert to basic type.
 
         :param cfg: current config
         :param value: value to convert
-        '''
+        """
         if value is None:
             return value
         if not value:
@@ -184,12 +212,12 @@ class DictField(Field):
         }
 
     def to_python(self, cfg: Config, value: dict) -> Union[dict, DictProxy]:
-        '''
+        """
         Convert to Pythonic type.
 
         :param cfg: current config
         :param value: basic type value
-        '''
+        """
         if not self._use_proxy:
             return value
         return DictProxy(cfg, self, value)

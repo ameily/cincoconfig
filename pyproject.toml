@@ -18,6 +18,7 @@ sphinx-rtd-theme = "^1.2.0"
 coverage = "^7.2.3"
 pytest = "^7.3.0"
 poethepoet = "^0.19.0"
+black = "^23.3.0"
 
 
 [tool.poetry.group.bson.dependencies]

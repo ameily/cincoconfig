@@ -4,27 +4,35 @@
 # This file is subject to the terms and conditions defined in the file 'LICENSE', which is part of
 # this source code package.
 #
-'''
+"""
 String fields.
-'''
+"""
 import re
-from typing import List, Union, Optional
+from typing import List, Optional, Union
 
-from ..core import Field, Config, Schema
+from ..core import Config, Field, Schema
 from .virtual_field import VirtualField
 
 
 class StringField(Field):
-    '''
+    """
     A string field.
-    '''
+    """
+
     storage_type = str
 
-    def __init__(self, *, min_len: Optional[int] = None, max_len: Optional[int] = None,
-                 regex: Optional[str] = None, choices: Optional[List[str]] = None,
-                 transform_case: Optional[str] = None,
-                 transform_strip: Optional[Union[bool, str]] = None, **kwargs):
-        '''
+    def __init__(
+        self,
+        *,
+        min_len: Optional[int] = None,
+        max_len: Optional[int] = None,
+        regex: Optional[str] = None,
+        choices: Optional[List[str]] = None,
+        transform_case: Optional[str] = None,
+        transform_strip: Optional[Union[bool, str]] = None,
+        **kwargs
+    ):
+        """
         The string field can perform transformations on the value prior to validating it if either
         *transform_case* or *transform_strip* are specified.
 
@@ -37,7 +45,7 @@ class StringField(Field):
             Setting this to ``True`` will call :meth:`str.strip` without any arguments (ie.
             striping all whitespace characters) and if this is a ``str``, then :meth:`str.strip`
             will be called with ``transform_strip``.
-        '''
+        """
         super().__init__(**kwargs)
         self.min_len = min_len
         self.max_len = max_len
@@ -46,18 +54,18 @@ class StringField(Field):
         self.transform_case = transform_case.lower() if transform_case else None
         self.transform_strip = transform_strip
 
-        if self.transform_case and self.transform_case not in ('lower', 'upper'):
+        if self.transform_case and self.transform_case not in ("lower", "upper"):
             raise TypeError('transform_case must be "lower" or "upper"')
 
     def _validate(self, cfg: Config, value: str) -> str:
-        '''
+        """
         Validate a value.
 
         :param cfg: current Config
         :param value: value to validate
-        '''
+        """
         if not isinstance(value, str):
-            raise ValueError('value must be a string, not a %s' % type(value).__name__)
+            raise ValueError("value must be a string, not a %s" % type(value).__name__)
 
         if self.transform_strip:
             if isinstance(self.transform_strip, str):
@@ -66,60 +74,64 @@ class StringField(Field):
                 value = value.strip()
 
         if self.required and not value:
-            raise ValueError('value is required')
+            raise ValueError("value is required")
 
         if self.transform_case:
-            value = value.lower() if self.transform_case == 'lower' else value.upper()
+            value = value.lower() if self.transform_case == "lower" else value.upper()
 
         if self.min_len is not None and len(value) < self.min_len:
-            raise ValueError('value must be at least %d characters' % self.min_len)
+            raise ValueError("value must be at least %d characters" % self.min_len)
 
         if self.max_len is not None and len(value) > self.max_len:
-            raise ValueError('value must not be more than %d chatacters' % self.max_len)
+            raise ValueError("value must not be more than %d chatacters" % self.max_len)
 
         if self.regex and not self.regex.match(value):
-            raise ValueError('value does not match pattern %s' % self.regex.pattern)
+            raise ValueError("value does not match pattern %s" % self.regex.pattern)
 
         if self.choices and value not in self.choices:
             if len(self.choices) < 6:
-                postfix = ': must be one of: ' + ', '.join(self.choices)
+                postfix = ": must be one of: " + ", ".join(self.choices)
             else:
-                postfix = ''
-            raise ValueError('value is not a valid choice' + postfix)
+                postfix = ""
+            raise ValueError("value is not a valid choice" + postfix)
 
         return value
 
 
 class LogLevelField(StringField):
-    '''
+    """
     A field representing the Python log level.
-    '''
+    """
+
     storage_type = str
 
     def __init__(self, levels: Optional[List[str]] = None, **kwargs):
-        '''
+        """
         :param levels: list of log levels. If not specified, the default Python log levels will be
             used: ``debug``, ``info``, ``warning``, ``error``, and ``critical``.
-        '''
+        """
         if not levels:
-            levels = ['debug', 'info', 'warning', 'error', 'critical']
+            levels = ["debug", "info", "warning", "error", "critical"]
 
         self.levels = levels
-        kwargs.setdefault('transform_case', 'lower')
-        kwargs.setdefault('transform_strip', True)
-        kwargs['choices'] = levels
+        kwargs.setdefault("transform_case", "lower")
+        kwargs.setdefault("transform_strip", True)
+        kwargs["choices"] = levels
         super().__init__(**kwargs)
 
 
 class ApplicationModeField(StringField):
-    '''
+    """
     A field representing the application operating mode.
-    '''
-    storage_type = str
-    HELPER_MODE_PATTERN = re.compile('^[a-zA-Z0-9_]+$')
+    """
 
-    def __init__(self, modes: Optional[List[str]] = None, create_helpers: bool = True, **kwargs):
-        '''
+    storage_type = str
+    HELPER_MODE_PATTERN = re.compile("^[a-zA-Z0-9_]+$")
+
+    def __init__(
+        self, modes: Optional[List[str]] = None, create_helpers: bool = True, **kwargs
+    ):
+        """
         The *create_helpers* parameter will create a boolean :class:`VirtualField` for each
         ``mode`` named ``is_<mode>_mode``, that returns ``True`` when the mode is active. When
         *create_helpers=True* then each mode name must be a valid Python variable name.
@@ -127,9 +139,9 @@ class ApplicationModeField(StringField):
         :param modes: application modes, if not specified the default modes will be used:
             ``production`` and ``development``
         :param create_helpers: create helper a bool ``VirtualField`` for each mode
-        '''
+        """
         if not modes:
-            modes = ['development', 'production']
+            modes = ["development", "production"]
 
         self.modes = modes
         self.create_helpers = create_helpers
@@ -137,25 +149,25 @@ class ApplicationModeField(StringField):
         if create_helpers:
             for mode in modes:
                 if not self.HELPER_MODE_PATTERN.match(mode):
-                    raise TypeError('invalid mode name: %s' % mode)
+                    raise TypeError("invalid mode name: %s" % mode)
 
-        kwargs.setdefault('transform_case', 'lower')
-        kwargs.setdefault('transform_strip', True)
-        kwargs['choices'] = modes
+        kwargs.setdefault("transform_case", "lower")
+        kwargs.setdefault("transform_strip", True)
+        kwargs["choices"] = modes
         super().__init__(**kwargs)
 
-    def _create_helper(self, mode: str) -> 'VirtualField':
-        '''
+    def _create_helper(self, mode: str) -> "VirtualField":
+        """
         Create helper VirtualField.
-        '''
+        """
         return VirtualField(lambda cfg: self.__getval__(cfg) == mode)
 
     def __setkey__(self, schema: Schema, key: str) -> None:
-        '''
+        """
         Set the key and optionally add ``VirtualField`` helpers to the schema if
         *create_helpers=True*.
-        '''
+        """
         super().__setkey__(schema, key)
         if self.create_helpers:
             for mode in self.modes:
-                schema._add_field('is_%s_mode' % mode, self._create_helper(mode))
+                schema._add_field("is_%s_mode" % mode, self._create_helper(mode))

@@ -4,59 +4,63 @@
 # This file is subject to the terms and conditions defined in the file 'LICENSE', which is part of
 # this source code package.
 #
-'''
+"""
 Secure fields.
-'''
-import os
-import hashlib
+"""
 import base64
 import binascii
-from typing import Union, Any, Optional, Callable, NamedTuple, Dict
+import hashlib
+import os
+from typing import Any, Callable, Dict, NamedTuple, Optional, Union
 
 from ..core import Config, Field
 from ..encryption import EncryptionError, SecureValue
 
 #: Hash algorithm, as returned by hashlib.new()
-HashAlgorithm = Callable[[bytes], 'hashlib._Hash']
+HashAlgorithm = Callable[[bytes], "hashlib._Hash"]
 
 #: Named tuple for digest, value, algorithm
-TDigestValue = NamedTuple('TDigestValue', [
-    ('salt', bytes),
-    ('digest', bytes),
-    ('algorithm', HashAlgorithm)
-])
+TDigestValue = NamedTuple(
+    "TDigestValue", [("salt", bytes), ("digest", bytes), ("algorithm", HashAlgorithm)]
+)
 
 
 class DigestValue(TDigestValue):
-    '''
+    """
     Digest value tuple storing hashed value: (salt, digest, algorithm). The digest is the hash
     of the concatenated salt and plaintext value (``hash(salt + plaintext)``).
-    '''
+    """
 
     def __str__(self) -> str:
-        '''
+        """
         :returns: the salt and digest pair, both base64 encoded, separated by a ``:``.
-        '''
-        return (base64.b64encode(self.salt) + b':' + base64.b64encode(self.digest)).decode()
+        """
+        return (
+            base64.b64encode(self.salt) + b":" + base64.b64encode(self.digest)
+        ).decode()
 
     @classmethod
-    def parse(cls, value: str, algorithm: HashAlgorithm) -> 'DigestValue':
-        '''
+    def parse(cls, value: str, algorithm: HashAlgorithm) -> "DigestValue":
+        """
         Parse a base64-encoded salt/digest pair, as returned by :meth:`__str__`
-        '''
+        """
         try:
-            salt_b64, digest_b64 = value.split(':', 1)
+            salt_b64, digest_b64 = value.split(":", 1)
             salt = base64.b64decode(salt_b64)
             digest = base64.b64decode(digest_b64)
         except (ValueError, binascii.Error) as err:
-            raise ValueError('invalid salt/digest tuple value') from err
+            raise ValueError("invalid salt/digest tuple value") from err
 
         return DigestValue(salt, digest, algorithm)
 
     @classmethod
-    def create(cls, plaintext: Union[str, bytes], algorithm: HashAlgorithm,
-               salt: Optional[bytes] = None) -> 'DigestValue':
-        '''
+    def create(
+        cls,
+        plaintext: Union[str, bytes],
+        algorithm: HashAlgorithm,
+        salt: Optional[bytes] = None,
+    ) -> "DigestValue":
+        """
         Hash a plaintext value and return the new digest value. The digest is calculated as:
 
         .. code-block:: python
@@ -71,14 +75,14 @@ class DigestValue(TDigestValue):
         :param algorithm: hashlib algorithm to use
         :param salt: hash salt
         :returns: the created digest value
-        '''
+        """
 
         hasher = algorithm()  # type: ignore
         if salt and len(salt) < hasher.digest_size:
-            raise TypeError('salt must be at least %d bytes' % hasher.digest_size)
+            raise TypeError("salt must be at least %d bytes" % hasher.digest_size)
 
         if salt:
-            salt = salt[:hasher.digest_size]
+            salt = salt[: hasher.digest_size]
         else:
             salt = os.urandom(hasher.digest_size)
 
@@ -89,22 +93,22 @@ class DigestValue(TDigestValue):
         return DigestValue(salt, hasher.digest(), algorithm)
 
     def challenge(self, plaintext: Union[str, bytes]) -> None:
-        '''
+        """
         Challenge a plaintext value against the digest value. This will raise a :class:`ValueError`
         if the challenge is unsuccessful.
 
         :raises ValueError: the challenge was unsuccessful
-        '''
+        """
         if isinstance(plaintext, str):
             plaintext = plaintext.encode()
 
         challenge = self.algorithm(self.salt + plaintext).digest()
         if self.digest != challenge:
-            raise ValueError('challenge failed')
+            raise ValueError("challenge failed")
 
 
 class ChallengeField(Field):
-    '''
+    """
     A field whose value is securely stored as a hash (:class:`DigestValue`). This field can be
     used as a secure method of password storage and comparison, since the password is only stored
     in hashed form and not in plaintext. A digest value is pair of salt and
@@ -166,33 +170,34 @@ class ChallengeField(Field):
     - sha256
     - sha384
     - sha512
-    '''
+    """
+
     storage_type = DigestValue
 
     #: Available hashing algorithms
     ALGORITHMS: Dict[str, HashAlgorithm] = {
-        'md5': hashlib.md5,
-        'sha1': hashlib.sha1,
-        'sha224': hashlib.sha224,
-        'sha256': hashlib.sha256,
-        'sha384': hashlib.sha384,
-        'sha512': hashlib.sha512
+        "md5": hashlib.md5,
+        "sha1": hashlib.sha1,
+        "sha224": hashlib.sha224,
+        "sha256": hashlib.sha256,
+        "sha384": hashlib.sha384,
+        "sha512": hashlib.sha512,
     }
 
-    def __init__(self, hash_algorithm: str = 'sha256', **kwargs):
-        '''
+    def __init__(self, hash_algorithm: str = "sha256", **kwargs):
+        """
         :param hash_algorithm: hash algorithm to use, must be a key of :attr:`ALGORITHMS`
-        '''
+        """
         super().__init__(**kwargs)
         algorithm = self.ALGORITHMS.get(hash_algorithm.lower())
         if not algorithm:
-            raise TypeError('Unknown hash algorithm: ' + hash_algorithm)
+            raise TypeError("Unknown hash algorithm: " + hash_algorithm)
         self.algorithm = algorithm
 
     def __setdefault__(self, cfg: Config) -> None:
-        '''
+        """
         Set default value by creating a :class:`DigestValue` if the default value is a string.
-        '''
+        """
         if self.default is None:
             super().__setdefault__(cfg)
             return
@@ -202,52 +207,54 @@ class ChallengeField(Field):
         elif isinstance(self.default, DigestValue):
             val = self.default
         else:
-            raise TypeError('invalid default value: %r' % self.default)
+            raise TypeError("invalid default value: %r" % self.default)
         cfg._set_default_value(self._key, val)
 
     def _validate(self, cfg: Config, value: Any) -> DigestValue:
-        '''
+        """
         Validate the value. If the value is a plaintext string, a :class:`DigestValue`
-        '''
+        """
         if isinstance(value, (str, bytes)):
             val = self._hash(value)
         elif isinstance(value, DigestValue):
             val = value
         else:
-            raise ValueError('value must be a string, not a %s' % type(value).__name__)
+            raise ValueError("value must be a string, not a %s" % type(value).__name__)
         return val
 
-    def _hash(self, plaintext: Union[str, bytes], salt: Optional[bytes] = None) -> DigestValue:
-        '''
+    def _hash(
+        self, plaintext: Union[str, bytes], salt: Optional[bytes] = None
+    ) -> DigestValue:
+        """
         Private method that performs the actual hash. This method does not
         check if the value has already been hashed.
 
         :param value: the value to be hashed
         :param salt: specify the salt to use. Used by :meth:`check_hash`
         :raise TypeError: if the action is invalid
-        '''
+        """
 
         return DigestValue.create(plaintext, self.algorithm, salt=salt)
 
     def to_basic(self, cfg: Config, value: DigestValue) -> dict:
-        '''
+        """
         Convert to a dict and indicate the type so we know
         on load whether we've already dealt with the field
 
         :param cfg: current config
         :param value: value to encrypt/hash
         :returns: encrypted/hashed value
-        '''
+        """
         if value is None:
             return value
 
         return {
-            'salt': base64.b64encode(value.salt).decode(),
-            'digest': base64.b64encode(value.digest).decode(),
+            "salt": base64.b64encode(value.salt).decode(),
+            "digest": base64.b64encode(value.digest).decode(),
         }
 
     def to_python(self, cfg: Config, value: Union[dict, str]) -> DigestValue:
-        '''
+        """
         Decrypt the value if loading something we've already handled.
         Hash the value if it hasn't been hashed yet.
 
@@ -255,41 +262,46 @@ class ChallengeField(Field):
         :param value: value to decrypt/load
         :returns: decrypted value or unmodified hash
         :raises ValueError: if the value read from the config is neither a dict nor a string
-        '''
+        """
         if value is None:
             return value
 
         if isinstance(value, dict):
             try:
-                salt = base64.b64decode(value['salt'])
+                salt = base64.b64decode(value["salt"])
             except (KeyError, binascii.Error) as err:
-                raise ValueError('invalid salt: salt must be base64-encoded value') from err
+                raise ValueError(
+                    "invalid salt: salt must be base64-encoded value"
+                ) from err
 
             try:
-                digest = base64.b64decode(value['digest'])
+                digest = base64.b64decode(value["digest"])
             except (KeyError, binascii.Error) as err:
-                raise ValueError('invalid digest: digest must be base64-encoded value') from err
+                raise ValueError(
+                    "invalid digest: digest must be base64-encoded value"
+                ) from err
 
             return DigestValue(salt, digest, self.algorithm)
 
         if isinstance(value, str):
             return self._hash(value)
 
-        raise ValueError('invalid salt-digest tuple')
+        raise ValueError("invalid salt-digest tuple")
 
 
 class SecureField(Field):
-    '''
+    """
     A secure storage field where the plaintext configuration value is encrypted on disk and
     decrypted in memory when the configuration file is loaded.
-    '''
+    """
+
     storage_type = str
 
-    def __init__(self, method: str = 'best', sensitive: bool = True, **kwargs):
-        '''
+    def __init__(self, method: str = "best", sensitive: bool = True, **kwargs):
+        """
         :param method: encryption method, see
             :meth:`~cincoconfig.KeyFile._get_provider`
-        '''
+        """
         super().__init__(sensitive=sensitive, **kwargs)
         self.method = method
 
@@ -301,8 +313,8 @@ class SecureField(Field):
             secret = ctx.encrypt(value, method=self.method)
 
         return {
-            'method': secret.method,
-            'ciphertext': base64.b64encode(secret.ciphertext).decode()
+            "method": secret.method,
+            "ciphertext": base64.b64encode(secret.ciphertext).decode(),
         }
 
     def to_python(self, cfg: Config, value: Any) -> Optional[str]:
@@ -313,26 +325,26 @@ class SecureField(Field):
             return value
 
         if isinstance(value, dict):
-            method = value.get('method')
-            ciphertext_b64 = value.get('ciphertext')
+            method = value.get("method")
+            ciphertext_b64 = value.get("ciphertext")
 
             if not method:
-                raise ValueError('no encryption method specified')
+                raise ValueError("no encryption method specified")
 
             if not isinstance(ciphertext_b64, str):
-                raise ValueError('invalid ciphertext')
+                raise ValueError("invalid ciphertext")
 
             try:
                 ciphertext = base64.b64decode(ciphertext_b64)
             except binascii.Error as err:
-                raise ValueError('invalid ciphertext') from err
+                raise ValueError("invalid ciphertext") from err
 
             try:
                 with cfg._keyfile as ctx:
                     text = ctx.decrypt(SecureValue(method, ciphertext))
             except (TypeError, EncryptionError) as err:
-                raise ValueError('decryption failed: %s' % str(err)) from err
+                raise ValueError("decryption failed: %s" % str(err)) from err
             else:
                 return text.decode()
 
-        raise ValueError('invalid encrypted value')
+        raise ValueError("invalid encrypted value")
