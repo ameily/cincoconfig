@@ -4,7 +4,13 @@ All contributions are welcome! Feel free to open issues and submit pull requests
 
 ## Development Environment
 
-cincoconfig uses poetry for dependency management. To get started:
+cincoconfig uses poetry for dependency management and several tools for code quality checks:
+
+- [ruff](https://pypi.org/project/ruff/) - linting
+- [pyright](https://pypi.org/project/pyright/) - type checking
+- [black](https://pypi.org/project/black/) - formatting
+
+To get started:
 
 1. [Install Poetry](https://python-poetry.org/docs/)
 1. Install dependencies and feature packages.

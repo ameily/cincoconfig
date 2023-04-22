@@ -1,7 +1,7 @@
 import pytest
 from cincoconfig.formats.xml import XmlConfigFormat
 
-TEST_DOC = b'''
+TEST_DOC = b"""
 <config>
     <valid_int type="int">1</valid_int>
     <invalid_int type="int">asdf</invalid_int>
@@ -29,34 +29,21 @@ TEST_DOC = b'''
 
     <no_type>asdf</no_type>
 </config>
-'''
+"""
 
 TEST_TREE = {
-    'valid_int': 1,
-    'invalid_int': 'asdf',
-
-    'valid_float': 2.5,
-    'invalid_float': 'asdf',
-
-    'valid_true': True,
-    'valid_false': False,
-    'invalid_bool': 'asdf',
-
-    'valid_str': 'asdf',
-
-    'valid_null': None,
-
-    'valid_list': [
-        1,
-        2
-    ],
-
-    'valid_dict': {
-        'sub1': 'blah',
-        'sub2': 'blah2'
-    },
-
-    'no_type': 'asdf'
+    "valid_int": 1,
+    "invalid_int": "asdf",
+    "valid_float": 2.5,
+    "invalid_float": "asdf",
+    "valid_true": True,
+    "valid_false": False,
+    "invalid_bool": "asdf",
+    "valid_str": "asdf",
+    "valid_null": None,
+    "valid_list": [1, 2],
+    "valid_dict": {"sub1": "blah", "sub2": "blah2"},
+    "no_type": "asdf",
 }
 
 
@@ -65,7 +52,6 @@ class BadType:
 
 
 class TestXmlConfigFormat:
-
     def test_loads(self):
         fmt = XmlConfigFormat()
         obj = fmt.loads(None, TEST_DOC)
@@ -79,11 +65,11 @@ class TestXmlConfigFormat:
         assert obj == TEST_TREE
 
     def test_loads_incorrect_root(self):
-        fmt = XmlConfigFormat(root_tag='BLAH')
+        fmt = XmlConfigFormat(root_tag="BLAH")
         with pytest.raises(ValueError):
             fmt.loads(None, TEST_DOC)
 
     def test_non_basic_type(self):
         fmt = XmlConfigFormat()
         with pytest.raises(TypeError):
-            fmt.dumps(None, {'x': BadType()})
+            fmt.dumps(None, {"x": BadType()})

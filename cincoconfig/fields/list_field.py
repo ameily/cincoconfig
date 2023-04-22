@@ -4,41 +4,52 @@
 # This file is subject to the terms and conditions defined in the file 'LICENSE', which is part of
 # this source code package.
 #
-'''
+"""
 List field
-'''
+"""
 import inspect
-from typing import Iterable, Type, Union, Any, List, Optional
-from ..core import (ContainerValueMixin, Field, Config, BaseField, Schema, isconfigtype, AnyField,
-                    ConfigType)
+from typing import Any, Iterable, List, Optional, Type, Union
+
+from ..core import (
+    AnyField,
+    BaseField,
+    Config,
+    ConfigType,
+    ContainerValueMixin,
+    Field,
+    Schema,
+    isconfigtype,
+)
 
 
 class ListProxy(list, ContainerValueMixin):
-    '''
+    """
     A Field-validated :class:`list` proxy. This proxy supports all methods that the builtin
     ``list`` supports with the added ability to validate items against a :class:`Field`. This is
     the field returned by the :class:`ListField` validation chain.
-    '''
+    """
 
-    def __init__(self, cfg: Config, list_field: 'ListField',
-                 iterable: Optional[Iterable] = None):
+    def __init__(
+        self, cfg: Config, list_field: "ListField", iterable: Optional[Iterable] = None
+    ):
         iterable = iterable or []
         self.cfg = cfg
         self.list_field = list_field
         if not self.list_field.field:
-            raise TypeError('ListProxy requires a parent ListField.field attribute')
+            raise TypeError("ListProxy requires a parent ListField.field attribute")
 
         if isinstance(iterable, ListProxy) and iterable.item_field is list_field.field:
             super().__init__(iterable)
         else:
-            super().__init__(self._validate(item)
-                             for index, item in enumerate(iterable))
+            super().__init__(
+                self._validate(item) for index, item in enumerate(iterable)
+            )
 
     @property
     def item_field(self) -> Union[BaseField, Type[Config]]:
-        '''
+        """
         :returns: the field for each item stored in the list.
-        '''
+        """
         return self.list_field.field  # type: ignore
 
     def append(self, item: Any) -> None:
@@ -53,32 +64,35 @@ class ListProxy(list, ContainerValueMixin):
     def insert(self, index: int, item: Any) -> None:
         super().insert(index, self._validate(item))
 
-    def copy(self) -> 'ListProxy':
+    def copy(self) -> "ListProxy":
         return ListProxy(self.cfg, self.list_field, self)
 
-    def __iadd__(self, iterable: Iterable) -> 'ListProxy':
+    def __iadd__(self, iterable: Iterable) -> "ListProxy":
         self.extend(iterable)
         return self
 
-    def __add__(self, iterable: Iterable) -> 'ListProxy':
+    def __add__(self, iterable: Iterable) -> "ListProxy":
         ret = self.copy()
         ret.extend(iterable)
         return ret
 
-    def __setitem__(self, index: Union[int, slice],  # type: ignore[override]
-                    item: Union[Any, Iterable]) -> None:
+    def __setitem__(
+        self,
+        index: Union[int, slice],  # type: ignore[override]
+        item: Union[Any, Iterable],
+    ) -> None:
         if isinstance(index, slice) and isinstance(item, (list, tuple)):
             super().__setitem__(index, [self._validate(i) for i in item])
         elif isinstance(index, int):
             super().__setitem__(index, self._validate(item))
 
     def _validate(self, value: Any) -> Any:
-        '''
+        """
         Validate a value.
 
         :param value: value to validate
         :returns: the validated value
-        '''
+        """
         if isinstance(self.item_field, Schema) or isconfigtype(self.item_field):
             if isinstance(value, dict):
                 cfg = self.item_field()  # type: ignore
@@ -93,7 +107,7 @@ class ListProxy(list, ContainerValueMixin):
                 value.validate()
                 cfg = value
             else:
-                raise ValueError('invalid configuration object')
+                raise ValueError("invalid configuration object")
 
             return cfg
 
@@ -102,8 +116,10 @@ class ListProxy(list, ContainerValueMixin):
 
         # we should only hit this when item_field is not a field, schema, or ConfigType subclass
         # (which shouldn't happen)
-        raise TypeError('item field must be a Field, Schema, or ConfigType subclass: %s' %
-                        self.item_field)
+        raise TypeError(
+            "item field must be a Field, Schema, or ConfigType subclass: %s"
+            % self.item_field
+        )
 
     def _get_item_position(self, item: Any) -> str:
         try:
@@ -113,20 +129,23 @@ class ListProxy(list, ContainerValueMixin):
 
 
 class ListField(Field):
-    '''
+    """
     A list field that can optionally validate items against a ``Field``. If a field is specified,
     a :class:`ListProxy` will be returned by the ``_validate`` method, which handles individual
     item validation.
 
     Specifying *required=True* will cause the field validation to validate that the list is not
     ``None`` and is not empty.
-    '''
+    """
+
     storage_type = List
 
-    def __init__(self, field: Optional[Union[BaseField, Type[ConfigType]]] = None, **kwargs):
-        '''
+    def __init__(
+        self, field: Optional[Union[BaseField, Type[ConfigType]]] = None, **kwargs
+    ):
+        """
         :param field: Field to validate values against
-        '''
+        """
         super().__init__(**kwargs)
         self.field = field
 
@@ -148,18 +167,18 @@ class ListField(Field):
         cfg._set_default_value(self._key, default)
 
     def _validate(self, cfg: Config, value: list) -> Union[list, ListProxy]:
-        '''
+        """
         Validate the value.
 
         :param cfg: current config
         :param value: value to validate
         :returns: a :class:`list` if not field is specified, a :class:`ListProxy` otherwise
-        '''
+        """
         if not isinstance(value, (list, tuple)):
-            raise ValueError('value is not a list')
+            raise ValueError("value is not a list")
 
         if self.required and not value:
-            raise ValueError('value is required')
+            raise ValueError("value is required")
 
         if not self.field or isinstance(self.field, AnyField):
             return value
@@ -168,12 +187,12 @@ class ListField(Field):
         return proxy
 
     def to_basic(self, cfg: Config, value: Union[list, ListProxy]) -> list:
-        '''
+        """
         Convert to basic type.
 
         :param cfg: current config
         :param value: value to convert
-        '''
+        """
         if value is None:
             return value
         if not value:
@@ -186,12 +205,12 @@ class ListField(Field):
         return list(value)
 
     def to_python(self, cfg: Config, value: list) -> Union[list, ListProxy]:
-        '''
+        """
         Convert to Pythonic type.
 
         :param cfg: current config
         :param value: basic type value
-        '''
+        """
         if self.field is None or isinstance(self.field, AnyField):
             return value
         return ListProxy(cfg, self, value)
