@@ -58,7 +58,7 @@ pyyaml = "*"
 cryptography = "*"
 
 [tool.ruff]
-select = ["E", "F"]  # enable "I" for import sorting
+select = ["E", "F", "I"]
 line-length = 99
 
 
