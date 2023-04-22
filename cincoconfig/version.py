@@ -7,4 +7,4 @@
 """
 Cincoconfig version.
 """
-__version__ = "0.8.0"
+__version__ = open(f"{__file__}/../VERSION", "r").read().strip()
