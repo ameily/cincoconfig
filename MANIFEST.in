@@ -1,4 +1,0 @@
-graft requirements
-include .pylintrc
-include README.md
-include LICENSE
