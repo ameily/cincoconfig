@@ -59,7 +59,7 @@ ci = [
 ]
 format = [
     { cmd = "black cincoconfig tests" },
-    { cmd = "ruff --select I --fix cincoconfig" }
+    { cmd = "ruff --select I --fix --exit-zero cincoconfig" }
 ]
 lint = "ruff --select E,F cincoconfig"
 tests = [
