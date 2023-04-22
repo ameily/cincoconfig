@@ -23,9 +23,9 @@ def _iterate_dict_like(iterable: KeyValuePairs) -> List[Tuple[Any, Any]]:
 
 class DictProxy(dict):
     '''
-    A Field-validated :class:`list` proxy. This proxy supports all methods that the builtin
-    ``list`` supports with the added ability to validate items against a :class:`Field`. This is
-    the field returned by the :class:`ListField` validation chain.
+    A Field-validated :class:`dict` proxy. This proxy supports all methods that the builtin
+    ``dict`` supports with the added ability to validate keys and values against a :class:`Field`.
+    This is the value returned by the :class:`DictField` validation chain.
     '''
 
     def __init__(self, cfg: Config, dict_field: 'DictField',
@@ -58,7 +58,11 @@ class DictProxy(dict):
         '''
         return self.dict_field.value_field  # type: ignore
 
-    def _is_compatible_proxy(self, other: 'DictProxy'):
+    def _is_compatible_proxy(self, other: 'DictProxy') -> bool:
+        """
+        Check if a proxy is compatible with this proxy. Two proxies are compatible when they share
+        the same configuration object and the same parent :class:`DictField`.
+        """
         return self.cfg is other.cfg and self.dict_field is other.dict_field
 
     def update(self, iterable: Optional[KeyValuePairs] = None, **kwargs) -> None:
