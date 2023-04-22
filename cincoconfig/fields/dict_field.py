@@ -162,6 +162,7 @@ class DictField(Field):
             self._use_proxy = True
             self.key_field = key_field or AnyField()
             self.value_field = value_field or AnyField()
+            self.storage_type = Dict[self.key_field.storage_type, self.value_field.storage_type]
         else:
             self.key_field = None
             self.value_field = None
