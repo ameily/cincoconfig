@@ -19,15 +19,19 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements/requirements-features.txt pytest coverage coveralls ruff pyright
+          pip install poetry
+          # pip install -r requirements/requirements-features.txt pytest coverage coveralls ruff pyright
+          poetry install --with dev,yaml,bson,crypto
       - name: Linting
         run: |
-          ruff check cincoconfig
-          pyright cincoconfig
+          # ruff check cincoconfig
+          # pyright cincoconfig
+          poetry run poe lint
+          poetry run poe check-format
+          poetry run poe check-typing
       - name: Test with pytest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          coverage run -m pytest
-          coverage report -m
+          poetry run poe tests
           # coveralls
