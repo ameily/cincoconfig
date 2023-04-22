@@ -7,4 +7,6 @@
 """
 Cincoconfig version.
 """
-__version__ = open(f"{__file__}/../VERSION", "r").read().strip()
+from pathlib import Path
+
+__version__ = (Path(__file__).parent / "VERSION").read_text().strip()
