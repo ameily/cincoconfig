@@ -7,7 +7,7 @@
 '''
 Number fields
 '''
-from typing import Union
+from typing import Union, Optional
 
 from ..core import Field, Config
 
@@ -18,8 +18,8 @@ class NumberField(Field):
     using :class:`~cincoconfig.IntField` or :class:`~cincoconfig.FloatField`.
     '''
 
-    def __init__(self, type_cls: type, *, min: Union[int, float] = None,
-                 max: Union[int, float] = None, **kwargs):
+    def __init__(self, type_cls: type, *, min: Optional[Union[int, float]] = None,
+                 max: Optional[Union[int, float]] = None, **kwargs):
         '''
         :param type_cls: number type class that values will be converted to
         :param min: minimum value (inclusive)

@@ -1,0 +1,39 @@
+name: CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.7", "3.8", "3.9", "3.10", "3.11"]
+
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install poetry
+          # pip install -r requirements/requirements-features.txt pytest coverage coveralls ruff pyright
+          poetry install --with dev,yaml,bson,crypto
+      - name: Linting
+        run: |
+          # ruff check cincoconfig
+          # pyright cincoconfig
+          poetry run poe lint
+          # poetry run poe check-format
+          poetry run poe check-typing
+      - name: Test with pytest
+        env:
+          # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          poetry run poe tests
+          poetry run coverage xml
+          curl -sL https://coveralls.io/coveralls-linux.tar.gz | tar -xz && ./coveralls -f coverage.xml

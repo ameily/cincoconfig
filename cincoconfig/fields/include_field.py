@@ -8,6 +8,7 @@
 Include field.
 '''
 import os
+from typing import Optional
 
 from .file_field import FilenameField
 from ..core import Config, ConfigFormat, IncludeFieldMixin
@@ -52,7 +53,7 @@ class IncludeField(FilenameField, IncludeFieldMixin):
     across multiple included files.
     '''
 
-    def __init__(self, startdir: str = None, **kwargs):
+    def __init__(self, startdir: Optional[str] = None, **kwargs):
         '''
         :param startdir: resolve relative include paths to a start directory
         '''

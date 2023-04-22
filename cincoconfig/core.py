@@ -12,7 +12,7 @@ import os
 import inspect
 from collections import OrderedDict
 from functools import partial
-from typing import Union, Any, Optional, Dict, Iterator, Tuple, List, Callable, Type, Set
+from typing import Union, Any, Optional, Dict, Iterator, Tuple, List, Callable, Type, Set, ClassVar
 from argparse import ArgumentParser, Namespace
 import warnings
 
@@ -40,7 +40,7 @@ class ValidationError(ValueError):
     '''
 
     def __init__(self, config: 'Config', field: Optional['BaseField'], exc: Union[str, Exception],
-                 ref_path: str = None):
+                 ref_path: Optional[str] = None):
         '''
         :param config: parent configuration
         :param field: field being validated, None if the entire config was being validated
@@ -64,7 +64,7 @@ class ValidationError(ValueError):
         if isinstance(self.field, Field) and self.field._name:
             path += " (%s)" % self.field._name
 
-        return '%s: %s' % (path, msg)
+        return '%s: %s' % (path, msg) if path else msg
 
     @property
     def ref_path(self) -> str:
@@ -149,7 +149,8 @@ class BaseField:
     Base class for all fields in a schema.
     '''
 
-    def __init__(self, key: str = None, name: str = None, schema: 'Schema' = None):
+    def __init__(self, key: Optional[str] = None, name: Optional[str] = None,
+                 schema: Optional['Schema'] = None):
         '''
         :param key: field key
         :param name: descriptive name
@@ -319,10 +320,12 @@ class Field(BaseField):
     '''
     storage_type = Any
 
-    def __init__(self, *, key: str = None, schema: 'Schema' = None, name: str = None,
-                 required: bool = False, default: Union[Callable, Any] = None,
-                 validator: FieldValidator = None, sensitive: bool = False,
-                 description: str = None, help: str = None, env: Union[bool, str] = None):
+    def __init__(self, *, key: Optional[str] = None, schema: Optional['Schema'] = None,
+                 name: Optional[str] = None, required: bool = False,
+                 default: Optional[Union[Callable, Any]] = None,
+                 validator: Optional[FieldValidator] = None, sensitive: bool = False,
+                 description: Optional[str] = None, help: Optional[str] = None,
+                 env: Optional[Union[bool, str]] = None):
         '''
         All builtin Fields accept the following keyword parameters.
 
@@ -517,7 +520,8 @@ class ConfigTypeField(BaseField):
     method.
     '''
 
-    def __init__(self, config_type: Type["ConfigType"], key: str = None, name: str = None):
+    def __init__(self, config_type: Type["ConfigType"], key: Optional[str] = None,
+                 name: Optional[str] = None):
         '''
         :param config_type: the ``ConfigType`` class
         '''
@@ -527,7 +531,7 @@ class ConfigTypeField(BaseField):
     def __setdefault__(self, cfg: 'Config') -> None:
         cfg._set_default_value(self._key, self.config_type(cfg))
 
-    def __call__(self, cfg: 'Config' = None) -> 'ConfigType':
+    def __call__(self, cfg: Optional['Config'] = None) -> 'ConfigType':
         '''
         Create an instance of the wrapped ``ConfigType``.
 
@@ -558,8 +562,9 @@ class Schema(BaseField):
     configuration from a file.
     '''
 
-    def __init__(self, key: str = None, name: str = None, dynamic: bool = False,
-                 env: Union[str, bool] = None, schema: 'Schema' = None):
+    def __init__(self, key: Optional[str] = None, name: Optional[str] = None,
+                 dynamic: bool = False, env: Optional[Union[str, bool]] = None,
+                 schema: Optional['Schema'] = None):
         # pylint: disable=too-many-arguments
         '''
         :param key: schema field key
@@ -649,7 +654,7 @@ class Schema(BaseField):
         '''
         return self._fields.get(name) or self._add_field(name, Schema())
 
-    def __call__(self, parent: 'Config' = None, **data):
+    def __call__(self, parent: Optional['Config'] = None, **data):
         '''
         Compile the schema into an initial config with default values set.
         '''
@@ -807,8 +812,8 @@ class Schema(BaseField):
         self._validators.append(func)
         return func
 
-    def make_type(self, name: str, module: str = None,
-                  key_filename: str = None) -> Type['ConfigType']:
+    def make_type(self, name: str, module: Optional[str] = None,
+                  key_filename: Optional[str] = None) -> Type['ConfigType']:
         '''
         **(Deprecated, will be removed in v1.0.0)** create a new type from the schema. Use
         :meth:`~cincoconfig.make_type`.
@@ -866,7 +871,8 @@ class Config:  # pylint: disable=too-many-instance-attributes
     '''
     DEFAULT_CINCOKEY_FILEPATH = os.path.join(os.path.expanduser("~"), ".cincokey")
 
-    def __init__(self, schema: Schema, parent: 'Config' = None, key_filename: str = None, **data):
+    def __init__(self, schema: Schema, parent: Optional['Config'] = None,
+                 key_filename: Optional[str] = None, **data):
         '''
         :param schema: backing schema, stored as *_schema*
         :param parent: parent config instance, only set when this config is a field of another
@@ -1117,7 +1123,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
         if self._container:
             try:
                 pos = self._container._get_item_position(self)
-            except:
+            except:  # noqa: E722
                 pos = ''
             else:
                 if pos not in ('', None):
@@ -1138,7 +1144,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
         with open(filename, 'wb') as file:
             file.write(content)
 
-    def dumps(self, format: str, virtual: bool = False, sensitive_mask: str = None,
+    def dumps(self, format: str, virtual: bool = False, sensitive_mask: Optional[str] = None,
               **kwargs) -> bytes:
         '''
         Serialize the configuration to a string with the specified format.
@@ -1152,7 +1158,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
         formatter = ConfigFormat.get(format, **kwargs)
         return formatter.dumps(self, self.to_tree(virtual=virtual, sensitive_mask=sensitive_mask))
 
-    def to_tree(self, virtual: bool = False, sensitive_mask: str = None) -> dict:
+    def to_tree(self, virtual: bool = False, sensitive_mask: Optional[str] = None) -> dict:
         '''
         Convert the configuration values to a tree.
 
@@ -1302,7 +1308,8 @@ class Config:  # pylint: disable=too-many-instance-attributes
         '''
         return self._schema._validate(self, collect_errors=collect_errors)
 
-    def cmdline_args_override(self, args: Namespace, ignore: Union[str, List[str]] = None) -> None:
+    def cmdline_args_override(self, args: Namespace,
+                              ignore: Optional[Union[str, List[str]]] = None) -> None:
         '''
         **(Deprecated, will be removed in v1.0.0)** override configuration values from the command
         line arguments. Use :meth:`~cincoconfig.cmdline_args_override`.
@@ -1323,10 +1330,10 @@ class ConfigType(Config):
     A base class for configuration types. A subclass of ``ConfigType`` is returned by the
     :meth:`~cincoconfig.make_type` function.
     '''
-    __schema__ = None  # type: Schema
-    __key_filename__ = None  # type: str
+    __schema__: ClassVar[Schema]
+    __key_filename__: ClassVar[Optional[str]] = None
 
-    def __init__(self, parent: Config = None, **kwargs):
+    def __init__(self, parent: Optional[Config] = None, **kwargs):
         '''
         :param parent: parent configuration
         '''

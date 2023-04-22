@@ -97,6 +97,9 @@ The following classes are used internally by cincoconfig and should not have to 
 referenced directly in applications. These are not included in the public API and must be imported
 explicitly from the ``cincoconfig.fields`` module.
 
+.. autoclass:: cincoconfig.DictProxy
+    :members:
+
 .. autoclass:: cincoconfig.ListProxy
     :members:
 

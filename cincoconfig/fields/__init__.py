@@ -7,9 +7,11 @@
 '''
 Cinco Config Fields.
 '''
+# ruff: noqa: F401
+
 from .bool_field import BoolField, FeatureFlagField
 from .bytes_field import BytesField
-from .dict_field import DictField
+from .dict_field import DictField, DictProxy
 from .file_field import FilenameField
 from .include_field import IncludeField
 from .instance_method_field import InstanceMethodField, instance_method
@@ -26,4 +28,4 @@ __all__ = ('StringField', 'IntField', 'FloatField', 'PortField', 'IPv4AddressFie
            'HostnameField', 'DictField', 'ListProxy', 'VirtualField', 'ApplicationModeField',
            'LogLevelField', 'NumberField', 'ChallengeField', 'DigestValue', 'SecureField',
            'BytesField', 'IncludeField', 'InstanceMethodField', 'instance_method',
-           'FeatureFlagField')
+           'FeatureFlagField', 'DictProxy')

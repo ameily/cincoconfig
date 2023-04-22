@@ -8,7 +8,7 @@
 File field.
 '''
 import os
-from typing import Union
+from typing import Union, Optional
 
 from .string_field import StringField
 from ..core import Config
@@ -20,7 +20,8 @@ class FilenameField(StringField):
     '''
     storage_type = str
 
-    def __init__(self, *, exists: Union[bool, str] = None, startdir: str = None, **kwargs):
+    def __init__(self, *, exists: Optional[Union[bool, str]] = None,
+                 startdir: Optional[str] = None, **kwargs):
         '''
         The *exists* parameter can be set to one of the following values:
 

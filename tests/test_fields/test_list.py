@@ -300,8 +300,12 @@ class TestListField:
         field = ListField(IntField(), default=lambda: [1, 2, 3], key='asdf')
         field.__setdefault__(cfg)
         cfg._set_default_value.assert_called_once_with('asdf', ListProxy(cfg, field, [1, 2, 3]))
-        # assert isinstance(cfg._data['asdf'], ListProxy)
-        # assert cfg._data['asdf'] == ListProxy(cfg, field, [1, 2, 3])
+
+    def test_default_list_copy(self):
+        cfg = MockConfig()
+        field = ListField(default=[1, 2, 3], key='asdf')
+        field.__setdefault__(cfg)
+        cfg._set_default_value.assert_called_once_with('asdf', [1, 2, 3])
 
     def test_to_basic_none(self):
         field = ListField(IntField(), default=None, key='asdf')

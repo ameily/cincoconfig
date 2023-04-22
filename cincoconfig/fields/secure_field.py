@@ -17,7 +17,7 @@ from ..core import Config, Field
 from ..encryption import EncryptionError, SecureValue
 
 #: Hash algorithm, as returned by hashlib.new()
-HashAlgorithm = Callable[[Optional[bytes]], 'hashlib._Hash']
+HashAlgorithm = Callable[[bytes], 'hashlib._Hash']
 
 #: Named tuple for digest, value, algorithm
 TDigestValue = NamedTuple('TDigestValue', [
@@ -55,7 +55,7 @@ class DigestValue(TDigestValue):
 
     @classmethod
     def create(cls, plaintext: Union[str, bytes], algorithm: HashAlgorithm,
-               salt: bytes = None) -> 'DigestValue':
+               salt: Optional[bytes] = None) -> 'DigestValue':
         '''
         Hash a plaintext value and return the new digest value. The digest is calculated as:
 
@@ -170,14 +170,14 @@ class ChallengeField(Field):
     storage_type = DigestValue
 
     #: Available hashing algorithms
-    ALGORITHMS = {
+    ALGORITHMS: Dict[str, HashAlgorithm] = {
         'md5': hashlib.md5,
         'sha1': hashlib.sha1,
         'sha224': hashlib.sha224,
         'sha256': hashlib.sha256,
         'sha384': hashlib.sha384,
         'sha512': hashlib.sha512
-    }  # type: Dict[str, Callable]
+    }
 
     def __init__(self, hash_algorithm: str = 'sha256', **kwargs):
         '''
@@ -217,7 +217,7 @@ class ChallengeField(Field):
             raise ValueError('value must be a string, not a %s' % type(value).__name__)
         return val
 
-    def _hash(self, plaintext: Union[str, bytes], salt: bytes = None) -> DigestValue:
+    def _hash(self, plaintext: Union[str, bytes], salt: Optional[bytes] = None) -> DigestValue:
         '''
         Private method that performs the actual hash. This method does not
         check if the value has already been hashed.

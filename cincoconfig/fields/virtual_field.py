@@ -7,7 +7,7 @@
 '''
 Virtual field
 '''
-from typing import Callable, Any
+from typing import Callable, Any, Optional
 
 from ..core import Field, VirtualFieldMixin, Config
 
@@ -18,7 +18,7 @@ class VirtualField(Field, VirtualFieldMixin):
     '''
 
     def __init__(self, getter: Callable[[Config], Any],
-                 setter: Callable[[Config, Any], Any] = None, **kwargs):
+                 setter: Optional[Callable[[Config, Any], Any]] = None, **kwargs):
         '''
         :param getter: a callable that is called whenever the value is retrieved, the callable
             will receive a single argument: the current :class:`Config`.

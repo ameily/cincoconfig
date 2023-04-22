@@ -8,7 +8,7 @@
 String fields.
 '''
 import re
-from typing import List, Union
+from typing import List, Union, Optional
 
 from ..core import Field, Config, Schema
 from .virtual_field import VirtualField
@@ -20,9 +20,10 @@ class StringField(Field):
     '''
     storage_type = str
 
-    def __init__(self, *, min_len: int = None, max_len: int = None, regex: str = None,
-                 choices: List[str] = None, transform_case: str = None,
-                 transform_strip: Union[bool, str] = None, **kwargs):
+    def __init__(self, *, min_len: Optional[int] = None, max_len: Optional[int] = None,
+                 regex: Optional[str] = None, choices: Optional[List[str]] = None,
+                 transform_case: Optional[str] = None,
+                 transform_strip: Optional[Union[bool, str]] = None, **kwargs):
         '''
         The string field can perform transformations on the value prior to validating it if either
         *transform_case* or *transform_strip* are specified.
@@ -95,7 +96,7 @@ class LogLevelField(StringField):
     '''
     storage_type = str
 
-    def __init__(self, levels: List[str] = None, **kwargs):
+    def __init__(self, levels: Optional[List[str]] = None, **kwargs):
         '''
         :param levels: list of log levels. If not specified, the default Python log levels will be
             used: ``debug``, ``info``, ``warning``, ``error``, and ``critical``.
@@ -117,7 +118,7 @@ class ApplicationModeField(StringField):
     storage_type = str
     HELPER_MODE_PATTERN = re.compile('^[a-zA-Z0-9_]+$')
 
-    def __init__(self, modes: List[str] = None, create_helpers: bool = True, **kwargs):
+    def __init__(self, modes: Optional[List[str]] = None, create_helpers: bool = True, **kwargs):
         '''
         The *create_helpers* parameter will create a boolean :class:`VirtualField` for each
         ``mode`` named ``is_<mode>_mode``, that returns ``True`` when the mode is active. When

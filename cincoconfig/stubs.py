@@ -8,7 +8,7 @@
 Generate type stubs for configurations.
 '''
 import inspect
-from typing import Type, Union, Any, Dict
+from typing import Type, Union, Any, Dict, Optional
 from .core import Config, Schema, ConfigType, Field, BaseField
 from .fields import InstanceMethodField, VirtualField
 
@@ -67,7 +67,7 @@ def get_retval_annotation(annotation: Any) -> str:
     '''
     try:
         typestr = get_annotation_typestr(annotation)
-    except:
+    except:  # noqa: E722
         return ''
 
     print('retval:', repr(annotation), '-', repr(typestr))
@@ -126,7 +126,8 @@ def get_method_annotation(key: str, field: InstanceMethodField) -> str:
     return annotation
 
 
-def generate_stub(config: Union[Schema, ConfigType, Config], class_name: str = None) -> str:
+def generate_stub(config: Union[Schema, ConfigType, Config],
+                  class_name: Optional[str] = None) -> str:
     '''
     Generate the Python stub class (pyi file) for a provided Schema instance, Config instance, or
     ConfigType class. Generating a pyi stub file is useful when developing in an IDE, such as
@@ -153,9 +154,9 @@ def generate_stub(config: Union[Schema, ConfigType, Config], class_name: str = N
     if not class_name:
         raise TypeError('class_name is required when config is not a ConfigType subclass')
 
-    properties = {}  # type: Dict[str, str]
-    methods = {}  # type: Dict[str, InstanceMethodField]
-    attrs = {}  # type: Dict[str, str]
+    properties: Dict[str, str] = {}
+    methods: Dict[str, InstanceMethodField] = {}
+    attrs: Dict[str, str] = {}
 
     for key, field in schema._fields.items():
         if isinstance(field, VirtualField):

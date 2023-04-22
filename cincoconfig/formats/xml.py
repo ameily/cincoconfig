@@ -9,7 +9,7 @@ XML config file format.
 '''
 from xml.etree import ElementTree as ET
 from xml.dom import minidom
-from typing import Any
+from typing import Any, Optional
 from ..core import ConfigFormat, Config
 from ..fields import BoolField
 
@@ -83,7 +83,7 @@ class XmlConfigFormat(ConfigFormat):
 
         return ele
 
-    def _from_element(self, ele: ET.Element, py_type: str = None) -> Any:
+    def _from_element(self, ele: ET.Element, py_type: Optional[str] = None) -> Any:
         '''
         Parse the XML element to the original Python type. This method will attempt to convert any
         basic types to their original Python type and, if conversion fails, will use the original
@@ -103,8 +103,8 @@ class XmlConfigFormat(ConfigFormat):
             }
 
         :param ele: the XML element to convert
-        :param py_type: force the Python type attribute rather than reading the Python type from the
-            *type* attribute
+        :param py_type: force the Python type attribute rather than reading the Python type from
+            the *type* attribute
         :returns: the parsed Python value
         '''
         # pylint: disable=too-many-branches
@@ -123,12 +123,12 @@ class XmlConfigFormat(ConfigFormat):
         elif py_type == 'int':
             try:
                 value = int(text)
-            except:
+            except:  # noqa: E722
                 value = text
         elif py_type == 'float':
             try:
                 value = float(text)
-            except:
+            except:  # noqa: E722
                 value = text
         elif py_type == 'none':
             value = None
