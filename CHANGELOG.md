@@ -12,6 +12,12 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - New support method, `reset_value` to reset a configuration value back to the default.
 - New Config method, `Config._set_default_value`, to set a field default value. This was added so
   that `__setdefault__` methods wouldn't need to access the `_data` dictionary directly.
+- New options to the `DictField` that control key and value validation.
+
+### Internal API Changes
+- Switched to GitHub Actions.
+- Switched to ruff, pyright, and black for linting and formatting.
+- Switched to poetry for dependency management.
 
 
 ## [v0.8.0](https://github.com/ameily/cincoconfig/releases/tag/v0.8.0) - 2021-07-17
