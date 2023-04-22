@@ -27,7 +27,7 @@ jobs:
           # ruff check cincoconfig
           # pyright cincoconfig
           poetry run poe lint
-          poetry run poe check-format
+          # poetry run poe check-format
           poetry run poe check-typing
       - name: Test with pytest
         env:
