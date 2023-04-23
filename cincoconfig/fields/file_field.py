@@ -38,7 +38,7 @@ class FilenameField(StringField):
         - ``"file"`` - validate that the filename is a file that exists
 
         The *startdir* parameter, if specified, will resolve filenames starting from a directory
-        and will cause all filenames to be validate to their abslute file path. If not specified,
+        and will cause all filenames to be validate to their absolute file path. If not specified,
         filename's will be resolve relative to :meth:`os.getcwd` and the relative file path will
         be validated.
 
