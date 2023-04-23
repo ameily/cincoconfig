@@ -41,8 +41,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: streetsidesoftware/cspell-action@v2
-        config: ".cspell.json"
-        files: |
-          cincoconfig/**/*.py
-          docs/*.rst
-          CHANGELOG.md
+        with:
+          config: ".cspell.json"
+          files: |
+            cincoconfig/**/*.py
+            docs/*.rst
+            CHANGELOG.md
