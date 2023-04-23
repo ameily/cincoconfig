@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cincoconfig"
-version = "0.8.0"
+version = "0.9.0"
 description = "Universal configuration file parser"
 authors = ["Adam Meily <meily.adam@gmail.com>"]
 readme = "README.md"
