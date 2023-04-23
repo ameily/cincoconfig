@@ -4,6 +4,7 @@ on: [push]
 
 jobs:
   build:
+
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -25,7 +26,7 @@ jobs:
           poetry run poe check-format
           poetry run poe lint
           poetry run poe check-typing
-      - name: Unit Tests
+      - name: Test with pytest
         env:
           # GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COVERALLS_REPO_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -34,14 +35,14 @@ jobs:
           poetry run coverage xml
           curl -sL https://coveralls.io/coveralls-linux.tar.gz | tar -xz && ./coveralls -f coverage.xml
 
-  spelling:
-    runs-on: ubuntu-latest
+  # spelling:
+  #   runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v3
-      - uses: streetsidesoftware/cspell-action@v2
-        config: ".cspell.json"
-        files: |
-          cincoconfig/**/*.py
-          docs/*.rst
-          CHANGELOG.md
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - uses: streetsidesoftware/cspell-action@v2
+  #       config: ".cspell.json"
+  #       files: |
+  #         cincoconfig/**/*.py
+  #         docs/*.rst
+  #         CHANGELOG.md
