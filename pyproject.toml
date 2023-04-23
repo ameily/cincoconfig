@@ -101,3 +101,6 @@ tests = [
     { cmd = "coverage run --source cincoconfig -m pytest" },
     { cmd = "coverage report -m" }
 ]
+# The check-spelling task is currently disabled until poe fixes CMD resolution on Windows:
+# https://github.com/nat-n/poethepoet/pull/142
+# "check-spelling" = "npx cspell \"cincoconfig/**/*.py\" \"docs/*.rst\" CHANGELOG.md"

@@ -34,3 +34,16 @@ jobs:
           poetry run poe tests
           poetry run coverage xml
           curl -sL https://coveralls.io/coveralls-linux.tar.gz | tar -xz && ./coveralls -f coverage.xml
+
+  spelling:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: streetsidesoftware/cspell-action@v2
+        with:
+          config: ".cspell.json"
+          files: |
+            cincoconfig/**/*.py
+            docs/*.rst
+            CHANGELOG.md
