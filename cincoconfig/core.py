@@ -207,7 +207,7 @@ class BaseField:
     def __setdefault__(self, cfg: "Config") -> None:
         """
         Set the default value in the configuration. Subclasses should set the field's default value
-        using the :meth:`Config._set_deafult_value` method. For example:
+        using the :meth:`Config._set_default_value` method. For example:
 
         .. code-block:: python
 
@@ -339,7 +339,7 @@ class Field(BaseField):
     - The top-level schema is configured to autogenerate and load environment variables for all
       fields.
     - ``mode`` is loaded from the ``APP_MODE`` environment variable.
-    - ``port`` is not loaded from any the environment variabale.
+    - ``port`` is not loaded from any the environment variable.
     - ``db.host`` is loaded from the ``DB_HOST`` environment variable.
     - The ``auth`` schema has a environment variable prefix of ``SECRET``. All children and nested
       fields/schemas will start with ``SECRET_``.
@@ -1261,7 +1261,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
         - ``None`` (default) - include the value as-is in the tree
         - ``len(sensitive_mask) == 1`` (single character) - replace every character with the
           ``sensitive_mask`` character. ``value = sensitive_mask * len(value)``
-        - ``len(sensitive_mask) != 1`` (empty or multicharacter string) - replace the entire value
+        - ``len(sensitive_mask) != 1`` (empty or multi character string) - replace the entire value
           with the ``sensitive_mask``.
 
         :param virtual: include virtual field values in the tree

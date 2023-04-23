@@ -1,5 +1,5 @@
 {
-    "version": "0.1",
+    "version": "0.2",
     "words": [
         "meily",
         "cincoconfig",
@@ -36,6 +36,22 @@
         "noqa",
         "rpartition",
         "pyright",
+        "strerror",
+        "ciphertext",
+        "startdir",
+        "netbios",
+        "hostname",
+        "hostnames",
+        "modname",
+        "typestr",
+        "subkey",
+        "prefixlen",
+        "subval",
+        "reparsed",
+        "autocompleter",
+        "getframe",
+        "subconfig",
+        "subconfigs",
 
         // spinx docs
         "autofunction",
@@ -46,7 +62,8 @@
         "modindex",
         "toctree",
         "autodata",
-        "maxdepth"
+        "maxdepth",
+        "linenos"
     ],
     "dictionaries": [
         "en_US",

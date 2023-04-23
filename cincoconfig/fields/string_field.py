@@ -83,7 +83,7 @@ class StringField(Field):
             raise ValueError("value must be at least %d characters" % self.min_len)
 
         if self.max_len is not None and len(value) > self.max_len:
-            raise ValueError("value must not be more than %d chatacters" % self.max_len)
+            raise ValueError("value must not be more than %d characters" % self.max_len)
 
         if self.regex and not self.regex.match(value):
             raise ValueError("value does not match pattern %s" % self.regex.pattern)

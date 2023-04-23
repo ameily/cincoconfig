@@ -7,6 +7,8 @@
 """
 Encryption classes and methods.
 """
+
+# spell-checker:ignore padder bindata
 import os
 from itertools import cycle
 from typing import NamedTuple, Optional, Tuple, Union

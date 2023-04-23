@@ -142,8 +142,8 @@ class DictProxy(dict):
 class DictField(Field):
     """
     A generic :class:`dict` field that optionally validates keys and values. The ``key_field`` and
-    ``value_field`` paramters control whether and how the dictionary keys and values are validated,
-    respectively. Setting these will cause the internal representation to be stored in a
+    ``value_field`` parameters control whether and how the dictionary keys and values are
+    validated, respectively. Setting these will cause the internal representation to be stored in a
     :class:`DictProxy` which handles the validation operations.
 
     Specifying *required=True* will cause the field validation to validate that the ``dict`` is

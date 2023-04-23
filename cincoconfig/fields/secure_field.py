@@ -158,7 +158,7 @@ class ChallengeField(Field):
     - ``digest`` - base64 encoded digest
 
     The challenge field supports loading plaintext string values from the configuration file. So,
-    when manually writting the config file, the user does not need to create the salt and digest
+    when manually writing the config file, the user does not need to create the salt and digest
     pair but, instead, just specify a plaintext string to hash. The value will be properly saved
     as a salt/digest pair the next time the config file is saved to disk.
 
