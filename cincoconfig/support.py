@@ -324,7 +324,7 @@ def asdict(config: Config, virtual: bool = False) -> dict:
     the configuration, and all nested configuration objects, to a dict, preserving each value
     as-is.
 
-    :param config: the configuration to conver to a dict
+    :param config: the configuration to convert to a dict
     :param virtual: include virtual field values in the dict
     :returns: the converted configuration dict
     """
