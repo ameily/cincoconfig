@@ -156,7 +156,7 @@ class DictField(Field):
         self,
         key_field: Optional[Field] = None,
         value_field: Optional[Field] = None,
-        **kwargs
+        **kwargs,
     ):
         if key_field or value_field:
             self._use_proxy = True

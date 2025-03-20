@@ -360,7 +360,7 @@ class Field(BaseField):
         sensitive: bool = False,
         description: Optional[str] = None,
         help: Optional[str] = None,
-        env: Optional[Union[bool, str]] = None
+        env: Optional[Union[bool, str]] = None,
     ):
         """
         All builtin Fields accept the following keyword parameters.
@@ -951,7 +951,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
         schema: Schema,
         parent: Optional["Config"] = None,
         key_filename: Optional[str] = None,
-        **data
+        **data,
     ):
         """
         :param schema: backing schema, stored as *_schema*
@@ -1233,7 +1233,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
         format: str,
         virtual: bool = False,
         sensitive_mask: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ) -> bytes:
         """
         Serialize the configuration to a string with the specified format.

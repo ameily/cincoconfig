@@ -64,7 +64,7 @@ class IPv4NetworkField(StringField):
         self,
         min_prefix_len: Optional[int] = None,
         max_prefix_len: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ):
         """
         :param min_prefix_len: minimum subnet prefix length (/X), in bits

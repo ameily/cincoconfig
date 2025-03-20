@@ -26,7 +26,7 @@ class FilenameField(StringField):
         *,
         exists: Optional[Union[bool, str]] = None,
         startdir: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ):
         """
         The *exists* parameter can be set to one of the following values:

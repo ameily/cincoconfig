@@ -21,7 +21,7 @@ class VirtualField(Field, VirtualFieldMixin):
         self,
         getter: Callable[[Config], Any],
         setter: Optional[Callable[[Config, Any], Any]] = None,
-        **kwargs
+        **kwargs,
     ):
         """
         :param getter: a callable that is called whenever the value is retrieved, the callable

@@ -30,7 +30,7 @@ class StringField(Field):
         choices: Optional[List[str]] = None,
         transform_case: Optional[str] = None,
         transform_strip: Optional[Union[bool, str]] = None,
-        **kwargs
+        **kwargs,
     ):
         """
         The string field can perform transformations on the value prior to validating it if either

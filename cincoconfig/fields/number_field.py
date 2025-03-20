@@ -24,7 +24,7 @@ class NumberField(Field):
         *,
         min: Optional[Union[int, float]] = None,
         max: Optional[Union[int, float]] = None,
-        **kwargs
+        **kwargs,
     ):
         """
         :param type_cls: number type class that values will be converted to
