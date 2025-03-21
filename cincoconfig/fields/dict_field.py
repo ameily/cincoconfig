@@ -7,6 +7,7 @@
 """
 Dict field.
 """
+
 from typing import Any, Dict, List, Optional, Sequence, Tuple, TypeVar, Union
 
 from ..core import AnyField, Config, Field, ValidationError
@@ -39,18 +40,13 @@ class DictProxy(dict):
         self.cfg = cfg
         self.dict_field = dict_field
         if not self.dict_field._use_proxy:
-            raise TypeError(
-                "DictProxy requires a parent DictField.{key,value}_field attribute"
-            )
+            raise TypeError("DictProxy requires a parent DictField.{key,value}_field attribute")
 
         if isinstance(iterable, DictProxy) and iterable.dict_field is dict_field:
             super().__init__(iterable)
         elif iterable:
             super().__init__(
-                [
-                    self._validate(key, value)
-                    for key, value in _iterate_dict_like(iterable)
-                ]
+                [self._validate(key, value) for key, value in _iterate_dict_like(iterable)]
             )
         else:
             super().__init__()
@@ -83,10 +79,7 @@ class DictProxy(dict):
                     super().__setitem__(key, value)
             else:
                 super().update(
-                    [
-                        self._validate(key, value)
-                        for key, value in _iterate_dict_like(iterable)
-                    ]
+                    [self._validate(key, value) for key, value in _iterate_dict_like(iterable)]
                 )
 
         for key, value in kwargs.items():
@@ -162,9 +155,7 @@ class DictField(Field):
             self._use_proxy = True
             self.key_field = key_field or AnyField()
             self.value_field = value_field or AnyField()
-            self.storage_type = Dict[
-                self.key_field.storage_type, self.value_field.storage_type
-            ]
+            self.storage_type = Dict[self.key_field.storage_type, self.value_field.storage_type]
         else:
             self.key_field = None
             self.value_field = None
