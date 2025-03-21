@@ -7,6 +7,7 @@
 """
 Support functions.
 """
+
 import sys
 from argparse import ArgumentParser, Namespace
 from typing import Callable, List, Optional, Tuple, Type, Union
@@ -74,9 +75,7 @@ def make_type(
     :param validator: config validator callback method
     :returns: the new type
     """
-    result = type(
-        name, (ConfigType,), {"__schema__": schema, "__key_filename__": key_filename}
-    )
+    result = type(name, (ConfigType,), {"__schema__": schema, "__key_filename__": key_filename})
     # This is copied from the namedtuple method. We try to set the module of the new
     # class to the calling module.
     if module is None:
@@ -90,9 +89,7 @@ def make_type(
     return result
 
 
-def generate_argparse_parser(
-    schema: Union[Config, Schema], **parser_kwargs
-) -> ArgumentParser:
+def generate_argparse_parser(schema: Union[Config, Schema], **parser_kwargs) -> ArgumentParser:
     """
     Generate a :class:`argparse.ArgumentParser` based on the schema. This method generates
     ``--long-arguments`` for each field that stores a string, integer, float, or bool (based
@@ -115,9 +112,7 @@ def generate_argparse_parser(
             )
         elif field.storage_type is bool:
             off_arg = "--no-" + name.replace(".", "-").replace("_", "-").lower()
-            parser.add_argument(
-                arg, dest=name, action="store_true", help=field.short_help
-            )
+            parser.add_argument(arg, dest=name, action="store_true", help=field.short_help)
             parser.add_argument(off_arg, dest=name, action="store_false")
 
     return parser
@@ -170,9 +165,7 @@ def validator(field: BaseField) -> Callable:
     return inner
 
 
-def get_all_fields(
-    schema: Union[Schema, Config]
-) -> List[Tuple[str, Schema, BaseField]]:
+def get_all_fields(schema: Union[Schema, Config]) -> List[Tuple[str, Schema, BaseField]]:
     """
     Get all the fields and nested fields of the schema or config, including the nested
     schemas/configs.

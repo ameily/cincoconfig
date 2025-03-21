@@ -7,6 +7,7 @@
 """
 Generate type stubs for configurations.
 """
+
 import inspect
 from typing import Any, Dict, Optional, Type, Union
 
@@ -85,9 +86,7 @@ def get_method_annotation(key: str, field: InstanceMethodField) -> str:
     """
     # pylint: disable=too-many-locals
     # spell-checker:ignore varargs, varkw, kwonlyargs
-    args, varargs, varkw, _, kwonlyargs, _, annotations = inspect.getfullargspec(
-        field.method
-    )
+    args, varargs, varkw, _, kwonlyargs, _, annotations = inspect.getfullargspec(field.method)
     has_ret_annotation = "return" in annotations
     if kwonlyargs:
         if not varargs:
@@ -156,9 +155,7 @@ def generate_stub(
         raise TypeError("must be Schema, ConfigType, or Config")
 
     if not class_name:
-        raise TypeError(
-            "class_name is required when config is not a ConfigType subclass"
-        )
+        raise TypeError("class_name is required when config is not a ConfigType subclass")
 
     properties: Dict[str, str] = {}
     methods: Dict[str, InstanceMethodField] = {}

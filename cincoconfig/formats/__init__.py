@@ -7,6 +7,7 @@
 """
 Built-in config file formats.
 """
+
 from typing import List, Tuple, Type
 
 from ..core import ConfigFormat

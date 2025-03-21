@@ -7,6 +7,7 @@
 """
 BSON config file format.
 """
+
 try:
     import bson
 except ImportError:  # pragma: no cover
@@ -44,7 +45,7 @@ class BsonConfigFormat(ConfigFormat):
         :param config: current config
         :param tree: basic value tree
         """
-        return bson.dumps(tree)
+        return bson.dumps(tree)  # pyright: ignore [reportPossiblyUnboundVariable]
 
     def loads(self, config: Config, content: bytes) -> dict:
         """
@@ -55,4 +56,4 @@ class BsonConfigFormat(ConfigFormat):
         :param content: content to serialize
         :returns: the deserialized basic value tree
         """
-        return bson.loads(content)
+        return bson.loads(content)  # pyright: ignore [reportPossiblyUnboundVariable]

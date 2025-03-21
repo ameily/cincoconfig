@@ -7,6 +7,7 @@
 """
 Core configuration classes and methods.
 """
+
 # pylint: disable=too-many-lines
 import inspect
 import os
@@ -73,7 +74,7 @@ class ValidationError(ValueError):
 
     def __str__(self):
         if isinstance(self.exc, OSError):
-            msg = self.exc.strerror
+            msg = self.exc.strerror or ""
         else:
             msg = str(self.exc)
 
@@ -147,9 +148,7 @@ class IncludeFieldMixin:
     Field mixin to include a configuration file.
     """
 
-    def include(
-        self, config: "Config", fmt: "ConfigFormat", filename: str, base: dict
-    ) -> dict:
+    def include(self, config: "Config", fmt: "ConfigFormat", filename: str, base: dict) -> dict:
         """
         Include a configuration file and combine it with an already parsed basic value tree. Values
         defined in the included file will overwrite values in the base tree. Nested trees (``dict``
@@ -473,9 +472,7 @@ class Field(BaseField):
         if self.env is False:
             return
 
-        if self.env is True or (
-            self.env is None and isinstance(schema._env_prefix, str)
-        ):
+        if self.env is True or (self.env is None and isinstance(schema._env_prefix, str)):
             # Set our environment variable name based on the schema's prefix and our key
             if isinstance(schema._env_prefix, str) and schema._env_prefix:
                 prefix = schema._env_prefix + "_"
@@ -633,9 +630,7 @@ class Schema(BaseField):
         :returns: an iterator of all feature flag fields
         """
         return (
-            field
-            for field in self._fields.values()
-            if isinstance(field, FeatureFlagFieldMixin)
+            field for field in self._fields.values() if isinstance(field, FeatureFlagFieldMixin)
         )
 
     def _is_feature_enabled(self, cfg: "Config") -> bool:
@@ -758,9 +753,7 @@ class Schema(BaseField):
 
         return self._add_field(name, value)
 
-    def _validate(
-        self, config: "Config", collect_errors: bool = False
-    ) -> List[ValidationError]:
+    def _validate(self, config: "Config", collect_errors: bool = False) -> List[ValidationError]:
         """
         Validate the configuration by running any registered validators against it.
 
@@ -1245,13 +1238,9 @@ class Config:  # pylint: disable=too-many-instance-attributes
         :returns: serialized configuration file content
         """
         formatter = ConfigFormat.get(format, **kwargs)
-        return formatter.dumps(
-            self, self.to_tree(virtual=virtual, sensitive_mask=sensitive_mask)
-        )
+        return formatter.dumps(self, self.to_tree(virtual=virtual, sensitive_mask=sensitive_mask))
 
-    def to_tree(
-        self, virtual: bool = False, sensitive_mask: Optional[str] = None
-    ) -> dict:
+    def to_tree(self, virtual: bool = False, sensitive_mask: Optional[str] = None) -> dict:
         """
         Convert the configuration values to a tree.
 
@@ -1284,14 +1273,8 @@ class Config:  # pylint: disable=too-many-instance-attributes
             value: Any = None
 
             if isinstance(field_value, Config):
-                value = field_value.to_tree(
-                    virtual=virtual, sensitive_mask=sensitive_mask
-                )
-            elif (
-                isinstance(field, Field)
-                and field.sensitive
-                and sensitive_mask is not None
-            ):
+                value = field_value.to_tree(virtual=virtual, sensitive_mask=sensitive_mask)
+            elif isinstance(field, Field) and field.sensitive and sensitive_mask is not None:
                 if not field_value:
                     pass
                 elif len(sensitive_mask) == 1:
@@ -1319,11 +1302,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
         for key, value in tree.items():
             field = self._get_field(key)
             if isinstance(field, Field):
-                if (
-                    isinstance(field.env, str)
-                    and field.env
-                    and os.environ.get(field.env)
-                ):
+                if isinstance(field.env, str) and field.env and os.environ.get(field.env):
                     continue
 
                 try:
@@ -1383,9 +1362,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
         :param format: config format
         """
         sub_schemas = [
-            (key, field)
-            for key, field in schema._fields.items()
-            if isinstance(field, Schema)
+            (key, field) for key, field in schema._fields.items() if isinstance(field, Schema)
         ]
         includes: List[Tuple[str, IncludeFieldMixin]] = [
             (key, field)
@@ -1406,9 +1383,7 @@ class Config:  # pylint: disable=too-many-instance-attributes
 
         for key, sub_schema in sub_schemas:
             if tree.get(key):
-                tree[key] = self._process_includes(
-                    sub_schema, tree[key], format_factory
-                )
+                tree[key] = self._process_includes(sub_schema, tree[key], format_factory)
 
         return tree
 
@@ -1452,9 +1427,7 @@ class ConfigType(Config):
         """
         :param parent: parent configuration
         """
-        super().__init__(
-            self.__schema__, parent, key_filename=self.__key_filename__, **kwargs
-        )
+        super().__init__(self.__schema__, parent, key_filename=self.__key_filename__, **kwargs)
 
     def __eq__(self, other: Any) -> bool:
         if other is None:

@@ -7,6 +7,7 @@
 """
 File field.
 """
+
 import os
 from typing import Optional, Union
 
@@ -62,9 +63,7 @@ class FilenameField(StringField):
             return value
 
         if not os.path.isabs(value) and self.startdir:
-            value = os.path.abspath(
-                os.path.expanduser(os.path.join(self.startdir, value))
-            )
+            value = os.path.abspath(os.path.expanduser(os.path.join(self.startdir, value)))
 
         if os.path.sep == "\\":
             value = value.replace("/", "\\")
@@ -81,8 +80,7 @@ class FilenameField(StringField):
             )
         if self.exists == "file" and not os.path.isfile(value):
             raise ValueError(
-                "file %s: %s"
-                % ("already exists" if value_exists else "does not exist", value)
+                "file %s: %s" % ("already exists" if value_exists else "does not exist", value)
             )
 
         return value

@@ -7,6 +7,7 @@
 """
 String fields.
 """
+
 import re
 from typing import List, Optional, Union
 
@@ -128,9 +129,7 @@ class ApplicationModeField(StringField):
     storage_type = str
     HELPER_MODE_PATTERN = re.compile("^[a-zA-Z0-9_]+$")
 
-    def __init__(
-        self, modes: Optional[List[str]] = None, create_helpers: bool = True, **kwargs
-    ):
+    def __init__(self, modes: Optional[List[str]] = None, create_helpers: bool = True, **kwargs):
         """
         The *create_helpers* parameter will create a boolean :class:`VirtualField` for each
         ``mode`` named ``is_<mode>_mode``, that returns ``True`` when the mode is active. When

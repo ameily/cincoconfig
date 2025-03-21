@@ -7,6 +7,7 @@
 """
 URL field.
 """
+
 from urllib.parse import urlparse
 
 from ..core import Config

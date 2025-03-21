@@ -7,6 +7,7 @@
 """
 YAML config file format.
 """
+
 from typing import Optional
 
 try:
@@ -79,7 +80,7 @@ class YamlConfigFormat(ConfigFormat):
         """
         if self.root_key:
             tree = {self.root_key: tree}
-        return yaml.dump(tree, Dumper=yaml.Dumper).encode()
+        return yaml.dump(tree, Dumper=yaml.Dumper).encode()  # pyright: ignore [reportPossiblyUnboundVariable]
 
     def loads(self, config: Config, content: bytes) -> dict:
         """
@@ -97,7 +98,7 @@ class YamlConfigFormat(ConfigFormat):
         :param content: content to deserialize
         :returns: deserialized basic value tree
         """
-        tree = yaml.load(content.decode(), Loader=yaml.Loader)
+        tree = yaml.load(content.decode(), Loader=yaml.Loader)  # pyright: ignore [reportPossiblyUnboundVariable]
         if self.root_key and self.root_key in tree:
             tree = tree[self.root_key]
         return tree

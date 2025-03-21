@@ -7,6 +7,7 @@
 """
 JSON config file format.
 """
+
 import json
 
 from ..core import Config, ConfigFormat

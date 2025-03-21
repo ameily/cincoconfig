@@ -7,6 +7,7 @@
 """
 List field
 """
+
 import inspect
 from typing import Any, Iterable, List, Optional, Type, Union
 
@@ -29,9 +30,7 @@ class ListProxy(list, ContainerValueMixin):
     the field returned by the :class:`ListField` validation chain.
     """
 
-    def __init__(
-        self, cfg: Config, list_field: "ListField", iterable: Optional[Iterable] = None
-    ):
+    def __init__(self, cfg: Config, list_field: "ListField", iterable: Optional[Iterable] = None):
         iterable = iterable or []
         self.cfg = cfg
         self.list_field = list_field
@@ -41,9 +40,7 @@ class ListProxy(list, ContainerValueMixin):
         if isinstance(iterable, ListProxy) and iterable.item_field is list_field.field:
             super().__init__(iterable)
         else:
-            super().__init__(
-                self._validate(item) for index, item in enumerate(iterable)
-            )
+            super().__init__(self._validate(item) for index, item in enumerate(iterable))
 
     @property
     def item_field(self) -> Union[BaseField, Type[Config]]:
@@ -117,8 +114,7 @@ class ListProxy(list, ContainerValueMixin):
         # we should only hit this when item_field is not a field, schema, or ConfigType subclass
         # (which shouldn't happen)
         raise TypeError(
-            "item field must be a Field, Schema, or ConfigType subclass: %s"
-            % self.item_field
+            "item field must be a Field, Schema, or ConfigType subclass: %s" % self.item_field
         )
 
     def _get_item_position(self, item: Any) -> str:
@@ -140,9 +136,7 @@ class ListField(Field):
 
     storage_type = List
 
-    def __init__(
-        self, field: Optional[Union[BaseField, Type[ConfigType]]] = None, **kwargs
-    ):
+    def __init__(self, field: Optional[Union[BaseField, Type[ConfigType]]] = None, **kwargs):
         """
         :param field: Field to validate values against
         """

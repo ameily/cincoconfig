@@ -7,6 +7,7 @@
 """
 Virtual field
 """
+
 from typing import Any, Callable, Optional
 
 from ..core import Config, Field, VirtualFieldMixin

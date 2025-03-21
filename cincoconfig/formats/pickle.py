@@ -7,6 +7,7 @@
 """
 Python pickle binary config file format.
 """
+
 import pickle
 
 from ..core import Config, ConfigFormat

@@ -7,6 +7,7 @@
 """
 Network fields
 """
+
 import re
 import socket
 from ipaddress import IPv4Address, IPv4Network
@@ -89,14 +90,10 @@ class IPv4NetworkField(StringField):
             raise ValueError("value is not a valid IPv4 Network (CIDR)") from err
 
         if self.min_prefix_len and net.prefixlen < self.min_prefix_len:
-            raise ValueError(
-                "value must be at least a /%d subnet" % self.min_prefix_len
-            )
+            raise ValueError("value must be at least a /%d subnet" % self.min_prefix_len)
 
         if self.max_prefix_len and net.prefixlen > self.max_prefix_len:
-            raise ValueError(
-                "value must be smaller than a /%d subnet" % self.max_prefix_len
-            )
+            raise ValueError("value must be smaller than a /%d subnet" % self.max_prefix_len)
 
         return str(net)
 

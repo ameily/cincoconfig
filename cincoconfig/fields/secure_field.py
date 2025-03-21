@@ -7,6 +7,7 @@
 """
 Secure fields.
 """
+
 import base64
 import binascii
 import hashlib
@@ -35,9 +36,7 @@ class DigestValue(TDigestValue):
         """
         :returns: the salt and digest pair, both base64 encoded, separated by a ``:``.
         """
-        return (
-            base64.b64encode(self.salt) + b":" + base64.b64encode(self.digest)
-        ).decode()
+        return (base64.b64encode(self.salt) + b":" + base64.b64encode(self.digest)).decode()
 
     @classmethod
     def parse(cls, value: str, algorithm: HashAlgorithm) -> "DigestValue":
@@ -222,9 +221,7 @@ class ChallengeField(Field):
             raise ValueError("value must be a string, not a %s" % type(value).__name__)
         return val
 
-    def _hash(
-        self, plaintext: Union[str, bytes], salt: Optional[bytes] = None
-    ) -> DigestValue:
+    def _hash(self, plaintext: Union[str, bytes], salt: Optional[bytes] = None) -> DigestValue:
         """
         Private method that performs the actual hash. This method does not
         check if the value has already been hashed.
@@ -270,16 +267,12 @@ class ChallengeField(Field):
             try:
                 salt = base64.b64decode(value["salt"])
             except (KeyError, binascii.Error) as err:
-                raise ValueError(
-                    "invalid salt: salt must be base64-encoded value"
-                ) from err
+                raise ValueError("invalid salt: salt must be base64-encoded value") from err
 
             try:
                 digest = base64.b64decode(value["digest"])
             except (KeyError, binascii.Error) as err:
-                raise ValueError(
-                    "invalid digest: digest must be base64-encoded value"
-                ) from err
+                raise ValueError("invalid digest: digest must be base64-encoded value") from err
 
             return DigestValue(salt, digest, self.algorithm)
 

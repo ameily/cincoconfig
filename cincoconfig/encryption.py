@@ -11,7 +11,7 @@ Encryption classes and methods.
 # spell-checker:ignore padder bindata
 import os
 from itertools import cycle
-from typing import NamedTuple, Optional, Tuple, Union
+from typing import TYPE_CHECKING, NamedTuple, Optional, Tuple, Union
 
 try:
     from cryptography.hazmat.backends import default_backend
@@ -247,9 +247,7 @@ class AesProvider(IEncryptionProvider):
 
     def __init__(self, key: bytes):
         if not AES_AVAILABLE:
-            raise TypeError(
-                "AES encryption is not available; please install cryptography"
-            )
+            raise TypeError("AES encryption is not available; please install cryptography")
         self.__key = key
 
     def decrypt(self, ciphertext: bytes) -> bytes:
@@ -261,12 +259,11 @@ class AesProvider(IEncryptionProvider):
 
         iv = ciphertext[:16]
         ciphertext = ciphertext[16:]
-        cipher = Cipher(
-            algorithms.AES(self.__key), modes.CBC(iv), backend=default_backend()
-        )
+
+        cipher = Cipher(algorithms.AES(self.__key), modes.CBC(iv), backend=default_backend())  # pyright: ignore [reportPossiblyUnboundVariable]
         decryptor = cipher.decryptor()
 
-        unpadder = padding.PKCS7(128).unpadder()
+        unpadder = padding.PKCS7(128).unpadder()  # pyright: ignore [reportPossiblyUnboundVariable]
         text = decryptor.update(ciphertext) + decryptor.finalize()
 
         return unpadder.update(text) + unpadder.finalize()
@@ -276,11 +273,9 @@ class AesProvider(IEncryptionProvider):
         :returns: the encrypted value
         """
         iv = os.urandom(16)
-        cipher = Cipher(
-            algorithms.AES(self.__key), modes.CBC(iv), backend=default_backend()
-        )
+        cipher = Cipher(algorithms.AES(self.__key), modes.CBC(iv), backend=default_backend())  # pyright: ignore [reportPossiblyUnboundVariable]
         encryptor = cipher.encryptor()
-        padder = padding.PKCS7(128).padder()
+        padder = padding.PKCS7(128).padder()  # pyright: ignore [reportPossiblyUnboundVariable]
 
         padded = padder.update(text) + padder.finalize()
         return iv + encryptor.update(padded) + encryptor.finalize()

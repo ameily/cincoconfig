@@ -7,6 +7,7 @@
 """
 Boolean field.
 """
+
 from ..core import Config, FeatureFlagFieldMixin, Field
 
 

@@ -7,6 +7,7 @@
 """
 Number fields
 """
+
 from typing import Optional, Union
 
 from ..core import Config, Field
@@ -37,9 +38,7 @@ class NumberField(Field):
         self.max = max
         self.storage_type = type_cls
 
-    def _validate(
-        self, cfg: Config, value: Union[str, int, float]
-    ) -> Union[int, float]:
+    def _validate(self, cfg: Config, value: Union[str, int, float]) -> Union[int, float]:
         """
         Validate the value. This method first converts the value to ``type_class`` and then checks
         the value against ``min`` and ``max`` if they are specified.
@@ -47,9 +46,7 @@ class NumberField(Field):
         :param cfg: current Config
         :param value: value to validate
         """
-        if not isinstance(value, (str, int, float, self.type_cls)) or isinstance(
-            value, bool
-        ):
+        if not isinstance(value, (str, int, float, self.type_cls)) or isinstance(value, bool):
             raise ValueError(
                 "value type %s cannot be converted to %s"
                 % (type(value).__name__, self.type_cls.__name__)
@@ -58,9 +55,7 @@ class NumberField(Field):
         try:
             num = self.type_cls(value)  # type: Union[int, float]
         except (ValueError, TypeError) as err:
-            raise ValueError(
-                "value is not a valid %s" % self.type_cls.__name__
-            ) from err
+            raise ValueError("value is not a valid %s" % self.type_cls.__name__) from err
 
         if self.min is not None and num < self.min:
             raise ValueError("value must be >= %s" % self.min)

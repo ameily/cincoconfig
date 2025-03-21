@@ -7,6 +7,7 @@
 """
 Include field.
 """
+
 import os
 from typing import Optional
 
@@ -59,9 +60,7 @@ class IncludeField(FilenameField, IncludeFieldMixin):
         """
         super().__init__(exists="file", startdir=startdir, **kwargs)
 
-    def include(
-        self, config: Config, fmt: ConfigFormat, filename: str, base: dict
-    ) -> dict:
+    def include(self, config: Config, fmt: ConfigFormat, filename: str, base: dict) -> dict:
         """
         Include a configuration file and combine it with an already parsed basic value tree. Values
         defined in the included file will overwrite values in the base tree. Nested trees (``dict``
